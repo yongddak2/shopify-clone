@@ -28,8 +28,9 @@ export default function Header() {
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const { isLoggedIn } = useAuthStore();
+  const { isLoggedIn, user } = useAuthStore();
   const loggedIn = mounted && isLoggedIn();
+  const isAdmin = mounted && loggedIn && user?.role === "ADMIN";
 
   useEffect(() => {
     setMounted(true);
@@ -234,6 +235,18 @@ export default function Header() {
               {link.label}
             </Link>
           ))}
+          {isAdmin && (
+            <>
+              <div className="border-t border-[var(--border-color)]" />
+              <Link
+                href="/admin"
+                className="text-sm tracking-[0.15em] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                onClick={() => setSideOpen(false)}
+              >
+                관리자
+              </Link>
+            </>
+          )}
         </nav>
       </div>
 
