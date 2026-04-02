@@ -1,0 +1,44 @@
+package com.shopify.backend.domain.admin.service;
+
+import com.shopify.backend.domain.admin.dto.AdminOrderResponse;
+import com.shopify.backend.domain.admin.dto.AdminOrderStatusUpdateRequest;
+import com.shopify.backend.domain.order.entity.Order;
+import com.shopify.backend.domain.order.entity.OrderItem;
+import com.shopify.backend.domain.order.repository.OrderItemRepository;
+import com.shopify.backend.domain.order.repository.OrderRepository;
+import com.shopify.backend.global.exception.BusinessException;
+import com.shopify.backend.global.exception.ErrorCode;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class AdminOrderService {
+
+    private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
+
+    public Page<AdminOrderResponse> getOrders(int page, int size) {
+        Page<Order> orders = orderRepository.findAll(
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        return orders.map(order -> {
+            List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
+            return AdminOrderResponse.from(order, orderItems);
+        });
+    }
+
+    @Transactional
+    public void updateOrderStatus(Long orderId, AdminOrderStatusUpdateRequest request) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
+        order.updateStatus(request.getStatus());
+    }
+}

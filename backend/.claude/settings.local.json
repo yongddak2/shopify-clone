@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew bootRun 2>&1)",
+      "Bash(docker compose:*)",
+      "Bash(./gradlew dependencies:*)",
+      "Bash(./gradlew build:*)",
+      "Bash(find /c/Users/KYW/projects/shopify-clone/backend -type f -name *Jwt* -o -name *JWT*)",
+      "Bash(mkdir -p src/test/java/com/shopify/backend/domain/order/service)",
+      "Bash(mkdir -p src/test/java/com/shopify/backend/domain/auth/service)",
+      "Bash(./gradlew test:*)",
+      "Bash(xargs grep:*)"
+    ]
+  }
+}

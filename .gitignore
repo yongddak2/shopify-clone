@@ -1,0 +1,41 @@
+# ─── Java / Spring Boot ────────────────────────
+backend/.gradle/
+backend/build/
+backend/out/
+backend/bin/
+*.class
+*.jar
+*.war
+
+# ─── IDE ───────────────────────────────────────
+.idea/
+*.iml
+*.iws
+.vscode/
+*.swp
+*.swo
+
+# ─── Node.js / Next.js ────────────────────────
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# ─── Environment ───────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ─── OS ────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Docker ────────────────────────────────────
+docker/data/
+
+# ─── Logs ──────────────────────────────────────
+*.log
+logs/
+
+# ─── Secrets ───────────────────────────────────
+backend/src/main/resources/application.yml

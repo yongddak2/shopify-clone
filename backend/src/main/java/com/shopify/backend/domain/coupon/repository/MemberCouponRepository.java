@@ -1,0 +1,16 @@
+package com.shopify.backend.domain.coupon.repository;
+
+import com.shopify.backend.domain.coupon.entity.MemberCoupon;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface MemberCouponRepository extends JpaRepository<MemberCoupon, Long> {
+
+    List<MemberCoupon> findByMemberIdAndUsedAtIsNull(Long memberId);
+
+    Optional<MemberCoupon> findByMemberIdAndCouponId(Long memberId, Long couponId);
+
+    boolean existsByMemberIdAndCouponId(Long memberId, Long couponId);
+}
