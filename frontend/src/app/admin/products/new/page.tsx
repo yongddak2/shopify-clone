@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCategories, createProduct } from "@/lib/admin";
 import type { CreateProductRequest } from "@/types";
 
@@ -32,12 +32,12 @@ const FALLBACK_CATEGORIES = [
 interface OptionCombo {
   size: string;
   color: string;
-  additionalPrice: string;
   stockQuantity: string;
 }
 
 export default function AdminProductNewPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const [name, setName] = useState("");
   const [priceDisplay, setPriceDisplay] = useState("");
@@ -49,8 +49,7 @@ export default function AdminProductNewPage() {
 
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
-  const [useCustomColor, setUseCustomColor] = useState(false);
-  const [customColor, setCustomColor] = useState("");
+  const [customColors, setCustomColors] = useState<string[]>([]);
   const [combos, setCombos] = useState<OptionCombo[]>([]);
 
   const [error, setError] = useState("");
@@ -79,12 +78,8 @@ export default function AdminProductNewPage() {
 
   // 사이즈/색상 변경 시 조합 테이블 재생성
   const allColors = useMemo(() => {
-    const colors = [...selectedColors];
-    if (useCustomColor && customColor.trim()) {
-      colors.push(customColor.trim());
-    }
-    return colors;
-  }, [selectedColors, useCustomColor, customColor]);
+    return [...selectedColors, ...customColors.filter((c) => c.trim())];
+  }, [selectedColors, customColors]);
 
   const regenerateCombos = (sizes: string[], colors: string[]) => {
     if (sizes.length === 0 || colors.length === 0) {
@@ -96,7 +91,7 @@ export default function AdminProductNewPage() {
       for (const color of colors) {
         const existing = combos.find((c) => c.size === size && c.color === color);
         newCombos.push(
-          existing ?? { size, color, additionalPrice: "0", stockQuantity: "0" }
+          existing ?? { size, color, stockQuantity: "0" }
         );
       }
     }
@@ -108,7 +103,7 @@ export default function AdminProductNewPage() {
       ? selectedSizes.filter((v) => v !== s)
       : [...selectedSizes, s];
     setSelectedSizes(next);
-    regenerateCombos(next, allColors);
+    regenerateCombos(next, [...(next.length ? allColors : [])]); // use current allColors
   };
 
   const toggleColor = (c: string) => {
@@ -116,27 +111,24 @@ export default function AdminProductNewPage() {
       ? selectedColors.filter((v) => v !== c)
       : [...selectedColors, c];
     setSelectedColors(next);
-    const nextAllColors = [...next];
-    if (useCustomColor && customColor.trim()) nextAllColors.push(customColor.trim());
-    regenerateCombos(selectedSizes, nextAllColors);
+    regenerateCombos(selectedSizes, [...next, ...customColors.filter((v) => v.trim())]);
   };
 
+  const addCustomColor = () => setCustomColors((prev) => [...prev, ""]);
+  const updateCustomColor = (idx: number, value: string) => {
+    setCustomColors((prev) => prev.map((c, i) => (i === idx ? value : c)));
+  };
+  const removeCustomColor = (idx: number) => {
+    const next = customColors.filter((_, i) => i !== idx);
+    setCustomColors(next);
+    regenerateCombos(selectedSizes, [...selectedColors, ...next.filter((c) => c.trim())]);
+  };
   const handleCustomColorBlur = () => {
-    const nextColors = [...selectedColors];
-    if (useCustomColor && customColor.trim()) nextColors.push(customColor.trim());
-    regenerateCombos(selectedSizes, nextColors);
+    regenerateCombos(selectedSizes, [...selectedColors, ...customColors.filter((c) => c.trim())]);
   };
 
-  const toggleCustomColor = (checked: boolean) => {
-    setUseCustomColor(checked);
-    if (!checked) {
-      setCustomColor("");
-      regenerateCombos(selectedSizes, selectedColors);
-    }
-  };
-
-  const updateCombo = (idx: number, field: "additionalPrice" | "stockQuantity", value: string) => {
-    setCombos((prev) => prev.map((c, i) => (i === idx ? { ...c, [field]: value } : c)));
+  const updateCombo = (idx: number, value: string) => {
+    setCombos((prev) => prev.map((c, i) => (i === idx ? { ...c, stockQuantity: value } : c)));
   };
 
   const handleDiscountChange = (raw: string) => {
@@ -161,6 +153,7 @@ export default function AdminProductNewPage() {
   const mutation = useMutation({
     mutationFn: (data: CreateProductRequest) => createProduct(data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
       router.push("/admin/products");
     },
     onError: () => {
@@ -177,19 +170,15 @@ export default function AdminProductNewPage() {
     if (categoryId === 0) { setError("카테고리를 선택하세요."); return; }
     if (combos.length === 0) { setError("사이즈와 색상을 각각 1개 이상 선택하세요."); return; }
 
-    // 옵션 그룹 빌드: 사이즈별로 그룹핑
+    // 옵션 그룹 빌드
     const sizeValues = selectedSizes.map((size) => {
       const matching = combos.filter((c) => c.size === size);
-      // 사이즈 옵션은 추가가격 없이 재고 합산 (옵션별 가격은 색상 그룹에서)
       return { value: size, additionalPrice: 0, stockQuantity: matching.reduce((s, c) => s + (Number(c.stockQuantity) || 0), 0) };
     });
 
     const colorValues = allColors.map((color) => {
       const matching = combos.filter((c) => c.color === color);
-      const avgAdditional = matching.length > 0
-        ? Math.round(matching.reduce((s, c) => s + fromComma(c.additionalPrice), 0) / matching.length)
-        : 0;
-      return { value: color, additionalPrice: avgAdditional, stockQuantity: matching.reduce((s, c) => s + (Number(c.stockQuantity) || 0), 0) };
+      return { value: color, additionalPrice: 0, stockQuantity: matching.reduce((s, c) => s + (Number(c.stockQuantity) || 0), 0) };
     });
 
     const optionGroups = [
@@ -310,34 +299,45 @@ export default function AdminProductNewPage() {
                 {c}
               </label>
             ))}
-            <label className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] cursor-pointer">
-              <input type="checkbox" checked={useCustomColor} onChange={(e) => toggleCustomColor(e.target.checked)} className={checkClass} />
-              기타
-            </label>
           </div>
-          {useCustomColor && (
-            <input
-              value={customColor}
-              onChange={(e) => setCustomColor(e.target.value)}
-              onBlur={handleCustomColorBlur}
-              className={`${inputClass} mt-2 max-w-xs`}
-              placeholder="색상명 입력"
-            />
+          {customColors.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {customColors.map((color, idx) => (
+                <div key={idx} className="flex gap-2 items-center max-w-xs">
+                  <input
+                    value={color}
+                    onChange={(e) => updateCustomColor(idx, e.target.value)}
+                    onBlur={handleCustomColorBlur}
+                    className={`${inputClass} flex-1`}
+                    placeholder="색상명 입력"
+                  />
+                  <button type="button" onClick={() => removeCustomColor(idx)} className="text-xs text-[var(--badge-red-text)] hover:underline flex-shrink-0">
+                    삭제
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
+          <button
+            type="button"
+            onClick={addCustomColor}
+            className="mt-2 text-xs text-[var(--badge-blue-text)] hover:underline"
+          >
+            + 색상 추가
+          </button>
         </div>
 
         {/* 옵션 조합 테이블 */}
         {combos.length > 0 && (
           <div>
-            <label className="block text-xs text-[var(--text-muted)] mb-2">옵션별 추가가격 / 재고</label>
+            <label className="block text-xs text-[var(--text-muted)] mb-2">옵션별 재고수량</label>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[var(--border-color)] text-[var(--text-muted)] text-xs tracking-wider">
                     <th className="py-2 px-3 text-left">사이즈</th>
                     <th className="py-2 px-3 text-left">색상</th>
-                    <th className="py-2 px-3 text-right">추가가격</th>
-                    <th className="py-2 px-3 text-right">재고수량</th>
+                    <th className="py-2 px-3 text-right w-32">재고수량</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -345,20 +345,14 @@ export default function AdminProductNewPage() {
                     <tr key={`${combo.size}-${combo.color}`} className="border-b border-[var(--border-color)]">
                       <td className="py-2 px-3 text-[var(--text-secondary)]">{combo.size}</td>
                       <td className="py-2 px-3 text-[var(--text-secondary)]">{combo.color}</td>
-                      <td className="py-2 px-3">
-                        <input
-                          inputMode="numeric"
-                          value={combo.additionalPrice}
-                          onChange={(e) => updateCombo(idx, "additionalPrice", e.target.value.replace(/[^\d]/g, ""))}
-                          className="w-24 bg-[var(--input-bg)] border border-[var(--border-color)] px-2 py-1 text-xs text-right text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-muted)] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                        />
-                      </td>
-                      <td className="py-2 px-3">
+                      <td className="py-2 px-3 text-right">
                         <input
                           inputMode="numeric"
                           value={combo.stockQuantity}
-                          onChange={(e) => updateCombo(idx, "stockQuantity", e.target.value.replace(/[^\d]/g, ""))}
-                          className="w-24 bg-[var(--input-bg)] border border-[var(--border-color)] px-2 py-1 text-xs text-right text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-muted)] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          onChange={(e) => updateCombo(idx, e.target.value.replace(/[^\d]/g, ""))}
+                          onFocus={(e) => { if (e.target.value === "0") updateCombo(idx, ""); }}
+                          onBlur={(e) => { if (e.target.value === "") updateCombo(idx, "0"); }}
+                          className="w-full bg-[var(--input-bg)] border border-[var(--border-color)] px-2 py-1 text-xs text-right text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-muted)] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                         />
                       </td>
                     </tr>
