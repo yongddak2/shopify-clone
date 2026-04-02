@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Script from "next/script";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { getCart } from "@/lib/cart";
 import { createOrder } from "@/lib/order";
@@ -9,6 +10,16 @@ import { getMyAddresses } from "@/lib/user";
 import { useAuthStore } from "@/stores/authStore";
 import Button from "@/components/common/Button";
 import type { CartItem, MemberAddress } from "@/types";
+
+declare global {
+  interface Window {
+    daum: {
+      Postcode: new (options: {
+        oncomplete: (data: { zonecode: string; address: string }) => void;
+      }) => { open: () => void };
+    };
+  }
+}
 
 function formatPrice(price: number) {
   return price.toLocaleString("ko-KR");
@@ -65,7 +76,9 @@ export default function OrderPage() {
   const [form, setForm] = useState({
     recipient: "",
     phone: "",
+    zipcode: "",
     address: "",
+    addressDetail: "",
     memo: "",
   });
   const [error, setError] = useState("");
@@ -106,15 +119,36 @@ export default function OrderPage() {
         setForm({
           recipient: defaultAddr.recipient,
           phone: defaultAddr.phone,
-          address: `${defaultAddr.address} ${defaultAddr.addressDetail}`.trim(),
+          zipcode: defaultAddr.zipcode ?? "",
+          address: defaultAddr.address,
+          addressDetail: defaultAddr.addressDetail ?? "",
           memo: "",
         });
       }
     }
   }, [addressData]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const handlePostcodeSearch = () => {
+    new window.daum.Postcode({
+      oncomplete: (data) => {
+        setForm((prev) => ({
+          ...prev,
+          zipcode: data.zonecode,
+          address: data.address,
+          addressDetail: "",
+        }));
+      },
+    }).open();
+  };
+
   const orderMutation = useMutation({
-    mutationFn: () => createOrder(form),
+    mutationFn: () =>
+      createOrder({
+        recipient: form.recipient,
+        phone: form.phone,
+        address: `[${form.zipcode}] ${form.address} ${form.addressDetail}`.trim(),
+        memo: form.memo,
+      }),
     onSuccess: (data) => {
       alert("주문이 완료되었습니다.");
       router.push(`/orders/${data.data.id}`);
@@ -129,7 +163,9 @@ export default function OrderPage() {
       ...form,
       recipient: addr.recipient,
       phone: addr.phone,
-      address: `${addr.address} ${addr.addressDetail}`.trim(),
+      zipcode: addr.zipcode ?? "",
+      address: addr.address,
+      addressDetail: addr.addressDetail ?? "",
     });
   };
 
@@ -149,7 +185,7 @@ export default function OrderPage() {
     e.preventDefault();
     setError("");
 
-    if (!form.recipient.trim() || !form.phone.trim() || !form.address.trim()) {
+    if (!form.recipient.trim() || !form.phone.trim() || !form.address.trim() || !form.addressDetail.trim()) {
       setError("배송 정보를 모두 입력해주세요.");
       return;
     }
@@ -159,6 +195,10 @@ export default function OrderPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-6 lg:px-10 py-12">
+      <Script
+        src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"
+        strategy="lazyOnload"
+      />
       <h1 className="text-2xl tracking-[0.2em] font-light text-center mb-12 text-[var(--text-primary)]">
         ORDER
       </h1>
@@ -283,14 +323,37 @@ export default function OrderPage() {
                 <label className="block text-xs tracking-wider text-[var(--text-muted)] mb-2">
                   주소
                 </label>
+                <div className="flex gap-3 items-end mb-3">
+                  <input
+                    type="text"
+                    value={form.zipcode}
+                    readOnly
+                    className="w-28 border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none placeholder-[var(--text-dim)]"
+                    placeholder="우편번호"
+                  />
+                  <button
+                    type="button"
+                    onClick={handlePostcodeSearch}
+                    className="px-4 py-2 text-xs tracking-wider border border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)] transition-colors flex-shrink-0"
+                  >
+                    주소 검색
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={form.address}
+                  readOnly
+                  className="w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none placeholder-[var(--text-dim)] mb-3"
+                  placeholder="기본주소"
+                />
+                <input
+                  type="text"
+                  value={form.addressDetail}
                   onChange={(e) =>
-                    setForm({ ...form, address: e.target.value })
+                    setForm({ ...form, addressDetail: e.target.value })
                   }
                   className="w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors placeholder-[var(--text-dim)]"
-                  placeholder="배송 주소를 입력하세요"
+                  placeholder="상세주소 (동/호수)"
                 />
               </div>
               <div>
