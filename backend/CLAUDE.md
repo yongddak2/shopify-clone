@@ -44,9 +44,11 @@ docker compose -f ../docker-compose.yml up -d   # 인프라 시작
 ## Key Design Decisions
 
 - 주문 스냅샷: ORDER_ITEM에 주문 시점 데이터 복사
-- 옵션 2단 구조: OPTION_GROUP + OPTION_VALUE
+- 옵션 조합형 구조: OPTION_GROUP("옵션") + OPTION_VALUE("S-블랙" 등 조합값)
+  - 프론트에서 사이즈×색상 조합을 만들어 하나의 optionGroup으로 전송
+  - 기존 분리형 옵션(사이즈/색상 별도 그룹)으로 등록된 레거시 상품도 하위 호환 유지
 - 소프트 삭제: MEMBER, PRODUCT, REVIEW에 deletedAt
-- 결제 분리: ORDERS와 PAYMENT 분리 (PG 교체 용이)
+- 결제 분리: ORDERS와 PAYMENT 분리 (PG 교체 용이), 토스페이먼츠 confirm API는 백엔드, 결제 위젯 키는 프론트에서 개별 관리
 - 재고: 주문 시 decreaseStock(), 취소 시 increaseStock() (비관적 락 미적용)
 - 배송비: 50,000원 이상 무료, 미만 3,000원
 
@@ -62,6 +64,13 @@ docker compose -f ../docker-compose.yml up -d   # 인프라 시작
 - AuthServiceTest (5): 회원가입/로그인 성공·실패
 - OrderServiceTest (8): 주문 생성/취소/배송비
 - PaymentServiceTest (7): 결제 승인/실패 시나리오
+
+## Recent Changes (2026-04-03)
+
+- CouponResponse: totalQuantity, issuedQuantity 필드 추가
+- CartItemResponse: discountRate 필드 추가
+- 상품 옵션 구조 변경: 분리형(사이즈/색상 별도 그룹) → 조합형(하나의 그룹에 "S-블랙" 등)
+- application-example.yml 생성 (GitHub 공유용, 민감 키 제외)
 
 ## Known Issues
 
