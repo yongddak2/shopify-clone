@@ -13,8 +13,14 @@ function formatPrice(price: number) {
   return price.toLocaleString("ko-KR");
 }
 
-function itemPrice(item: { basePrice: number; additionalPrice: number }) {
+function originalPrice(item: CartItem) {
   return item.basePrice + item.additionalPrice;
+}
+
+function discountedPrice(item: CartItem) {
+  const rate = item.discountRate ?? 0;
+  const base = rate > 0 ? Math.round(item.basePrice * (1 - rate / 100)) : item.basePrice;
+  return base + item.additionalPrice;
 }
 
 interface CartGroup {
@@ -43,13 +49,11 @@ function groupByProduct(items: CartItem[]): CartGroup[] {
     }
   }
   const groups = Array.from(map.values());
-  // 그룹: 그룹 내 가장 큰 id 기준 내림차순 (최근 담은 상품이 위)
   groups.sort((a, b) => {
     const maxA = Math.max(...a.items.map((i) => i.id));
     const maxB = Math.max(...b.items.map((i) => i.id));
     return maxB - maxA;
   });
-  // 그룹 내 옵션: id 오름차순
   for (const group of groups) {
     group.items.sort((a, b) => a.id - b.id);
   }
@@ -64,6 +68,9 @@ export default function CartPage() {
   const queryClient = useQueryClient();
   const { isLoggedIn } = useAuthStore();
   const [mounted, setMounted] = useState(false);
+  const [checkedIds, setCheckedIds] = useState<Set<number>>(new Set());
+  const [initialized, setInitialized] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -83,8 +90,66 @@ export default function CartPage() {
 
   const removeMutation = useMutation({
     mutationFn: (id: number) => removeCartItem(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cart"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cart"] });
+    },
   });
+
+  const items = data?.data ?? [];
+  const groups = useMemo(() => groupByProduct(items), [items]);
+
+  // 초기 체크 상태: 빈 배열 (아무것도 체크 안 됨)
+  useEffect(() => {
+    if (items.length > 0 && !initialized) {
+      setInitialized(true);
+    }
+  }, [items, initialized]);
+
+  // 삭제 후 checkedIds에서 없어진 항목 정리
+  useEffect(() => {
+    if (initialized && items.length > 0) {
+      const validIds = new Set(items.map((i) => i.id));
+      setCheckedIds((prev) => {
+        const next = new Set<number>();
+        prev.forEach((id) => {
+          if (validIds.has(id)) next.add(id);
+        });
+        return next;
+      });
+    }
+  }, [items, initialized]);
+
+  const toggleCheck = (id: number) => {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const allChecked = items.length > 0 && items.every((i) => checkedIds.has(i.id));
+
+  const toggleAll = () => {
+    if (allChecked) {
+      setCheckedIds(new Set());
+    } else {
+      setCheckedIds(new Set(items.map((i) => i.id)));
+    }
+  };
+
+  const checkedItems = items.filter((i) => checkedIds.has(i.id));
+  const totalAmount = checkedItems.reduce(
+    (sum, item) => sum + discountedPrice(item) * item.quantity,
+    0
+  );
+  const deliveryFee =
+    checkedItems.length === 0
+      ? 0
+      : totalAmount >= DELIVERY_THRESHOLD
+        ? 0
+        : DELIVERY_FEE;
+  const finalAmount = totalAmount + deliveryFee;
 
   const handleRemove = (id: number) => {
     if (confirm("삭제하시겠습니까?")) {
@@ -92,17 +157,22 @@ export default function CartPage() {
     }
   };
 
-  const items = data?.data ?? [];
-  const groups = useMemo(() => groupByProduct(items), [items]);
+  const handleBulkDelete = async () => {
+    setDeleteConfirm(false);
+    const ids = Array.from(checkedIds);
+    for (const id of ids) {
+      await removeCartItem(id);
+    }
+    setCheckedIds(new Set());
+    queryClient.invalidateQueries({ queryKey: ["cart"] });
+  };
 
-  const totalAmount = items.reduce(
-    (sum, item) => sum + itemPrice(item) * item.quantity,
-    0
-  );
-  const deliveryFee = totalAmount >= DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
-  const finalAmount = totalAmount + deliveryFee;
+  const handleOrder = () => {
+    const ids = Array.from(checkedIds);
+    sessionStorage.setItem("orderCartItemIds", JSON.stringify(ids));
+    router.push("/order");
+  };
 
-  // mounted 전 로딩
   if (!mounted) {
     return (
       <div className="max-w-4xl mx-auto px-6 lg:px-10 py-12">
@@ -124,7 +194,6 @@ export default function CartPage() {
     );
   }
 
-  // 비로그인
   if (!isLoggedIn()) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
@@ -175,7 +244,30 @@ export default function CartPage() {
 
       {!isLoading && items.length > 0 && (
         <>
-          {/* 장바구니 아이템 목록 (상품 그룹별) */}
+          {/* 전체 선택 + 선택 삭제 */}
+          <div className="flex items-center justify-between pb-4 mb-6 border-b border-[var(--border-color)]">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={allChecked}
+                onChange={toggleAll}
+                className="w-4 h-4 accent-[var(--text-primary)]"
+              />
+              <span className="text-sm text-[var(--text-secondary)]">
+                전체 선택 ({checkedIds.size}/{items.length})
+              </span>
+            </label>
+            {checkedIds.size > 0 && (
+              <button
+                onClick={() => setDeleteConfirm(true)}
+                className="text-xs text-[var(--text-muted)] hover:text-red-400 transition-colors"
+              >
+                선택 삭제
+              </button>
+            )}
+          </div>
+
+          {/* 장바구니 아이템 목록 */}
           <div className="space-y-6 mb-12">
             {groups.map((group) => (
               <div
@@ -208,10 +300,18 @@ export default function CartPage() {
                     {group.items.map((item) => (
                       <div
                         key={item.id}
-                        className="flex items-center justify-between gap-2"
+                        className="flex items-center gap-2"
                       >
+                        {/* 체크박스 */}
+                        <input
+                          type="checkbox"
+                          checked={checkedIds.has(item.id)}
+                          onChange={() => toggleCheck(item.id)}
+                          className="w-4 h-4 accent-[var(--text-primary)] flex-shrink-0"
+                        />
+
                         {/* 옵션값 */}
-                        <span className="text-xs text-[var(--text-muted)] w-10 flex-shrink-0">
+                        <span className="text-xs text-[var(--text-muted)] min-w-[3rem] flex-shrink-0">
                           {item.optionValue}
                         </span>
 
@@ -246,9 +346,16 @@ export default function CartPage() {
                         </div>
 
                         {/* 소계 */}
-                        <span className="text-sm text-[var(--text-secondary)] min-w-[5rem] text-right">
-                          {formatPrice(itemPrice(item) * item.quantity)}원
-                        </span>
+                        <div className="min-w-[5rem] text-right flex-1">
+                          {(item.discountRate ?? 0) > 0 && (
+                            <span className="text-xs text-[var(--text-dim)] line-through mr-1">
+                              {formatPrice(originalPrice(item) * item.quantity)}원
+                            </span>
+                          )}
+                          <span className="text-sm text-[var(--text-secondary)]">
+                            {formatPrice(discountedPrice(item) * item.quantity)}원
+                          </span>
+                        </div>
 
                         {/* 삭제 */}
                         <button
@@ -274,7 +381,11 @@ export default function CartPage() {
             <div className="flex justify-between text-sm">
               <span className="text-[var(--text-muted)]">배송비</span>
               <span className="text-[var(--text-secondary)]">
-                {deliveryFee === 0 ? "무료" : `${formatPrice(deliveryFee)}원`}
+                {checkedItems.length === 0
+                  ? "—"
+                  : deliveryFee === 0
+                    ? "무료"
+                    : `${formatPrice(deliveryFee)}원`}
               </span>
             </div>
             {deliveryFee > 0 && (
@@ -288,12 +399,51 @@ export default function CartPage() {
             </div>
           </div>
 
-          <div className="mt-8">
-            <Button fullWidth onClick={() => router.push("/order")}>
-              주문하기
+          <div className="mt-8 space-y-3">
+            <Button
+              fullWidth
+              onClick={handleOrder}
+              disabled={checkedIds.size === 0}
+            >
+              {checkedIds.size === 0 ? "상품을 선택해주세요" : `주문하기 (${checkedIds.size}개)`}
             </Button>
+            <button
+              onClick={() => router.push("/products")}
+              className="w-full py-3 text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--text-primary)] transition-colors"
+            >
+              쇼핑 계속하기
+            </button>
           </div>
         </>
+      )}
+
+      {/* 선택 삭제 확인 모달 */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-[var(--overlay-bg)]"
+            onClick={() => setDeleteConfirm(false)}
+          />
+          <div className="relative bg-[var(--card-bg)] border border-[var(--border-color)] px-8 py-8 max-w-sm w-full mx-6 text-center">
+            <p className="text-sm text-[var(--text-secondary)] mb-8">
+              선택한 {checkedIds.size}개 상품을 삭제하시겠습니까?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(false)}
+                className="flex-1 py-3 text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                className="flex-1 py-3 text-sm bg-red-600 text-white hover:bg-red-700 transition-colors"
+              >
+                삭제
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

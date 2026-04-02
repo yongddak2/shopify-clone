@@ -81,6 +81,7 @@ export interface CartItem {
   optionValue: string;
   basePrice: number;
   additionalPrice: number;
+  discountRate: number;
   quantity: number;
   thumbnailUrl: string | null;
 }

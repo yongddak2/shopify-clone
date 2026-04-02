@@ -170,20 +170,15 @@ export default function AdminProductNewPage() {
     if (categoryId === 0) { setError("카테고리를 선택하세요."); return; }
     if (combos.length === 0) { setError("사이즈와 색상을 각각 1개 이상 선택하세요."); return; }
 
-    // 옵션 그룹 빌드
-    const sizeValues = selectedSizes.map((size) => {
-      const matching = combos.filter((c) => c.size === size);
-      return { value: size, additionalPrice: 0, stockQuantity: matching.reduce((s, c) => s + (Number(c.stockQuantity) || 0), 0) };
-    });
-
-    const colorValues = allColors.map((color) => {
-      const matching = combos.filter((c) => c.color === color);
-      return { value: color, additionalPrice: 0, stockQuantity: matching.reduce((s, c) => s + (Number(c.stockQuantity) || 0), 0) };
-    });
+    // 옵션 그룹 빌드: 사이즈×색상 조합을 하나의 그룹으로 전송
+    const comboValues = combos.map((combo) => ({
+      value: `${combo.size}-${combo.color}`,
+      additionalPrice: 0,
+      stockQuantity: Number(combo.stockQuantity) || 0,
+    }));
 
     const optionGroups = [
-      { name: "사이즈", optionValues: sizeValues },
-      { name: "색상", optionValues: colorValues },
+      { name: "옵션", optionValues: comboValues },
     ];
 
     const images = imageUrls

@@ -17,6 +17,7 @@ public class CartItemResponse {
     private final String optionValue;
     private final BigDecimal additionalPrice;
     private final BigDecimal basePrice;
+    private final BigDecimal discountRate;
     private final int quantity;
     private final String thumbnailUrl;
 
@@ -35,6 +36,7 @@ public class CartItemResponse {
                 .optionValue(cartItem.getOptionValue() != null ? cartItem.getOptionValue().getValue() : null)
                 .additionalPrice(cartItem.getOptionValue() != null ? cartItem.getOptionValue().getAdditionalPrice() : null)
                 .basePrice(cartItem.getProduct().getBasePrice())
+                .discountRate(cartItem.getProduct().getDiscountRate())
                 .quantity(cartItem.getQuantity())
                 .thumbnailUrl(thumbnailUrl)
                 .build();

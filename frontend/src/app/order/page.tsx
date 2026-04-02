@@ -47,8 +47,14 @@ function formatPrice(price: number) {
   return price.toLocaleString("ko-KR");
 }
 
-function itemPrice(item: { basePrice: number; additionalPrice: number }) {
+function originalPrice(item: CartItem) {
   return item.basePrice + item.additionalPrice;
+}
+
+function itemPrice(item: CartItem) {
+  const rate = item.discountRate ?? 0;
+  const base = rate > 0 ? Math.round(item.basePrice * (1 - rate / 100)) : item.basePrice;
+  return base + item.additionalPrice;
 }
 
 interface CartGroup {
@@ -121,6 +127,13 @@ function AddressFormModal({
   });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+
+  const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 11);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+  };
 
   const handlePostcode = () => {
     new window.daum.Postcode({
@@ -222,8 +235,9 @@ function AddressFormModal({
               type="tel"
               value={addrForm.phone}
               onChange={(e) =>
-                setAddrForm({ ...addrForm, phone: e.target.value })
+                setAddrForm({ ...addrForm, phone: formatPhone(e.target.value) })
               }
+              maxLength={13}
               className={inputClass}
               placeholder="010-1234-5678"
             />
@@ -412,6 +426,9 @@ function AddressListModal({
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-sm text-[var(--text-primary)] font-medium">
                       {addr.recipient}
+                      {addr.label && (
+                        <span className="text-[var(--text-muted)] font-normal"> ({addr.label})</span>
+                      )}
                     </span>
                     {addr.defaultAddress && (
                       <span className="px-1.5 py-0.5 text-[10px] bg-[var(--badge-blue-bg,#1e3a5f)] text-[var(--badge-blue-text,#60a5fa)] rounded">
@@ -524,6 +541,23 @@ export default function OrderPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
     null
   );
+  const [selectedCartIds, setSelectedCartIds] = useState<number[] | null>(null);
+
+  // sessionStorage에서 선택된 cartItemIds 읽기
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem("orderCartItemIds");
+      if (stored) {
+        const ids = JSON.parse(stored) as number[];
+        if (Array.isArray(ids) && ids.length > 0) {
+          setSelectedCartIds(ids);
+        }
+        sessionStorage.removeItem("orderCartItemIds");
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   useEffect(() => {
     if (!isLoggedIn()) {
@@ -544,10 +578,15 @@ export default function OrderPage() {
   });
 
   useEffect(() => {
-    if (!cartLoading && cartData && cartData.data.length === 0) {
-      router.replace("/cart");
+    if (!cartLoading && cartData) {
+      const filtered = selectedCartIds
+        ? cartData.data.filter((item: CartItem) => selectedCartIds.includes(item.id))
+        : cartData.data;
+      if (filtered.length === 0) {
+        router.replace("/cart");
+      }
     }
-  }, [cartLoading, cartData, router]);
+  }, [cartLoading, cartData, selectedCartIds, router]);
 
   // 기본 배송지 자동 입력
   useEffect(() => {
@@ -622,7 +661,10 @@ export default function OrderPage() {
 
   if (!isLoggedIn()) return null;
 
-  const items = cartData?.data ?? [];
+  const allCartItems = cartData?.data ?? [];
+  const items = selectedCartIds
+    ? allCartItems.filter((item) => selectedCartIds.includes(item.id))
+    : allCartItems;
   const groups = useMemo(() => groupByProduct(items), [items]); // eslint-disable-line react-hooks/exhaustive-deps
   const addresses = addressData?.data ?? [];
   const defaultAddr = addresses.find((a) => a.defaultAddress) ?? null;
@@ -714,9 +756,16 @@ export default function OrderPage() {
                         <span>
                           {item.optionValue} / {item.quantity}개
                         </span>
-                        <span className="text-sm text-[var(--text-secondary)]">
-                          {formatPrice(itemPrice(item) * item.quantity)}원
-                        </span>
+                        <div className="text-right">
+                          {(item.discountRate ?? 0) > 0 && (
+                            <span className="text-xs text-[var(--text-dim)] line-through mr-1">
+                              {formatPrice(originalPrice(item) * item.quantity)}원
+                            </span>
+                          )}
+                          <span className="text-sm text-[var(--text-secondary)]">
+                            {formatPrice(itemPrice(item) * item.quantity)}원
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>

@@ -24,6 +24,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
   const [quantity, setQuantity] = useState(1);
   const [optionError, setOptionError] = useState("");
   const [cartError, setCartError] = useState("");
+  const [cartModal, setCartModal] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["product", id],
@@ -41,9 +42,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
     onSuccess: () => {
       setCartError("");
       queryClient.invalidateQueries({ queryKey: ["cart"] });
-      if (confirm("장바구니에 담았습니다. 장바구니로 이동하시겠습니까?")) {
-        router.push("/cart");
-      }
+      setCartModal(true);
     },
     onError: () => {
       setCartError("장바구니 담기에 실패했습니다");
@@ -286,6 +285,34 @@ export default function ProductDetailClient({ id }: { id: string }) {
           )}
         </div>
       </div>
+      {/* 장바구니 담기 완료 모달 */}
+      {cartModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-[var(--overlay-bg)]"
+            onClick={() => setCartModal(false)}
+          />
+          <div className="relative bg-[var(--card-bg)] border border-[var(--border-color)] px-8 py-8 max-w-sm w-full mx-6 text-center">
+            <p className="text-sm text-[var(--text-secondary)] mb-8">
+              장바구니에 담았습니다.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCartModal(false)}
+                className="flex-1 py-3 text-sm tracking-wider border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--text-muted)] transition-colors"
+              >
+                쇼핑 계속하기
+              </button>
+              <button
+                onClick={() => router.push("/cart")}
+                className="flex-1 py-3 text-sm tracking-wider bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] transition-colors"
+              >
+                장바구니로 이동
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
