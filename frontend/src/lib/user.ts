@@ -12,3 +12,19 @@ export async function getMyAddresses() {
   );
   return res.data;
 }
+
+export async function addMyAddress(data: {
+  label: string;
+  recipient: string;
+  phone: string;
+  zipcode: string;
+  address: string;
+  addressDetail: string;
+  defaultAddress: boolean;
+}) {
+  const res = await api.post<ApiResponse<MemberAddress>>(
+    "/api/users/me/addresses",
+    data
+  );
+  return res.data;
+}

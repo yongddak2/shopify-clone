@@ -6,7 +6,7 @@ import Script from "next/script";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { getCart } from "@/lib/cart";
 import { createOrder } from "@/lib/order";
-import { getMyAddresses } from "@/lib/user";
+import { getMyAddresses, addMyAddress } from "@/lib/user";
 import { useAuthStore } from "@/stores/authStore";
 import Button from "@/components/common/Button";
 import type { CartItem, MemberAddress } from "@/types";
@@ -69,6 +69,15 @@ function groupByProduct(items: CartItem[]): CartGroup[] {
 const DELIVERY_THRESHOLD = 50000;
 const DELIVERY_FEE = 3000;
 
+const MEMO_OPTIONS = [
+  { value: "", label: "배송 메모를 선택해주세요" },
+  { value: "문 앞에 놔주세요", label: "문 앞에 놔주세요" },
+  { value: "경비실에 맡겨주세요", label: "경비실에 맡겨주세요" },
+  { value: "택배함에 넣어주세요", label: "택배함에 넣어주세요" },
+  { value: "배송 전에 연락 주세요", label: "배송 전에 연락 주세요" },
+  { value: "__custom__", label: "직접입력" },
+];
+
 export default function OrderPage() {
   const router = useRouter();
   const { isLoggedIn } = useAuthStore();
@@ -79,8 +88,10 @@ export default function OrderPage() {
     zipcode: "",
     address: "",
     addressDetail: "",
-    memo: "",
   });
+  const [memoSelect, setMemoSelect] = useState("");
+  const [customMemo, setCustomMemo] = useState("");
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
   const [error, setError] = useState("");
 
   // 비로그인 redirect
@@ -122,7 +133,6 @@ export default function OrderPage() {
           zipcode: defaultAddr.zipcode ?? "",
           address: defaultAddr.address,
           addressDetail: defaultAddr.addressDetail ?? "",
-          memo: "",
         });
       }
     }
@@ -141,14 +151,32 @@ export default function OrderPage() {
     }).open();
   };
 
+  const actualMemo = memoSelect === "__custom__" ? customMemo : memoSelect;
+
   const orderMutation = useMutation({
-    mutationFn: () =>
-      createOrder({
+    mutationFn: async () => {
+      if (saveAsDefault) {
+        try {
+          await addMyAddress({
+            label: `${form.recipient}의 배송지`,
+            recipient: form.recipient,
+            phone: form.phone,
+            zipcode: form.zipcode,
+            address: form.address,
+            addressDetail: form.addressDetail,
+            defaultAddress: true,
+          });
+        } catch {
+          // 배송지 저장 실패해도 주문은 계속 진행
+        }
+      }
+      return createOrder({
         recipient: form.recipient,
         phone: form.phone,
         address: `[${form.zipcode}] ${form.address} ${form.addressDetail}`.trim(),
-        memo: form.memo,
-      }),
+        memo: actualMemo,
+      });
+    },
     onSuccess: (data) => {
       alert("주문이 완료되었습니다.");
       router.push(`/orders/${data.data.id}`);
@@ -214,7 +242,7 @@ export default function OrderPage() {
           {/* 주문 상품 요약 (상품 그룹별) */}
           <section className="mb-10">
             <h2 className="text-xs tracking-widest text-[var(--text-muted)] mb-4">
-              ORDER ITEMS
+              주문상품
             </h2>
             <div className="border-t border-[var(--border-color)]">
               {groups.map((group) => (
@@ -262,7 +290,7 @@ export default function OrderPage() {
           {/* 배송 정보 */}
           <section className="mb-10">
             <h2 className="text-xs tracking-widest text-[var(--text-muted)] mb-4">
-              DELIVERY INFO
+              배송 정보
             </h2>
 
             {/* 저장된 배송지 선택 */}
@@ -293,7 +321,7 @@ export default function OrderPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-xs tracking-wider text-[var(--text-muted)] mb-2">
-                  수령인
+                  수령인 <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -307,7 +335,7 @@ export default function OrderPage() {
               </div>
               <div>
                 <label className="block text-xs tracking-wider text-[var(--text-muted)] mb-2">
-                  전화번호
+                  연락처 <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
@@ -321,7 +349,7 @@ export default function OrderPage() {
               </div>
               <div>
                 <label className="block text-xs tracking-wider text-[var(--text-muted)] mb-2">
-                  주소
+                  우편번호 <span className="text-red-500">*</span>
                 </label>
                 <div className="flex gap-3 items-end mb-3">
                   <input
@@ -346,37 +374,69 @@ export default function OrderPage() {
                   className="w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none placeholder-[var(--text-dim)] mb-3"
                   placeholder="기본주소"
                 />
-                <input
-                  type="text"
-                  value={form.addressDetail}
-                  onChange={(e) =>
-                    setForm({ ...form, addressDetail: e.target.value })
-                  }
-                  className="w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors placeholder-[var(--text-dim)]"
-                  placeholder="상세주소 (동/호수)"
-                />
+                <div>
+                  <label className="block text-xs tracking-wider text-[var(--text-muted)] mb-2">
+                    상세주소 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={form.addressDetail}
+                    onChange={(e) =>
+                      setForm({ ...form, addressDetail: e.target.value })
+                    }
+                    className="w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors placeholder-[var(--text-dim)]"
+                    placeholder="상세주소 (동/호수)"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-xs tracking-wider text-[var(--text-muted)] mb-2">
                   배송 메모
                 </label>
-                <input
-                  type="text"
-                  value={form.memo}
-                  onChange={(e) =>
-                    setForm({ ...form, memo: e.target.value })
-                  }
-                  className="w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors placeholder-[var(--text-dim)]"
-                  placeholder="배송 시 요청사항 (선택)"
-                />
+                <select
+                  value={memoSelect}
+                  onChange={(e) => {
+                    setMemoSelect(e.target.value);
+                    if (e.target.value !== "__custom__") {
+                      setCustomMemo("");
+                    }
+                  }}
+                  className="w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors"
+                >
+                  {MEMO_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value} className="bg-[var(--card-bg)] text-[var(--text-secondary)]">
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                {memoSelect === "__custom__" && (
+                  <input
+                    type="text"
+                    value={customMemo}
+                    onChange={(e) => setCustomMemo(e.target.value)}
+                    className="w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors placeholder-[var(--text-dim)] mt-3"
+                    placeholder="배송 시 요청사항을 입력해주세요"
+                  />
+                )}
               </div>
+
+              {/* 기본 배송지로 저장 */}
+              <label className="flex items-center gap-2 cursor-pointer mt-2">
+                <input
+                  type="checkbox"
+                  checked={saveAsDefault}
+                  onChange={(e) => setSaveAsDefault(e.target.checked)}
+                  className="w-4 h-4 accent-[var(--text-primary)]"
+                />
+                <span className="text-xs text-[var(--text-muted)]">기본 배송지로 저장</span>
+              </label>
             </div>
           </section>
 
           {/* 결제 금액 요약 */}
           <section className="mb-10 border-t border-[var(--border-color)] pt-8 space-y-3">
             <h2 className="text-xs tracking-widest text-[var(--text-muted)] mb-4">
-              PAYMENT SUMMARY
+              결제 정보
             </h2>
             <div className="flex justify-between text-sm">
               <span className="text-[var(--text-muted)]">총 상품 금액</span>
