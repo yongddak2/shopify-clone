@@ -87,6 +87,7 @@ export interface CartItem {
 
 // 주문
 export interface OrderRequest {
+  cartItemIds: number[];
   recipient: string;
   phone: string;
   address: string;

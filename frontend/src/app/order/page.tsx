@@ -18,8 +18,24 @@ declare global {
         oncomplete: (data: { zonecode: string; address: string }) => void;
       }) => { open: () => void };
     };
+    TossPayments: (clientKey: string) => {
+      requestPayment: (
+        method: string,
+        options: {
+          amount: number;
+          orderId: string;
+          orderName: string;
+          successUrl: string;
+          failUrl: string;
+          customerName?: string;
+        }
+      ) => Promise<void>;
+    };
   }
 }
+
+const TOSS_CLIENT_KEY =
+  process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY || "test_ck_26DlbXAaV0BmZlD9Bbdn8qY50Q9R";
 
 function formatPrice(price: number) {
   return price.toLocaleString("ko-KR");
@@ -171,18 +187,46 @@ export default function OrderPage() {
         }
       }
       return createOrder({
+        cartItemIds: items.map((item) => item.id),
         recipient: form.recipient,
         phone: form.phone,
         address: `[${form.zipcode}] ${form.address} ${form.addressDetail}`.trim(),
         memo: actualMemo,
       });
     },
-    onSuccess: (data) => {
-      alert("주문이 완료되었습니다.");
-      router.push(`/orders/${data.data.id}`);
+    onSuccess: async (data) => {
+      const { orderNumber, finalAmount } = data.data;
+
+      if (!window.TossPayments) {
+        setError("결제 모듈을 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
+        return;
+      }
+
+      const tossPayments = window.TossPayments(TOSS_CLIENT_KEY);
+      const origin = window.location.origin;
+
+      // 주문명: 첫 상품명 + 외 N건
+      const firstProductName = items.length > 0 ? items[0].productName : "상품";
+      const orderName =
+        items.length > 1
+          ? `${firstProductName} 외 ${items.length - 1}건`
+          : firstProductName;
+
+      try {
+        await tossPayments.requestPayment("카드", {
+          amount: finalAmount,
+          orderId: orderNumber,
+          orderName,
+          successUrl: `${origin}/payment/success`,
+          failUrl: `${origin}/payment/fail`,
+          customerName: form.recipient,
+        });
+      } catch {
+        // 사용자가 결제창을 닫은 경우 등
+      }
     },
     onError: () => {
-      setError("주문에 실패했습니다. 다시 시도해주세요.");
+      setError("주문 생성에 실패했습니다. 다시 시도해주세요.");
     },
   });
 
@@ -225,6 +269,10 @@ export default function OrderPage() {
     <div className="max-w-4xl mx-auto px-6 lg:px-10 py-12">
       <Script
         src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"
+        strategy="lazyOnload"
+      />
+      <Script
+        src="https://js.tosspayments.com/v1/payment"
         strategy="lazyOnload"
       />
       <h1 className="text-2xl tracking-[0.2em] font-light text-center mb-12 text-[var(--text-primary)]">
@@ -461,10 +509,6 @@ export default function OrderPage() {
           <Button type="submit" fullWidth loading={orderMutation.isPending}>
             결제하기
           </Button>
-
-          <p className="text-xs text-[var(--text-muted)] text-center mt-4">
-            * 토스페이먼츠 결제 연동은 추후 적용 예정입니다.
-          </p>
         </form>
       )}
     </div>
