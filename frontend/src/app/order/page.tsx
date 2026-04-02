@@ -3,10 +3,15 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCart } from "@/lib/cart";
 import { createOrder } from "@/lib/order";
-import { getMyAddresses, addMyAddress } from "@/lib/user";
+import {
+  getMyAddresses,
+  addMyAddress,
+  updateMyAddress,
+  deleteMyAddress,
+} from "@/lib/user";
 import { useAuthStore } from "@/stores/authStore";
 import Button from "@/components/common/Button";
 import type { CartItem, MemberAddress } from "@/types";
@@ -35,7 +40,8 @@ declare global {
 }
 
 const TOSS_CLIENT_KEY =
-  process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY || "test_ck_26DlbXAaV0BmZlD9Bbdn8qY50Q9R";
+  process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY ||
+  "test_ck_26DlbXAaV0BmZlD9Bbdn8qY50Q9R";
 
 function formatPrice(price: number) {
   return price.toLocaleString("ko-KR");
@@ -94,8 +100,413 @@ const MEMO_OPTIONS = [
   { value: "__custom__", label: "직접입력" },
 ];
 
+// ─── 배송지 추가/수정 모달 ───
+function AddressFormModal({
+  editAddress,
+  onClose,
+  onSaved,
+}: {
+  editAddress: MemberAddress | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [addrForm, setAddrForm] = useState({
+    label: editAddress?.label ?? "",
+    recipient: editAddress?.recipient ?? "",
+    phone: editAddress?.phone ?? "",
+    zipcode: editAddress?.zipcode ?? "",
+    address: editAddress?.address ?? "",
+    addressDetail: editAddress?.addressDetail ?? "",
+    defaultAddress: editAddress?.defaultAddress ?? false,
+  });
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  const handlePostcode = () => {
+    new window.daum.Postcode({
+      oncomplete: (data) => {
+        setAddrForm((p) => ({
+          ...p,
+          zipcode: data.zonecode,
+          address: data.address,
+          addressDetail: "",
+        }));
+      },
+    }).open();
+  };
+
+  const handleSave = async () => {
+    if (
+      !addrForm.recipient.trim() ||
+      !addrForm.phone.trim() ||
+      !addrForm.address.trim() ||
+      !addrForm.addressDetail.trim()
+    ) {
+      setFormError("모든 필수 항목을 입력해주세요.");
+      return;
+    }
+    setSaving(true);
+    setFormError("");
+    try {
+      const payload = {
+        ...addrForm,
+        label: addrForm.label.trim() || `${addrForm.recipient.trim()}의 배송지`,
+      };
+      if (editAddress) {
+        await updateMyAddress(editAddress.id, payload);
+      } else {
+        await addMyAddress(payload);
+      }
+      onSaved();
+    } catch {
+      setFormError("저장에 실패했습니다.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputClass =
+    "w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors placeholder-[var(--text-dim)]";
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+      <div
+        className="absolute inset-0 bg-[var(--overlay-bg)]"
+        onClick={onClose}
+      />
+      <div className="relative bg-[var(--card-bg)] border border-[var(--border-color)] w-full max-w-md mx-4 max-h-[85vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-color)]">
+          <h3 className="text-sm font-medium tracking-wider text-[var(--text-primary)]">
+            {editAddress ? "배송지 수정" : "배송지 추가"}
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors text-lg"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          <div>
+            <label className="block text-xs text-[var(--text-muted)] mb-1">
+              배송지 이름
+            </label>
+            <input
+              value={addrForm.label}
+              onChange={(e) =>
+                setAddrForm({ ...addrForm, label: e.target.value })
+              }
+              className={inputClass}
+              placeholder="예) 집, 회사"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-[var(--text-muted)] mb-1">
+              수령인 <span className="text-red-500">*</span>
+            </label>
+            <input
+              value={addrForm.recipient}
+              onChange={(e) =>
+                setAddrForm({ ...addrForm, recipient: e.target.value })
+              }
+              className={inputClass}
+              placeholder="수령인 이름"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-[var(--text-muted)] mb-1">
+              연락처 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="tel"
+              value={addrForm.phone}
+              onChange={(e) =>
+                setAddrForm({ ...addrForm, phone: e.target.value })
+              }
+              className={inputClass}
+              placeholder="010-1234-5678"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-[var(--text-muted)] mb-1">
+              주소 <span className="text-red-500">*</span>
+            </label>
+            <div className="flex gap-3 items-end mb-3">
+              <input
+                value={addrForm.zipcode}
+                readOnly
+                className="w-28 border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none placeholder-[var(--text-dim)]"
+                placeholder="우편번호"
+              />
+              <button
+                type="button"
+                onClick={handlePostcode}
+                className="px-4 py-2 text-xs tracking-wider border border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)] transition-colors flex-shrink-0"
+              >
+                주소 검색
+              </button>
+            </div>
+            <input
+              value={addrForm.address}
+              readOnly
+              className="w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none placeholder-[var(--text-dim)] mb-3"
+              placeholder="기본주소"
+            />
+            <input
+              value={addrForm.addressDetail}
+              onChange={(e) =>
+                setAddrForm({ ...addrForm, addressDetail: e.target.value })
+              }
+              className={inputClass}
+              placeholder="상세주소 (동/호수)"
+            />
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={addrForm.defaultAddress}
+              onChange={(e) =>
+                setAddrForm({ ...addrForm, defaultAddress: e.target.checked })
+              }
+              className="w-4 h-4 accent-[var(--text-primary)]"
+            />
+            <span className="text-xs text-[var(--text-muted)]">
+              기본 배송지로 설정
+            </span>
+          </label>
+
+          {formError && (
+            <p className="text-xs text-red-400">{formError}</p>
+          )}
+        </div>
+
+        <div className="px-6 pb-5">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full py-3 text-sm bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] transition-colors"
+          >
+            {saving
+              ? "저장 중..."
+              : editAddress
+                ? "수정하기"
+                : "저장하기"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── 배송지 목록 모달 ───
+function AddressListModal({
+  addresses,
+  selectedId,
+  onSelect,
+  onClose,
+  onRefresh,
+}: {
+  addresses: MemberAddress[];
+  selectedId: number | null;
+  onSelect: (addr: MemberAddress) => void;
+  onClose: () => void;
+  onRefresh: () => void;
+}) {
+  const [chosen, setChosen] = useState<number | null>(selectedId);
+  const [subModal, setSubModal] = useState<
+    | { type: "add" }
+    | { type: "edit"; addr: MemberAddress }
+    | { type: "deleteConfirm"; addr: MemberAddress }
+    | null
+  >(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleApply = () => {
+    const addr = addresses.find((a) => a.id === chosen);
+    if (addr) onSelect(addr);
+    onClose();
+  };
+
+  const handleDelete = async (addr: MemberAddress) => {
+    setDeleting(true);
+    try {
+      await deleteMyAddress(addr.id);
+      onRefresh();
+    } catch {
+      // ignore
+    } finally {
+      setDeleting(false);
+      setSubModal(null);
+    }
+  };
+
+  if (subModal?.type === "add" || subModal?.type === "edit") {
+    return (
+      <AddressFormModal
+        editAddress={subModal.type === "edit" ? subModal.addr : null}
+        onClose={() => setSubModal(null)}
+        onSaved={() => {
+          setSubModal(null);
+          onRefresh();
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+      <div
+        className="absolute inset-0 bg-[var(--overlay-bg)]"
+        onClick={onClose}
+      />
+      <div className="relative bg-[var(--card-bg)] border border-[var(--border-color)] w-full max-w-md mx-4 max-h-[85vh] flex flex-col">
+        {/* 헤더 */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-color)]">
+          <h3 className="text-sm font-medium tracking-wider text-[var(--text-primary)]">
+            배송지 정보
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors text-lg"
+          >
+            &times;
+          </button>
+        </div>
+
+        {/* 추가 버튼 */}
+        <div className="px-6 pt-4">
+          <button
+            onClick={() => setSubModal({ type: "add" })}
+            className="w-full py-2.5 text-xs tracking-wider border border-dashed border-[var(--border-color)] text-[var(--text-muted)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)] transition-colors"
+          >
+            + 배송지 추가하기
+          </button>
+        </div>
+
+        {/* 목록 */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+          {addresses.length === 0 && (
+            <p className="text-xs text-[var(--text-dim)] text-center py-8">
+              저장된 배송지가 없습니다.
+            </p>
+          )}
+          {addresses.map((addr) => (
+            <label
+              key={addr.id}
+              className={`block border p-4 cursor-pointer transition-colors ${
+                chosen === addr.id
+                  ? "border-[var(--text-primary)]"
+                  : "border-[var(--border-color)] hover:border-[var(--text-muted)]"
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <input
+                  type="radio"
+                  name="address"
+                  checked={chosen === addr.id}
+                  onChange={() => setChosen(addr.id)}
+                  className="mt-0.5 w-4 h-4 accent-[var(--text-primary)]"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm text-[var(--text-primary)] font-medium">
+                      {addr.recipient}
+                    </span>
+                    {addr.defaultAddress && (
+                      <span className="px-1.5 py-0.5 text-[10px] bg-[var(--badge-blue-bg,#1e3a5f)] text-[var(--badge-blue-text,#60a5fa)] rounded">
+                        기본 배송지
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-[var(--text-secondary)] mb-0.5">
+                    [{addr.zipcode}] {addr.address} {addr.addressDetail}
+                  </p>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    {addr.phone}
+                  </p>
+                  <div className="flex gap-3 mt-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setSubModal({ type: "edit", addr });
+                      }}
+                      className="text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors underline"
+                    >
+                      수정
+                    </button>
+                    {!addr.defaultAddress && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setSubModal({ type: "deleteConfirm", addr });
+                        }}
+                        className="text-[10px] text-[var(--text-muted)] hover:text-red-400 transition-colors underline"
+                      >
+                        삭제
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </label>
+          ))}
+        </div>
+
+        {/* 하단 */}
+        <div className="px-6 pb-5 pt-2 border-t border-[var(--border-color)]">
+          <button
+            onClick={handleApply}
+            disabled={chosen === null}
+            className="w-full py-3 text-sm bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] transition-colors disabled:opacity-40"
+          >
+            변경하기
+          </button>
+        </div>
+      </div>
+
+      {/* 삭제 확인 */}
+      {subModal?.type === "deleteConfirm" && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-[var(--overlay-bg)]"
+            onClick={() => setSubModal(null)}
+          />
+          <div className="relative bg-[var(--card-bg)] border border-[var(--border-color)] px-8 py-8 max-w-sm w-full mx-6 text-center">
+            <p className="text-sm text-[var(--text-secondary)] mb-2">
+              배송지를 삭제하시겠습니까?
+            </p>
+            <p className="text-xs text-[var(--text-muted)] mb-8">
+              {subModal.addr.recipient} - {subModal.addr.address}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setSubModal(null)}
+                className="flex-1 py-3 text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => handleDelete(subModal.addr)}
+                disabled={deleting}
+                className="flex-1 py-3 text-sm bg-red-600 text-white hover:bg-red-700 transition-colors"
+              >
+                {deleting ? "삭제 중..." : "삭제"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── 메인 주문 페이지 ───
 export default function OrderPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { isLoggedIn } = useAuthStore();
 
   const [form, setForm] = useState({
@@ -107,10 +518,13 @@ export default function OrderPage() {
   });
   const [memoSelect, setMemoSelect] = useState("");
   const [customMemo, setCustomMemo] = useState("");
-  const [saveAsDefault, setSaveAsDefault] = useState(false);
   const [error, setError] = useState("");
+  const [addressModal, setAddressModal] = useState(false);
+  const [addressFormModal, setAddressFormModal] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
+    null
+  );
 
-  // 비로그인 redirect
   useEffect(() => {
     if (!isLoggedIn()) {
       router.replace("/login");
@@ -129,7 +543,6 @@ export default function OrderPage() {
     enabled: isLoggedIn(),
   });
 
-  // 장바구니 비어있으면 redirect
   useEffect(() => {
     if (!cartLoading && cartData && cartData.data.length === 0) {
       router.replace("/cart");
@@ -143,49 +556,26 @@ export default function OrderPage() {
         (a: MemberAddress) => a.defaultAddress
       );
       if (defaultAddr && !form.recipient) {
-        setForm({
-          recipient: defaultAddr.recipient,
-          phone: defaultAddr.phone,
-          zipcode: defaultAddr.zipcode ?? "",
-          address: defaultAddr.address,
-          addressDetail: defaultAddr.addressDetail ?? "",
-        });
+        applyAddress(defaultAddr);
       }
     }
   }, [addressData]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handlePostcodeSearch = () => {
-    new window.daum.Postcode({
-      oncomplete: (data) => {
-        setForm((prev) => ({
-          ...prev,
-          zipcode: data.zonecode,
-          address: data.address,
-          addressDetail: "",
-        }));
-      },
-    }).open();
+  const applyAddress = (addr: MemberAddress) => {
+    setForm({
+      recipient: addr.recipient,
+      phone: addr.phone,
+      zipcode: addr.zipcode ?? "",
+      address: addr.address,
+      addressDetail: addr.addressDetail ?? "",
+    });
+    setSelectedAddressId(addr.id);
   };
 
   const actualMemo = memoSelect === "__custom__" ? customMemo : memoSelect;
 
   const orderMutation = useMutation({
     mutationFn: async () => {
-      if (saveAsDefault) {
-        try {
-          await addMyAddress({
-            label: `${form.recipient}의 배송지`,
-            recipient: form.recipient,
-            phone: form.phone,
-            zipcode: form.zipcode,
-            address: form.address,
-            addressDetail: form.addressDetail,
-            defaultAddress: true,
-          });
-        } catch {
-          // 배송지 저장 실패해도 주문은 계속 진행
-        }
-      }
       return createOrder({
         cartItemIds: items.map((item) => item.id),
         recipient: form.recipient,
@@ -205,8 +595,8 @@ export default function OrderPage() {
       const tossPayments = window.TossPayments(TOSS_CLIENT_KEY);
       const origin = window.location.origin;
 
-      // 주문명: 첫 상품명 + 외 N건
-      const firstProductName = items.length > 0 ? items[0].productName : "상품";
+      const firstProductName =
+        items.length > 0 ? items[0].productName : "상품";
       const orderName =
         items.length > 1
           ? `${firstProductName} 외 ${items.length - 1}건`
@@ -230,22 +620,13 @@ export default function OrderPage() {
     },
   });
 
-  const handleAddressSelect = (addr: MemberAddress) => {
-    setForm({
-      ...form,
-      recipient: addr.recipient,
-      phone: addr.phone,
-      zipcode: addr.zipcode ?? "",
-      address: addr.address,
-      addressDetail: addr.addressDetail ?? "",
-    });
-  };
-
   if (!isLoggedIn()) return null;
 
   const items = cartData?.data ?? [];
   const groups = useMemo(() => groupByProduct(items), [items]); // eslint-disable-line react-hooks/exhaustive-deps
   const addresses = addressData?.data ?? [];
+  const defaultAddr = addresses.find((a) => a.defaultAddress) ?? null;
+  const hasAddress = form.recipient && form.address;
   const totalAmount = items.reduce(
     (sum, item) => sum + itemPrice(item) * item.quantity,
     0
@@ -257,12 +638,21 @@ export default function OrderPage() {
     e.preventDefault();
     setError("");
 
-    if (!form.recipient.trim() || !form.phone.trim() || !form.address.trim() || !form.addressDetail.trim()) {
+    if (
+      !form.recipient.trim() ||
+      !form.phone.trim() ||
+      !form.address.trim() ||
+      !form.addressDetail.trim()
+    ) {
       setError("배송 정보를 모두 입력해주세요.");
       return;
     }
 
     orderMutation.mutate();
+  };
+
+  const refreshAddresses = () => {
+    queryClient.invalidateQueries({ queryKey: ["addresses"] });
   };
 
   return (
@@ -282,12 +672,15 @@ export default function OrderPage() {
       {cartLoading ? (
         <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-16 bg-[var(--skeleton)] animate-pulse" />
+            <div
+              key={i}
+              className="h-16 bg-[var(--skeleton)] animate-pulse"
+            />
           ))}
         </div>
       ) : (
         <form onSubmit={handleSubmit}>
-          {/* 주문 상품 요약 (상품 그룹별) */}
+          {/* 주문 상품 요약 */}
           <section className="mb-10">
             <h2 className="text-xs tracking-widest text-[var(--text-muted)] mb-4">
               주문상품
@@ -298,7 +691,6 @@ export default function OrderPage() {
                   key={group.productId}
                   className="flex gap-4 py-4 border-b border-[var(--border-color)]"
                 >
-                  {/* 작은 썸네일 */}
                   <div className="w-14 h-14 bg-[var(--card-bg)] flex-shrink-0 overflow-hidden">
                     {group.thumbnailUrl ? (
                       <img
@@ -310,8 +702,6 @@ export default function OrderPage() {
                       <div className="w-full h-full bg-[var(--section-bg)]" />
                     )}
                   </div>
-
-                  {/* 상품 정보 */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-[var(--text-secondary)] truncate mb-1">
                       {group.productName}
@@ -341,102 +731,54 @@ export default function OrderPage() {
               배송 정보
             </h2>
 
-            {/* 저장된 배송지 선택 */}
-            {addresses.length > 0 && (
-              <div className="mb-6">
-                <p className="text-xs text-[var(--text-muted)] mb-2">저장된 배송지</p>
-                <div className="flex flex-wrap gap-2">
-                  {addresses.map((addr) => (
-                    <button
-                      key={addr.id}
-                      type="button"
-                      onClick={() => handleAddressSelect(addr)}
-                      className={`px-3 py-1.5 text-xs border transition-colors ${
-                        form.recipient === addr.recipient &&
-                        form.phone === addr.phone
-                          ? "border-[var(--text-primary)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
-                          : "border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-primary)]"
-                      }`}
-                    >
-                      {addr.label}
-                      {addr.defaultAddress && " (기본)"}
-                    </button>
-                  ))}
+            {hasAddress ? (
+              /* 배송지가 선택된 상태 */
+              <div className="border border-[var(--border-color)] p-5 mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-[var(--text-primary)]">
+                      {form.recipient}
+                    </span>
+                    {defaultAddr &&
+                      selectedAddressId === defaultAddr.id && (
+                        <span className="px-1.5 py-0.5 text-[10px] bg-[var(--badge-blue-bg,#1e3a5f)] text-[var(--badge-blue-text,#60a5fa)] rounded">
+                          기본 배송지
+                        </span>
+                      )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAddressModal(true)}
+                    className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors border border-[var(--border-color)] px-3 py-1.5"
+                  >
+                    배송지 변경
+                  </button>
                 </div>
+                <p className="text-sm text-[var(--text-secondary)] mb-1">
+                  [{form.zipcode}] {form.address} {form.addressDetail}
+                </p>
+                <p className="text-xs text-[var(--text-muted)]">
+                  {form.phone}
+                </p>
+              </div>
+            ) : (
+              /* 배송지 없는 상태 */
+              <div className="border border-dashed border-[var(--border-color)] p-8 mb-4 text-center">
+                <p className="text-sm text-[var(--text-muted)] mb-4">
+                  저장된 배송지가 없습니다.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setAddressFormModal(true)}
+                  className="px-5 py-2.5 text-xs tracking-wider border border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)] transition-colors"
+                >
+                  배송지 추가
+                </button>
               </div>
             )}
 
+            {/* 배송 메모 */}
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs tracking-wider text-[var(--text-muted)] mb-2">
-                  수령인 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={form.recipient}
-                  onChange={(e) =>
-                    setForm({ ...form, recipient: e.target.value })
-                  }
-                  className="w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors placeholder-[var(--text-dim)]"
-                  placeholder="수령인 이름"
-                />
-              </div>
-              <div>
-                <label className="block text-xs tracking-wider text-[var(--text-muted)] mb-2">
-                  연락처 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) =>
-                    setForm({ ...form, phone: e.target.value })
-                  }
-                  className="w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors placeholder-[var(--text-dim)]"
-                  placeholder="010-1234-5678"
-                />
-              </div>
-              <div>
-                <label className="block text-xs tracking-wider text-[var(--text-muted)] mb-2">
-                  우편번호 <span className="text-red-500">*</span>
-                </label>
-                <div className="flex gap-3 items-end mb-3">
-                  <input
-                    type="text"
-                    value={form.zipcode}
-                    readOnly
-                    className="w-28 border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none placeholder-[var(--text-dim)]"
-                    placeholder="우편번호"
-                  />
-                  <button
-                    type="button"
-                    onClick={handlePostcodeSearch}
-                    className="px-4 py-2 text-xs tracking-wider border border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)] transition-colors flex-shrink-0"
-                  >
-                    주소 검색
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  value={form.address}
-                  readOnly
-                  className="w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none placeholder-[var(--text-dim)] mb-3"
-                  placeholder="기본주소"
-                />
-                <div>
-                  <label className="block text-xs tracking-wider text-[var(--text-muted)] mb-2">
-                    상세주소 <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={form.addressDetail}
-                    onChange={(e) =>
-                      setForm({ ...form, addressDetail: e.target.value })
-                    }
-                    className="w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors placeholder-[var(--text-dim)]"
-                    placeholder="상세주소 (동/호수)"
-                  />
-                </div>
-              </div>
               <div>
                 <label className="block text-xs tracking-wider text-[var(--text-muted)] mb-2">
                   배송 메모
@@ -452,7 +794,11 @@ export default function OrderPage() {
                   className="w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors"
                 >
                   {MEMO_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value} className="bg-[var(--card-bg)] text-[var(--text-secondary)]">
+                    <option
+                      key={opt.value}
+                      value={opt.value}
+                      className="bg-[var(--card-bg)] text-[var(--text-secondary)]"
+                    >
                       {opt.label}
                     </option>
                   ))}
@@ -467,17 +813,6 @@ export default function OrderPage() {
                   />
                 )}
               </div>
-
-              {/* 기본 배송지로 저장 */}
-              <label className="flex items-center gap-2 cursor-pointer mt-2">
-                <input
-                  type="checkbox"
-                  checked={saveAsDefault}
-                  onChange={(e) => setSaveAsDefault(e.target.checked)}
-                  className="w-4 h-4 accent-[var(--text-primary)]"
-                />
-                <span className="text-xs text-[var(--text-muted)]">기본 배송지로 저장</span>
-              </label>
             </div>
           </section>
 
@@ -488,17 +823,25 @@ export default function OrderPage() {
             </h2>
             <div className="flex justify-between text-sm">
               <span className="text-[var(--text-muted)]">총 상품 금액</span>
-              <span className="text-[var(--text-secondary)]">{formatPrice(totalAmount)}원</span>
+              <span className="text-[var(--text-secondary)]">
+                {formatPrice(totalAmount)}원
+              </span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-[var(--text-muted)]">배송비</span>
               <span className="text-[var(--text-secondary)]">
-                {deliveryFee === 0 ? "무료" : `${formatPrice(deliveryFee)}원`}
+                {deliveryFee === 0
+                  ? "무료"
+                  : `${formatPrice(deliveryFee)}원`}
               </span>
             </div>
             <div className="flex justify-between text-base font-medium pt-4 border-t border-[var(--border-color)]">
-              <span className="text-[var(--text-primary)]">최종 결제 금액</span>
-              <span className="text-[var(--text-primary)]">{formatPrice(finalAmount)}원</span>
+              <span className="text-[var(--text-primary)]">
+                최종 결제 금액
+              </span>
+              <span className="text-[var(--text-primary)]">
+                {formatPrice(finalAmount)}원
+              </span>
             </div>
           </section>
 
@@ -510,6 +853,29 @@ export default function OrderPage() {
             결제하기
           </Button>
         </form>
+      )}
+
+      {/* 배송지 목록 모달 */}
+      {addressModal && (
+        <AddressListModal
+          addresses={addresses}
+          selectedId={selectedAddressId}
+          onSelect={applyAddress}
+          onClose={() => setAddressModal(false)}
+          onRefresh={refreshAddresses}
+        />
+      )}
+
+      {/* 배송지 추가 모달 (배송지 없을 때 직접 추가) */}
+      {addressFormModal && (
+        <AddressFormModal
+          editAddress={null}
+          onClose={() => setAddressFormModal(false)}
+          onSaved={() => {
+            setAddressFormModal(false);
+            refreshAddresses();
+          }}
+        />
       )}
     </div>
   );
