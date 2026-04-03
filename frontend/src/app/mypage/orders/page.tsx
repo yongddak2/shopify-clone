@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getOrders, cancelOrder } from "@/lib/order";
 import { useAuthStore } from "@/stores/authStore";
@@ -38,13 +38,27 @@ const STATUS_STYLES: Record<
 
 const TABS: { key: string; label: string; statuses: string[] }[] = [
   { key: "all", label: "전체", statuses: [] },
-  { key: "PENDING", label: "주문대기", statuses: ["PENDING"] },
-  { key: "PAID", label: "결제완료", statuses: ["PAID"] },
-  { key: "PREPARING", label: "배송준비", statuses: ["PREPARING"] },
-  { key: "SHIPPED", label: "배송중", statuses: ["SHIPPED"] },
-  { key: "DELIVERED", label: "배송완료", statuses: ["DELIVERED"] },
-  { key: "CANCEL", label: "취소·환불", statuses: ["CANCELLED", "REFUNDED"] },
+  { key: "order", label: "주문/결제", statuses: ["PENDING", "PAID"] },
+  { key: "shipping", label: "배송중", statuses: ["PREPARING", "SHIPPED"] },
+  { key: "delivered", label: "배송완료", statuses: ["DELIVERED"] },
+  { key: "cancel", label: "취소/환불", statuses: ["CANCELLED", "REFUNDED"] },
 ];
+
+const PERIODS: { key: string; label: string; days: number | null }[] = [
+  { key: "1w", label: "최근 1주", days: 7 },
+  { key: "1m", label: "1개월", days: 30 },
+  { key: "3m", label: "3개월", days: 90 },
+  { key: "6m", label: "6개월", days: 180 },
+  { key: "all", label: "전체", days: null },
+];
+
+function filterByPeriod(orders: OrderResponse[], periodKey: string) {
+  const p = PERIODS.find((pp) => pp.key === periodKey);
+  if (!p || p.days === null) return orders;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - p.days);
+  return orders.filter((o) => new Date(o.createdAt) >= cutoff);
+}
 
 function StatusBadge({ status }: { status: string }) {
   const style = STATUS_STYLES[status] ?? {
@@ -64,10 +78,25 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function MypageOrdersPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { isLoggedIn } = useAuthStore();
   const [page, setPage] = useState(0);
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState(() => {
+    const tab = searchParams.get("tab");
+    if (tab && TABS.some((t) => t.key === tab)) return tab;
+    return "all";
+  });
+  const [period, setPeriod] = useState("3m");
+
+  // URL tab 파라미터 변경 시 동기화
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab && TABS.some((t) => t.key === tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
   const [cancelTarget, setCancelTarget] = useState<number | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<number | null>(null);
   const [confirmedIds, setConfirmedIds] = useState<Set<number>>(() => {
@@ -105,8 +134,9 @@ export default function MypageOrdersPage() {
   });
 
   const allOrders = data?.data?.content ?? [];
+  const isDeliveredTab = activeTab === "delivered";
 
-  // 탭별 건수
+  // 탭별 건수 (기간 필터 미적용 — 전체 기준)
   const tabCounts: Record<string, number> = {};
   for (const tab of TABS) {
     if (tab.key === "all") {
@@ -119,12 +149,15 @@ export default function MypageOrdersPage() {
   }
 
   const currentTab = TABS.find((t) => t.key === activeTab) ?? TABS[0];
-  const filteredOrders =
+  const tabFiltered =
     currentTab.statuses.length === 0
       ? allOrders
       : allOrders.filter((o: OrderResponse) =>
           currentTab.statuses.includes(o.status)
         );
+  const filteredOrders = isDeliveredTab
+    ? filterByPeriod(tabFiltered, period)
+    : tabFiltered;
 
   return (
     <div>
@@ -166,6 +199,25 @@ export default function MypageOrdersPage() {
           })}
         </div>
       </div>
+
+      {/* 기간 필터 — 배송완료 탭에서만 표시 */}
+      {isDeliveredTab && (
+        <div className="flex flex-wrap gap-2 mb-6">
+          {PERIODS.map((p) => (
+            <button
+              key={p.key}
+              onClick={() => setPeriod(p.key)}
+              className={`px-3 py-1.5 text-xs transition-colors ${
+                period === p.key
+                  ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
+                  : "border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--text-muted)]"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {isLoading && (
         <div className="space-y-4">

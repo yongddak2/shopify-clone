@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getWishlists, toggleWishlist } from "@/lib/wishlist";
 import { useAuthStore } from "@/stores/authStore";
@@ -10,7 +11,16 @@ function formatPrice(price: number) {
   return price.toLocaleString("ko-KR");
 }
 
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr);
+  const yy = String(d.getFullYear()).slice(2);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yy}.${mm}.${dd}`;
+}
+
 export default function MypageWishlistPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { isLoggedIn } = useAuthStore();
 
@@ -33,6 +43,11 @@ export default function MypageWishlistPage() {
     <div>
       <h2 className="text-lg tracking-[0.1em] font-light text-[var(--text-primary)] mb-8">
         찜 목록
+        {!isLoading && (
+          <span className="text-sm text-[var(--text-muted)] ml-2 font-normal">
+            ({items.length})
+          </span>
+        )}
       </h2>
 
       {isLoading && (
@@ -77,13 +92,17 @@ export default function MypageWishlistPage() {
                     <div className="w-full h-full bg-[var(--section-bg)] group-hover:scale-105 transition-transform duration-500" />
                   )}
                 </div>
-                <p className="text-sm text-[var(--text-secondary)] mb-1">
+                <p className="text-sm text-[var(--text-secondary)] mb-1 truncate">
                   {item.productName}
                 </p>
-                <p className="text-sm text-[var(--text-secondary)]">
+                <p className="text-sm text-[var(--text-secondary)] mb-1">
                   {formatPrice(item.productPrice)}원
                 </p>
+                <p className="text-[10px] text-[var(--text-dim)]">
+                  {formatDate(item.createdAt)} 찜
+                </p>
               </Link>
+              {/* 하트 해제 */}
               <button
                 onClick={() => removeMutation.mutate(item.productId)}
                 className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-black/60 transition-colors"
@@ -92,6 +111,13 @@ export default function MypageWishlistPage() {
                   className="w-4 h-4 text-red-400 fill-red-400"
                   strokeWidth={1.5}
                 />
+              </button>
+              {/* 장바구니 담기 */}
+              <button
+                onClick={() => router.push(`/products/${item.productId}`)}
+                className="mt-2 w-full py-2 text-xs border border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)] transition-colors"
+              >
+                장바구니 담기
               </button>
             </div>
           ))}
