@@ -51,8 +51,8 @@ spring:
   # ─── File Upload ─────────────────────────────────
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 10MB
+      max-file-size: 5MB
+      max-request-size: 5MB
 
 # ─── Server ──────────────────────────────────────
 server:
@@ -78,6 +78,16 @@ springdoc:
     operations-sorter: alpha
   api-docs:
     path: /v3/api-docs
+
+# ─── AWS S3 ──────────────────────────────────────
+cloud:
+  aws:
+    s3:
+      bucket: yong-byeong-shop-images
+      region: ap-southeast-2
+    credentials:
+      access-key: your-access-key  # TODO: 본인 키로 교체
+      secret-key: your-secret-key  # TODO: 본인 키로 교체
 
 # ─── Logging ─────────────────────────────────────
 logging:

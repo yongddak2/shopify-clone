@@ -60,6 +60,9 @@ dependencies {
 // P6Spy (SQL 로그 파라미터 바인딩 확인용, 개발 전용)
     implementation 'com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.9.1'
 
+// AWS S3
+    implementation 'software.amazon.awssdk:s3:2.31.9'
+
 }
 
 tasks.named('test') {

@@ -118,7 +118,6 @@ export default function ProductsPage() {
       {!isLoading && products.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-10">
           {products.map((product: Product) => {
-            const thumbnail = product.images?.find((img) => img.isThumbnail);
             const isSoldOut = product.status === "SOLDOUT";
             const hasDiscount = product.discountRate > 0;
             const finalPrice = hasDiscount
@@ -133,9 +132,9 @@ export default function ProductsPage() {
               >
                 {/* 이미지 */}
                 <div className="relative aspect-[3/4] bg-[var(--card-bg)] mb-4 overflow-hidden">
-                  {thumbnail ? (
+                  {product.thumbnailUrl ? (
                     <img
-                      src={thumbnail.url}
+                      src={product.thumbnailUrl}
                       alt={product.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />

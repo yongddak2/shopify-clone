@@ -1,11 +1,13 @@
 package com.shopify.backend.domain.product.dto;
 
 import com.shopify.backend.domain.product.entity.Product;
+import com.shopify.backend.domain.product.entity.ProductImage;
 import com.shopify.backend.domain.product.entity.ProductStatus;
 import lombok.Builder;
 import lombok.Getter;
 
 import java.math.BigDecimal;
+import java.util.Comparator;
 
 @Getter
 @Builder
@@ -20,9 +22,11 @@ public class ProductSummaryResponse {
 
     public static ProductSummaryResponse from(Product product) {
         String thumbnailUrl = product.getImages().stream()
-                .filter(image -> image.isThumbnail())
+                .filter(ProductImage::isThumbnail)
                 .findFirst()
-                .map(image -> image.getUrl())
+                .or(() -> product.getImages().stream()
+                        .min(Comparator.comparingInt(ProductImage::getSortOrder)))
+                .map(ProductImage::getUrl)
                 .orElse(null);
 
         return ProductSummaryResponse.builder()

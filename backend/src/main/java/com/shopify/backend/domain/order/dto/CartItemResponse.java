@@ -1,10 +1,12 @@
 package com.shopify.backend.domain.order.dto;
 
 import com.shopify.backend.domain.order.entity.CartItem;
+import com.shopify.backend.domain.product.entity.ProductImage;
 import lombok.Builder;
 import lombok.Getter;
 
 import java.math.BigDecimal;
+import java.util.Comparator;
 
 @Getter
 @Builder
@@ -23,9 +25,11 @@ public class CartItemResponse {
 
     public static CartItemResponse from(CartItem cartItem) {
         String thumbnailUrl = cartItem.getProduct().getImages().stream()
-                .filter(image -> image.isThumbnail())
+                .filter(ProductImage::isThumbnail)
                 .findFirst()
-                .map(image -> image.getUrl())
+                .or(() -> cartItem.getProduct().getImages().stream()
+                        .min(Comparator.comparingInt(ProductImage::getSortOrder)))
+                .map(ProductImage::getUrl)
                 .orElse(null);
 
         return CartItemResponse.builder()

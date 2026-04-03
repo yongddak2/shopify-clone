@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getCategories, createProduct } from "@/lib/admin";
+import { getCategories, createProduct, uploadProductImage, deleteProductImage } from "@/lib/admin";
 import type { CreateProductRequest } from "@/types";
 
 function toComma(n: number | string): string {
@@ -29,6 +29,15 @@ const FALLBACK_CATEGORIES = [
   { id: 5, name: "악세서리" },
 ];
 
+interface UploadedImage {
+  url: string;
+  uploading: boolean;
+}
+
+const ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_IMAGES = 5;
+
 interface OptionCombo {
   size: string;
   color: string;
@@ -45,7 +54,8 @@ export default function AdminProductNewPage() {
   const [categoryId, setCategoryId] = useState(0);
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState("ACTIVE");
-  const [imageUrls, setImageUrls] = useState([""]);
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
@@ -140,14 +150,46 @@ export default function AdminProductNewPage() {
     setDiscountRate(v);
   };
 
-  // 이미지 URL 관리
-  const updateImageUrl = (idx: number, val: string) => {
-    setImageUrls((prev) => prev.map((u, i) => (i === idx ? val : u)));
+  // 이미지 업로드/삭제
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = "";
+    if (!file) return;
+
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      setError("허용되지 않는 파일 형식입니다. (jpg, jpeg, png, gif, webp)");
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      setError("파일 크기는 5MB 이하만 가능합니다.");
+      return;
+    }
+
+    const idx = uploadedImages.length;
+    setUploadedImages((prev) => [...prev, { url: "", uploading: true }]);
+
+    try {
+      const url = await uploadProductImage(file);
+      setUploadedImages((prev) =>
+        prev.map((img, i) => (i === idx ? { url, uploading: false } : img))
+      );
+    } catch {
+      setUploadedImages((prev) => prev.filter((_, i) => i !== idx));
+      setError("이미지 업로드에 실패했습니다.");
+    }
   };
-  const addImageUrl = () => setImageUrls((prev) => [...prev, ""]);
-  const removeImageUrl = (idx: number) => {
-    if (imageUrls.length <= 1) return;
-    setImageUrls((prev) => prev.filter((_, i) => i !== idx));
+
+  const handleRemoveImage = async (idx: number) => {
+    const img = uploadedImages[idx];
+    if (img.uploading) return;
+
+    setUploadedImages((prev) => prev.filter((_, i) => i !== idx));
+    try {
+      await deleteProductImage(img.url);
+    } catch {
+      // S3 삭제 실패해도 목록에서는 제거 유지
+    }
   };
 
   const mutation = useMutation({
@@ -170,6 +212,10 @@ export default function AdminProductNewPage() {
     if (categoryId === 0) { setError("카테고리를 선택하세요."); return; }
     if (combos.length === 0) { setError("사이즈와 색상을 각각 1개 이상 선택하세요."); return; }
 
+    const readyImages = uploadedImages.filter((img) => !img.uploading && img.url);
+    if (readyImages.length === 0) { setError("최소 1장의 이미지를 등록해주세요."); return; }
+    if (uploadedImages.some((img) => img.uploading)) { setError("이미지 업로드가 진행 중입니다. 잠시 후 다시 시도해주세요."); return; }
+
     // 옵션 그룹 빌드: 사이즈×색상 조합을 하나의 그룹으로 전송
     const comboValues = combos.map((combo) => ({
       value: `${combo.size}-${combo.color}`,
@@ -181,10 +227,11 @@ export default function AdminProductNewPage() {
       { name: "옵션", optionValues: comboValues },
     ];
 
-    const images = imageUrls
-      .map((url) => url.trim())
-      .filter((url) => url.length > 0)
-      .map((url, i) => ({ url, sortOrder: i, isThumbnail: i === 0 }));
+    const images = readyImages.map((img, i) => ({
+      url: img.url,
+      sortOrder: i,
+      isThumbnail: i === 0,
+    }));
 
     mutation.mutate({
       name: name.trim(),
@@ -193,7 +240,7 @@ export default function AdminProductNewPage() {
       categoryId,
       description,
       status,
-      images: images.length > 0 ? images : undefined,
+      images,
       optionGroups,
     });
   };
@@ -358,32 +405,55 @@ export default function AdminProductNewPage() {
           </div>
         )}
 
-        {/* 이미지 URL */}
+        {/* 이미지 업로드 */}
         <div>
-          <label className="block text-xs text-[var(--text-muted)] mb-2">이미지 URL</label>
-          <div className="space-y-2">
-            {imageUrls.map((url, idx) => (
-              <div key={idx} className="flex gap-2 items-center">
-                <input
-                  value={url}
-                  onChange={(e) => updateImageUrl(idx, e.target.value)}
-                  className={`${inputClass} flex-1`}
-                  placeholder={idx === 0 ? "썸네일 이미지 URL" : "추가 이미지 URL"}
-                />
-                {idx === 0 && (
-                  <span className="text-[10px] text-[var(--badge-blue-text)] flex-shrink-0">썸네일</span>
-                )}
-                {imageUrls.length > 1 && (
-                  <button type="button" onClick={() => removeImageUrl(idx)} className="text-xs text-[var(--badge-red-text)] hover:underline flex-shrink-0">
-                    삭제
-                  </button>
+          <label className="block text-xs text-[var(--text-muted)] mb-2">
+            상품 이미지 ({uploadedImages.filter((img) => !img.uploading).length}/{MAX_IMAGES})
+          </label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <div className="flex flex-wrap gap-3">
+            {uploadedImages.map((img, idx) => (
+              <div key={idx} className="relative w-[100px] h-[100px] border border-[var(--border-color)] bg-[var(--input-bg)]">
+                {img.uploading ? (
+                  <div className="flex items-center justify-center w-full h-full">
+                    <span className="text-xs text-[var(--text-muted)] animate-pulse">업로드 중...</span>
+                  </div>
+                ) : (
+                  <>
+                    <img src={img.url} alt={`상품 이미지 ${idx + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(idx)}
+                      className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-black/60 text-white text-xs hover:bg-black/80 transition-colors"
+                    >
+                      ✕
+                    </button>
+                    {idx === 0 && (
+                      <span className="absolute bottom-1 left-1 px-1.5 py-0.5 text-[10px] bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]">
+                        대표
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
             ))}
+            {uploadedImages.length < MAX_IMAGES && (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-[100px] h-[100px] border border-dashed border-[var(--border-color)] flex flex-col items-center justify-center text-[var(--text-muted)] hover:border-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+              >
+                <span className="text-2xl leading-none">+</span>
+                <span className="text-[10px] mt-1">이미지 추가</span>
+              </button>
+            )}
           </div>
-          <button type="button" onClick={addImageUrl} className="mt-2 text-xs text-[var(--badge-blue-text)] hover:underline">
-            + 이미지 추가
-          </button>
         </div>
 
         {/* 에러 + 버튼 */}

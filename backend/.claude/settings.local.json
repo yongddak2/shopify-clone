@@ -9,7 +9,9 @@
       "Bash(mkdir -p src/test/java/com/shopify/backend/domain/order/service)",
       "Bash(mkdir -p src/test/java/com/shopify/backend/domain/auth/service)",
       "Bash(./gradlew test:*)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(PGPASSWORD=shop1234 psql:*)",
+      "Bash(docker exec shop-postgres:*)"
     ]
   }
 }

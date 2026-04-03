@@ -11,6 +11,20 @@ import type {
   Category,
 } from "@/types";
 
+// 이미지 업로드/삭제
+export async function uploadProductImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await api.post<ApiResponse<string>>("/api/admin/images", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data.data;
+}
+
+export async function deleteProductImage(imageUrl: string): Promise<void> {
+  await api.delete("/api/admin/images", { params: { imageUrl } });
+}
+
 // 카테고리 (공개 API)
 export async function getCategories() {
   const res = await api.get<ApiResponse<Category[]>>("/api/categories");
