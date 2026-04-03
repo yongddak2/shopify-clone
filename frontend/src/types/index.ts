@@ -133,6 +133,30 @@ export interface WishlistItem {
   createdAt: string;
 }
 
+// 내 쿠폰
+export interface MemberCoupon {
+  id: number;
+  couponId: number;
+  couponName: string;
+  discountType: string;
+  discountValue: number;
+  minOrderAmount: number;
+  maxDiscountAmount: number | null;
+  expiredAt: string;
+  createdAt: string;
+  usable: boolean;
+}
+
+// 리뷰
+export interface Review {
+  id: number;
+  memberName: string;
+  rating: number;
+  content: string;
+  images: string[];
+  createdAt: string;
+}
+
 // 배송지
 export interface MemberAddress {
   id: number;
