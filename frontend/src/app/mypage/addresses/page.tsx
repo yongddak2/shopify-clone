@@ -55,6 +55,9 @@ function AddressForm({
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [defaultConfirm, setDefaultConfirm] = useState(false);
+
+  const wasDefault = editAddress?.defaultAddress ?? false;
 
   const handlePostcode = () => {
     new window.daum.Postcode({
@@ -186,7 +189,13 @@ function AddressForm({
         <input
           type="checkbox"
           checked={form.defaultAddress}
-          onChange={(e) => setForm({ ...form, defaultAddress: e.target.checked })}
+          onChange={(e) => {
+            if (e.target.checked && !wasDefault) {
+              setDefaultConfirm(true);
+            } else {
+              setForm({ ...form, defaultAddress: e.target.checked });
+            }
+          }}
           className="w-4 h-4 accent-[var(--text-primary)]"
         />
         <span className="text-xs text-[var(--text-muted)]">기본 배송지로 설정</span>
@@ -213,6 +222,38 @@ function AddressForm({
           {saving ? "저장 중..." : editAddress ? "수정하기" : "저장하기"}
         </button>
       </div>
+
+      {/* 기본 배송지 변경 확인 모달 */}
+      {defaultConfirm && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-[var(--overlay-bg)]"
+            onClick={() => setDefaultConfirm(false)}
+          />
+          <div className="relative bg-[var(--card-bg)] border border-[var(--border-color)] px-8 py-8 max-w-sm w-full mx-6 text-center">
+            <p className="text-sm text-[var(--text-secondary)] mb-8">
+              기본 배송지를 변경하시겠습니까?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDefaultConfirm(false)}
+                className="flex-1 py-3 text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  setForm({ ...form, defaultAddress: true });
+                  setDefaultConfirm(false);
+                }}
+                className="flex-1 py-3 text-sm bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] transition-colors"
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -233,7 +274,9 @@ export default function MypageAddressesPage() {
     enabled: isLoggedIn(),
   });
 
+  const MAX_ADDRESSES = 10;
   const addresses = data?.data ?? [];
+  const isFull = addresses.length >= MAX_ADDRESSES;
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["addresses"] });
@@ -260,19 +303,35 @@ export default function MypageAddressesPage() {
         strategy="lazyOnload"
       />
 
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg tracking-[0.1em] font-light text-[var(--text-primary)]">
           배송지 관리
+          {!isLoading && (
+            <span className="text-sm text-[var(--text-muted)] ml-2 font-normal">
+              ({addresses.length}/{MAX_ADDRESSES})
+            </span>
+          )}
         </h2>
         {!showAddForm && (
           <button
             onClick={() => { setShowAddForm(true); setEditId(null); }}
-            className="px-4 py-2 text-xs tracking-wider border border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)] transition-colors"
+            disabled={isFull}
+            className={`px-4 py-2 text-xs tracking-wider border border-[var(--border-color)] transition-colors ${
+              isFull
+                ? "text-[var(--text-dim)] cursor-not-allowed"
+                : "text-[var(--text-secondary)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)]"
+            }`}
           >
             + 배송지 추가
           </button>
         )}
       </div>
+      {isFull && !showAddForm && (
+        <p className="text-xs text-[var(--text-dim)] mb-6">
+          배송지는 최대 {MAX_ADDRESSES}개까지 등록 가능합니다.
+        </p>
+      )}
+      {!isFull && <div className="mb-4" />}
 
       {/* 추가 폼 (상단) */}
       {showAddForm && (

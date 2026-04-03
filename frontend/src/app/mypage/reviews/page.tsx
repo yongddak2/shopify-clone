@@ -9,6 +9,7 @@ import { Star } from "lucide-react";
 import type { OrderResponse, OrderItemResponse } from "@/types";
 
 interface ReviewableItem {
+  orderId: number;
   orderItemId: number;
   productNameSnapshot: string;
   optionInfoSnapshot: string;
@@ -25,6 +26,14 @@ export default function MypageReviewsPage() {
   } | null>(null);
   const [reviewedIds, setReviewedIds] = useState<Set<number>>(new Set());
   const [error, setError] = useState("");
+  const [confirmedIds] = useState<Set<number>>(() => {
+    try {
+      const stored = localStorage.getItem("confirmedOrderIds");
+      return stored ? new Set<number>(JSON.parse(stored)) : new Set<number>();
+    } catch {
+      return new Set<number>();
+    }
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["orders", 0],
@@ -69,6 +78,7 @@ export default function MypageReviewsPage() {
     if (!order.orderItems) continue;
     for (const item of order.orderItems) {
       reviewableItems.push({
+        orderId: order.id,
         orderItemId: item.id,
         productNameSnapshot: item.productNameSnapshot,
         optionInfoSnapshot: item.optionInfoSnapshot,
@@ -103,6 +113,7 @@ export default function MypageReviewsPage() {
         <div className="space-y-4">
           {reviewableItems.map((item) => {
             const isReviewed = reviewedIds.has(item.orderItemId);
+            const isConfirmed = confirmedIds.has(item.orderId);
             const isEditing = reviewForm?.orderItemId === item.orderItemId;
 
             return (
@@ -134,6 +145,10 @@ export default function MypageReviewsPage() {
                     {isReviewed ? (
                       <span className="px-2 py-1 text-xs bg-[var(--badge-green-bg)] text-[var(--badge-green-text)] rounded">
                         리뷰 작성완료
+                      </span>
+                    ) : !isConfirmed ? (
+                      <span className="text-xs text-[var(--text-dim)]">
+                        구매 확정 후 리뷰 작성 가능
                       </span>
                     ) : !isEditing ? (
                       <button
