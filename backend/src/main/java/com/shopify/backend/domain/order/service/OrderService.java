@@ -73,10 +73,14 @@ public class OrderService {
         // 주문번호 생성
         String orderNumber = "ORD-" + System.currentTimeMillis();
 
-        // 금액 계산
+        // 금액 계산 (할인가 적용)
         BigDecimal totalAmount = BigDecimal.ZERO;
+        BigDecimal HUNDRED = new BigDecimal("100");
         for (CartItem cartItem : cartItems) {
-            BigDecimal price = cartItem.getProduct().getBasePrice();
+            BigDecimal basePrice = cartItem.getProduct().getBasePrice();
+            BigDecimal discountRate = cartItem.getProduct().getDiscountRate();
+            BigDecimal discountedPrice = basePrice.multiply(HUNDRED.subtract(discountRate)).divide(HUNDRED, 0, java.math.RoundingMode.FLOOR);
+            BigDecimal price = discountedPrice;
             if (cartItem.getOptionValue() != null) {
                 price = price.add(cartItem.getOptionValue().getAdditionalPrice());
             }
@@ -106,10 +110,13 @@ public class OrderService {
 
         orderRepository.save(order);
 
-        // OrderItem 생성
+        // OrderItem 생성 (할인가 적용)
         List<OrderItem> orderItems = new ArrayList<>();
         for (CartItem cartItem : cartItems) {
-            BigDecimal priceSnapshot = cartItem.getProduct().getBasePrice();
+            BigDecimal basePrice = cartItem.getProduct().getBasePrice();
+            BigDecimal discountRate = cartItem.getProduct().getDiscountRate();
+            BigDecimal discountedPrice = basePrice.multiply(HUNDRED.subtract(discountRate)).divide(HUNDRED, 0, java.math.RoundingMode.FLOOR);
+            BigDecimal priceSnapshot = discountedPrice;
             if (cartItem.getOptionValue() != null) {
                 priceSnapshot = priceSnapshot.add(cartItem.getOptionValue().getAdditionalPrice());
             }

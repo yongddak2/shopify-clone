@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProductDetail } from "@/lib/product";
 import { addToCart } from "@/lib/cart";
+import { getWishlists, toggleWishlist } from "@/lib/wishlist";
 import { useAuthStore } from "@/stores/authStore";
 import Button from "@/components/common/Button";
+import { Heart } from "lucide-react";
 import type { ProductOptionValue } from "@/types";
 
 function formatPrice(price: number) {
@@ -30,6 +32,31 @@ export default function ProductDetailClient({ id }: { id: string }) {
     queryKey: ["product", id],
     queryFn: () => getProductDetail(Number(id)),
   });
+
+  const { data: wishlistData } = useQuery({
+    queryKey: ["wishlists"],
+    queryFn: getWishlists,
+    enabled: isLoggedIn(),
+  });
+
+  const isWishlisted = wishlistData?.data?.some(
+    (item) => item.productId === Number(id)
+  ) ?? false;
+
+  const wishlistMutation = useMutation({
+    mutationFn: () => toggleWishlist(Number(id)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["wishlists"] });
+    },
+  });
+
+  const handleWishlistToggle = () => {
+    if (!isLoggedIn()) {
+      router.push("/login");
+      return;
+    }
+    wishlistMutation.mutate();
+  };
 
   const cartMutation = useMutation({
     mutationFn: ({
@@ -168,9 +195,21 @@ export default function ProductDetailClient({ id }: { id: string }) {
 
         {/* 우측: 상품 정보 */}
         <div>
-          <h1 className="text-xl md:text-2xl font-light tracking-wide mb-4 text-[var(--text-primary)]">
-            {product.name}
-          </h1>
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <h1 className="text-xl md:text-2xl font-light tracking-wide text-[var(--text-primary)]">
+              {product.name}
+            </h1>
+            <button
+              onClick={handleWishlistToggle}
+              disabled={wishlistMutation.isPending}
+              className="flex-shrink-0 mt-1 text-[var(--text-muted)] hover:text-red-400 transition-colors"
+            >
+              <Heart
+                className={`w-6 h-6 ${isWishlisted ? "text-red-400 fill-red-400" : ""}`}
+                strokeWidth={1.5}
+              />
+            </button>
+          </div>
 
           {/* 가격 */}
           <div className="flex items-baseline gap-3 mb-8">

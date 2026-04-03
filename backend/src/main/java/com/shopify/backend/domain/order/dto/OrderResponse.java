@@ -26,10 +26,10 @@ public class OrderResponse {
     private final String address;
     private final String memo;
     private final LocalDateTime createdAt;
-    private final List<OrderItemResponse> items;
+    private final List<OrderItemResponse> orderItems;
 
-    public static OrderResponse from(Order order, List<OrderItem> orderItems) {
-        List<OrderItemResponse> items = orderItems.stream()
+    public static OrderResponse from(Order order, List<OrderItem> orderItemList) {
+        List<OrderItemResponse> orderItems = orderItemList.stream()
                 .map(OrderItemResponse::from)
                 .toList();
 
@@ -46,7 +46,7 @@ public class OrderResponse {
                 .address(order.getAddress())
                 .memo(order.getMemo())
                 .createdAt(order.getCreatedAt())
-                .items(items)
+                .orderItems(orderItems)
                 .build();
     }
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -37,12 +36,6 @@ export default function OrderDetailClient({ id }: { id: string }) {
   const queryClient = useQueryClient();
   const { isLoggedIn } = useAuthStore();
 
-  useEffect(() => {
-    if (!isLoggedIn()) {
-      router.replace("/login");
-    }
-  }, [isLoggedIn, router]);
-
   const { data, isLoading, isError } = useQuery({
     queryKey: ["order", id],
     queryFn: () => getOrderDetail(Number(id)),
@@ -66,16 +59,12 @@ export default function OrderDetailClient({ id }: { id: string }) {
     }
   };
 
-  if (!isLoggedIn()) return null;
-
   if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto px-6 lg:px-10 py-12">
-        <div className="space-y-6">
-          <div className="h-8 bg-[var(--skeleton)] animate-pulse w-1/3 mx-auto" />
-          <div className="h-40 bg-[var(--skeleton)] animate-pulse" />
-          <div className="h-40 bg-[var(--skeleton)] animate-pulse" />
-        </div>
+      <div className="space-y-6">
+        <div className="h-8 bg-[var(--skeleton)] animate-pulse w-1/3" />
+        <div className="h-40 bg-[var(--skeleton)] animate-pulse" />
+        <div className="h-40 bg-[var(--skeleton)] animate-pulse" />
       </div>
     );
   }
@@ -97,10 +86,18 @@ export default function OrderDetailClient({ id }: { id: string }) {
   const canCancel = order.status === "PENDING" || order.status === "PAID";
 
   return (
-    <div className="max-w-4xl mx-auto px-6 lg:px-10 py-12">
-      <h1 className="text-2xl tracking-[0.2em] font-light text-center mb-12 text-[var(--text-primary)]">
-        ORDER DETAIL
-      </h1>
+    <div>
+      <div className="flex items-center gap-3 mb-8">
+        <button
+          onClick={() => router.push("/mypage/orders")}
+          className="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+        >
+          &larr; 목록
+        </button>
+        <h2 className="text-lg tracking-[0.1em] font-light text-[var(--text-primary)]">
+          주문 상세
+        </h2>
+      </div>
 
       {/* 주문 정보 */}
       <section className="mb-10">
@@ -122,9 +119,9 @@ export default function OrderDetailClient({ id }: { id: string }) {
 
       {/* 주문 상품 */}
       <section className="mb-10">
-        <h2 className="text-xs tracking-widest text-[var(--text-muted)] mb-4">
+        <h3 className="text-xs tracking-widest text-[var(--text-muted)] mb-4">
           ORDER ITEMS
-        </h2>
+        </h3>
         <div className="border-t border-[var(--border-color)]">
           {order.orderItems.map((item) => (
             <div
@@ -164,9 +161,9 @@ export default function OrderDetailClient({ id }: { id: string }) {
 
       {/* 배송 정보 */}
       <section className="mb-10">
-        <h2 className="text-xs tracking-widest text-[var(--text-muted)] mb-4">
+        <h3 className="text-xs tracking-widest text-[var(--text-muted)] mb-4">
           DELIVERY INFO
-        </h2>
+        </h3>
         <div className="space-y-2 text-sm">
           <div className="flex mb-4">
             <span className="w-20 text-[var(--text-muted)] flex-shrink-0">배송상태</span>
@@ -200,9 +197,9 @@ export default function OrderDetailClient({ id }: { id: string }) {
 
       {/* 결제 정보 */}
       <section className="mb-10 border-t border-[var(--border-color)] pt-8">
-        <h2 className="text-xs tracking-widest text-[var(--text-muted)] mb-4">
+        <h3 className="text-xs tracking-widest text-[var(--text-muted)] mb-4">
           PAYMENT
-        </h2>
+        </h3>
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-[var(--text-muted)]">총 상품 금액</span>

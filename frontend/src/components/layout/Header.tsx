@@ -137,7 +137,7 @@ export default function Header() {
 
                   {/* 마이페이지 - 항상 표시 */}
                   <Link
-                    href={loggedIn ? "/orders" : "/login"}
+                    href={loggedIn ? "/mypage" : "/login"}
                     className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
                   >
                     <User className="w-5 h-5" strokeWidth={1.5} />

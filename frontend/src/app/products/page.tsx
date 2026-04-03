@@ -2,8 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProducts, getCategories } from "@/lib/product";
+import { getWishlists, toggleWishlist } from "@/lib/wishlist";
+import { useAuthStore } from "@/stores/authStore";
+import { Heart } from "lucide-react";
 import type { Product } from "@/types";
 
 function formatPrice(price: number) {
@@ -21,6 +25,9 @@ const SORT_OPTIONS = [
 ];
 
 export default function ProductsPage() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { isLoggedIn } = useAuthStore();
   const [page, setPage] = useState(0);
   const [categoryId, setCategoryId] = useState<number | undefined>(undefined);
   const [sort, setSort] = useState("createdAt,desc");
@@ -34,6 +41,34 @@ export default function ProductsPage() {
     queryKey: ["products", { page, categoryId, sort }],
     queryFn: () => getProducts({ page, size: 12, categoryId, sort }),
   });
+
+  const { data: wishlistData } = useQuery({
+    queryKey: ["wishlists"],
+    queryFn: getWishlists,
+    enabled: isLoggedIn(),
+  });
+
+  const wishlistIds = new Set(
+    wishlistData?.data?.map((item) => item.productId) ?? []
+  );
+
+  const wishlistMutation = useMutation({
+    mutationFn: (productId: number) => toggleWishlist(productId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["wishlists"] });
+    },
+  });
+
+  const handleWishlistClick = (e: React.MouseEvent, productId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isLoggedIn()) {
+      alert("로그인이 필요한 서비스입니다.");
+      router.push("/login");
+      return;
+    }
+    wishlistMutation.mutate(productId);
+  };
 
   const categories = categoriesData?.data ?? [];
   const products = data?.data?.content ?? [];
@@ -148,6 +183,19 @@ export default function ProductsPage() {
                       </span>
                     </div>
                   )}
+                  <button
+                    onClick={(e) => handleWishlistClick(e, product.id)}
+                    className="absolute bottom-2 right-2 w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-black/60 transition-colors"
+                  >
+                    <Heart
+                      className={`w-4 h-4 ${
+                        wishlistIds.has(product.id)
+                          ? "text-red-400 fill-red-400"
+                          : "text-white"
+                      }`}
+                      strokeWidth={1.5}
+                    />
+                  </button>
                 </div>
                 {/* 정보 */}
                 <p className="text-sm text-[var(--text-secondary)] mb-1">{product.name}</p>

@@ -114,11 +114,23 @@ export interface OrderResponse {
 
 export interface OrderItemResponse {
   id: number;
+  productId: number;
   productNameSnapshot: string;
   optionInfoSnapshot: string;
   priceSnapshot: number;
   quantity: number;
   subtotal: number;
+  thumbnailUrl: string | null;
+}
+
+// 찜 목록
+export interface WishlistItem {
+  id: number;
+  productId: number;
+  productName: string;
+  productPrice: number;
+  thumbnailUrl: string | null;
+  createdAt: string;
 }
 
 // 배송지

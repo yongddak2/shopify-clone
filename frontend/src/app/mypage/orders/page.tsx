@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { getOrders } from "@/lib/order";
@@ -53,16 +52,9 @@ function orderSummary(order: OrderResponse) {
   return rest > 0 ? `${first} 외 ${rest}건` : first;
 }
 
-export default function OrdersPage() {
-  const router = useRouter();
+export default function MypageOrdersPage() {
   const { isLoggedIn } = useAuthStore();
   const [page, setPage] = useState(0);
-
-  useEffect(() => {
-    if (!isLoggedIn()) {
-      router.replace("/login");
-    }
-  }, [isLoggedIn, router]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["orders", page],
@@ -70,16 +62,14 @@ export default function OrdersPage() {
     enabled: isLoggedIn(),
   });
 
-  if (!isLoggedIn()) return null;
-
   const orders = data?.data?.content ?? [];
   const totalPages = data?.data?.totalPages ?? 0;
 
   return (
-    <div className="max-w-4xl mx-auto px-6 lg:px-10 py-12">
-      <h1 className="text-2xl tracking-[0.2em] font-light text-center mb-12 text-[var(--text-primary)]">
-        ORDER HISTORY
-      </h1>
+    <div>
+      <h2 className="text-lg tracking-[0.1em] font-light text-[var(--text-primary)] mb-8">
+        주문내역
+      </h2>
 
       {isLoading && (
         <div className="space-y-4">
@@ -108,7 +98,7 @@ export default function OrdersPage() {
           {orders.map((order: OrderResponse) => (
             <Link
               key={order.id}
-              href={`/orders/${order.id}`}
+              href={`/mypage/orders/${order.id}`}
               className="block border border-[var(--border-color)] p-5 hover:border-[var(--text-muted)] transition-colors"
             >
               <div className="flex items-start justify-between mb-3">
@@ -130,7 +120,6 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* 페이지네이션 */}
       {totalPages > 1 && (
         <div className="flex justify-center items-center gap-2 mt-12">
           {Array.from({ length: totalPages }).map((_, i) => (
