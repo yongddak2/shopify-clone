@@ -53,4 +53,12 @@ public class MemberCoupon {
     public void use() {
         this.usedAt = LocalDateTime.now();
     }
+
+    public void markUsed() {
+        this.usedAt = LocalDateTime.now();
+    }
+
+    public void clearUsage() {
+        this.usedAt = null;
+    }
 }

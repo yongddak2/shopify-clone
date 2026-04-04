@@ -374,7 +374,7 @@ export default function AdminProductNewPage() {
           <div>
             <label className="block text-xs text-[var(--text-muted)] mb-2">옵션별 재고수량</label>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm min-w-[500px]">
                 <thead>
                   <tr className="border-b border-[var(--border-color)] text-[var(--text-muted)] text-xs tracking-wider">
                     <th className="py-2 px-3 text-left">사이즈</th>

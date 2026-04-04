@@ -1,5 +1,6 @@
 package com.shopify.backend.domain.order.service;
 
+import com.shopify.backend.domain.coupon.repository.MemberCouponRepository;
 import com.shopify.backend.domain.order.dto.PaymentConfirmRequest;
 import com.shopify.backend.domain.order.dto.PaymentResponse;
 import com.shopify.backend.domain.order.entity.*;
@@ -28,13 +29,14 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
+    private final MemberCouponRepository memberCouponRepository;
     private final RestTemplate tossRestTemplate;
     private final TossPaymentsProperties tossProperties;
 
     @Transactional
     public PaymentResponse confirmPayment(Long memberId, PaymentConfirmRequest request) {
-        // 1. 주문 조회
-        Order order = orderRepository.findById(request.getOrderId())
+        // 1. 주문 조회 (orderNumber로 조회, memberCoupon fetch join)
+        Order order = orderRepository.findByOrderNumber(request.getOrderNumber())
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
         // 2. 주문자 본인 확인
@@ -76,6 +78,12 @@ public class PaymentService {
 
         // 8. 주문 상태를 PAID로 변경
         order.updateStatus(OrderStatus.PAID);
+
+        // 8-1. 쿠폰 사용 처리
+        if (order.getMemberCoupon() != null) {
+            order.getMemberCoupon().markUsed();
+            memberCouponRepository.save(order.getMemberCoupon());
+        }
 
         // 9. 판매량 증가
         List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());

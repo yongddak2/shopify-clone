@@ -1,6 +1,7 @@
 package com.shopify.backend.domain.order.entity;
 
 import com.shopify.backend.domain.auth.entity.Member;
+import com.shopify.backend.domain.coupon.entity.MemberCoupon;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -55,6 +56,10 @@ public class Order {
 
     private String memo;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_coupon_id")
+    private MemberCoupon memberCoupon;
+
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;
@@ -68,7 +73,7 @@ public class Order {
     @Builder
     public Order(Member member, String orderNumber, BigDecimal totalAmount, BigDecimal discountAmount,
                  BigDecimal deliveryFee, BigDecimal finalAmount, OrderStatus status,
-                 String recipient, String phone, String address, String memo) {
+                 String recipient, String phone, String address, String memo, MemberCoupon memberCoupon) {
         this.member = member;
         this.orderNumber = orderNumber;
         this.totalAmount = totalAmount;
@@ -80,6 +85,7 @@ public class Order {
         this.phone = phone;
         this.address = address;
         this.memo = memo;
+        this.memberCoupon = memberCoupon;
     }
 
     public boolean isCancellable() {

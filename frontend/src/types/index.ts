@@ -95,6 +95,7 @@ export interface OrderRequest {
   phone: string;
   address: string;
   memo: string;
+  memberCouponId: number | null;
 }
 
 export interface OrderResponse {
@@ -110,6 +111,8 @@ export interface OrderResponse {
   address: string;
   memo: string;
   createdAt: string;
+  couponName: string | null;
+  couponDiscountAmount: number | null;
   orderItems: OrderItemResponse[];
 }
 
@@ -143,6 +146,7 @@ export interface MemberCoupon {
   discountValue: number;
   minOrderAmount: number;
   maxDiscountAmount: number | null;
+  usedAt: string | null;
   expiredAt: string;
   createdAt: string;
   usable: boolean;

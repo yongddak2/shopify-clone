@@ -12,9 +12,10 @@ import {
   updateMyAddress,
   deleteMyAddress,
 } from "@/lib/user";
+import { getMyCoupons } from "@/lib/coupon";
 import { useAuthStore } from "@/stores/authStore";
 import Button from "@/components/common/Button";
-import type { CartItem, MemberAddress } from "@/types";
+import type { CartItem, MemberAddress, MemberCoupon } from "@/types";
 
 declare global {
   interface Window {
@@ -542,6 +543,7 @@ export default function OrderPage() {
     null
   );
   const [selectedCartIds, setSelectedCartIds] = useState<number[] | null>(null);
+  const [selectedCouponId, setSelectedCouponId] = useState<number | null>(null);
 
   // sessionStorage에서 선택된 cartItemIds 읽기
   useEffect(() => {
@@ -574,6 +576,12 @@ export default function OrderPage() {
   const { data: addressData } = useQuery({
     queryKey: ["addresses"],
     queryFn: getMyAddresses,
+    enabled: isLoggedIn(),
+  });
+
+  const { data: couponData } = useQuery({
+    queryKey: ["myCoupons"],
+    queryFn: getMyCoupons,
     enabled: isLoggedIn(),
   });
 
@@ -621,6 +629,7 @@ export default function OrderPage() {
         phone: form.phone,
         address: `[${form.zipcode}] ${form.address} ${form.addressDetail}`.trim(),
         memo: actualMemo,
+        memberCouponId: selectedCouponId,
       });
     },
     onSuccess: async (data) => {
@@ -674,7 +683,30 @@ export default function OrderPage() {
     0
   );
   const deliveryFee = totalAmount >= DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
-  const finalAmount = totalAmount + deliveryFee;
+
+  // 쿠폰
+  const allCoupons = couponData?.data ?? [];
+  const availableCoupons = allCoupons.filter(
+    (c) => c.usable && new Date(c.expiredAt) > new Date() && c.minOrderAmount <= totalAmount
+  );
+
+  const selectedCoupon = availableCoupons.find((c) => c.id === selectedCouponId) ?? null;
+
+  const couponDiscount = useMemo(() => {
+    if (!selectedCoupon) return 0;
+    let discount = 0;
+    if (selectedCoupon.discountType === "FIXED") {
+      discount = selectedCoupon.discountValue;
+    } else {
+      discount = Math.round(totalAmount * selectedCoupon.discountValue / 100);
+      if (selectedCoupon.maxDiscountAmount != null) {
+        discount = Math.min(discount, selectedCoupon.maxDiscountAmount);
+      }
+    }
+    return Math.min(discount, totalAmount);
+  }, [selectedCoupon, totalAmount]);
+
+  const finalAmount = totalAmount - couponDiscount + deliveryFee;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -865,6 +897,45 @@ export default function OrderPage() {
             </div>
           </section>
 
+          {/* 쿠폰 적용 */}
+          <section className="mb-10">
+            <h2 className="text-xs tracking-widest text-[var(--text-muted)] mb-4">
+              쿠폰 적용
+            </h2>
+            {availableCoupons.length === 0 ? (
+              <p className="text-sm text-[var(--text-muted)]">
+                사용 가능한 쿠폰이 없습니다
+              </p>
+            ) : (
+              <select
+                value={selectedCouponId ?? ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedCouponId(val ? Number(val) : null);
+                }}
+                className="w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors"
+              >
+                <option value="" className="bg-[#333] text-white">
+                  쿠폰을 선택하세요 ({availableCoupons.length}장 보유)
+                </option>
+                {availableCoupons.map((c) => (
+                  <option key={c.id} value={c.id} className="bg-[#333] text-white">
+                    {c.couponName} (
+                    {c.discountType === "FIXED"
+                      ? `${formatPrice(c.discountValue)}원 할인`
+                      : `${c.discountValue}% 할인${c.maxDiscountAmount != null ? `, 최대 ${formatPrice(c.maxDiscountAmount)}원` : ""}`}
+                    )
+                  </option>
+                ))}
+              </select>
+            )}
+            {couponDiscount > 0 && (
+              <p className="text-sm text-red-400 mt-2">
+                -{formatPrice(couponDiscount)}원 할인 적용
+              </p>
+            )}
+          </section>
+
           {/* 결제 금액 요약 */}
           <section className="mb-10 border-t border-[var(--border-color)] pt-8 space-y-3">
             <h2 className="text-xs tracking-widest text-[var(--text-muted)] mb-4">
@@ -876,6 +947,14 @@ export default function OrderPage() {
                 {formatPrice(totalAmount)}원
               </span>
             </div>
+            {couponDiscount > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-[var(--text-muted)]">쿠폰 할인</span>
+                <span className="text-red-400">
+                  -{formatPrice(couponDiscount)}원
+                </span>
+              </div>
+            )}
             <div className="flex justify-between text-sm">
               <span className="text-[var(--text-muted)]">배송비</span>
               <span className="text-[var(--text-secondary)]">

@@ -12,15 +12,17 @@ function formatDate(s: string) {
   return new Date(s).toLocaleDateString("ko-KR");
 }
 
-const ORDER_STATUSES = [
-  "PENDING",
-  "PAID",
-  "PREPARING",
-  "SHIPPED",
-  "DELIVERED",
-  "CANCELLED",
-  "REFUNDED",
-];
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: "주문대기",
+  PAID: "결제완료",
+  PREPARING: "배송준비중",
+  SHIPPED: "배송중",
+  DELIVERED: "배송완료",
+  CANCELLED: "주문취소",
+  REFUNDED: "환불완료",
+};
+
+const ORDER_STATUSES = Object.keys(STATUS_LABELS);
 
 const STATUS_BADGE: Record<string, string> = {
   PENDING: "bg-[var(--badge-yellow-bg)] text-[var(--badge-yellow-text)]",
@@ -72,7 +74,7 @@ export default function AdminOrdersPage() {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[900px]">
             <thead>
               <tr className="border-b border-[var(--border-color)] text-[var(--text-muted)] text-xs tracking-wider">
                 <th className="py-3 px-3 text-left">주문번호</th>
@@ -113,7 +115,7 @@ export default function AdminOrdersPage() {
                       </td>
                       <td className="py-3 px-3 text-center">
                         <span className={`inline-block px-2 py-0.5 text-xs rounded ${STATUS_BADGE[o.status] ?? ""}`}>
-                          {o.status}
+                          {STATUS_LABELS[o.status] ?? o.status}
                         </span>
                       </td>
                       <td className="py-3 px-3 text-[var(--text-muted)]">{formatDate(o.createdAt)}</td>
@@ -129,7 +131,7 @@ export default function AdminOrdersPage() {
                         >
                           <option value="">상태변경</option>
                           {ORDER_STATUSES.filter((s) => s !== o.status).map((s) => (
-                            <option key={s} value={s}>{s}</option>
+                            <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>
                           ))}
                         </select>
                       </td>
@@ -194,7 +196,7 @@ export default function AdminOrdersPage() {
           <div className="relative bg-[var(--card-bg)] border border-[var(--border-color)] px-8 py-8 max-w-sm w-full mx-6 text-center">
             <p className="text-sm text-[var(--text-secondary)] mb-2">주문 상태를 변경하시겠습니까?</p>
             <p className="text-xs text-[var(--text-muted)] mb-8">
-              {statusChange.order.status} → {statusChange.newStatus}
+              {STATUS_LABELS[statusChange.order.status] ?? statusChange.order.status} → {STATUS_LABELS[statusChange.newStatus] ?? statusChange.newStatus}
             </p>
             <div className="flex gap-3">
               <button onClick={() => setStatusChange(null)} className="flex-1 py-3 text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">취소</button>

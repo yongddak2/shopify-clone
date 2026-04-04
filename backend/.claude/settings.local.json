@@ -11,7 +11,9 @@
       "Bash(./gradlew test:*)",
       "Bash(xargs grep:*)",
       "Bash(PGPASSWORD=shop1234 psql:*)",
-      "Bash(docker exec shop-postgres:*)"
+      "Bash(docker exec shop-postgres:*)",
+      "Bash(git stash:*)",
+      "Bash(./gradlew compileJava compileTestJava)"
     ]
   }
 }

@@ -20,28 +20,21 @@ function formatDate(dateStr: string) {
   });
 }
 
-const STATUS_STYLES: Record<string, { label: string; bg: string; text: string }> = {
-  PENDING: { label: "주문 대기", bg: "var(--badge-gray-bg)", text: "var(--badge-gray-text)" },
-  PAID: { label: "결제 완료", bg: "var(--badge-blue-bg)", text: "var(--badge-blue-text)" },
-  PREPARING: { label: "배송 준비", bg: "var(--badge-yellow-bg)", text: "var(--badge-yellow-text)" },
-  SHIPPED: { label: "배송 중", bg: "var(--badge-orange-bg)", text: "var(--badge-orange-text)" },
-  DELIVERED: { label: "배송 완료", bg: "var(--badge-green-bg)", text: "var(--badge-green-text)" },
-  CANCELLED: { label: "주문 취소", bg: "var(--badge-red-bg)", text: "var(--badge-red-text)" },
-  REFUNDED: { label: "환불 완료", bg: "var(--badge-purple-bg)", text: "var(--badge-purple-text)" },
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: "주문대기",
+  PAID: "결제완료",
+  PREPARING: "배송준비중",
+  SHIPPED: "배송중",
+  DELIVERED: "배송완료",
+  CANCELLED: "주문취소",
+  REFUNDED: "환불완료",
 };
 
 function StatusBadge({ status }: { status: string }) {
-  const style = STATUS_STYLES[status] ?? {
-    label: status,
-    bg: "var(--badge-gray-bg)",
-    text: "var(--badge-gray-text)",
-  };
+  const label = STATUS_LABELS[status] ?? status;
   return (
-    <span
-      className="inline-block px-2 py-0.5 text-xs rounded"
-      style={{ backgroundColor: style.bg, color: style.text }}
-    >
-      {style.label}
+    <span className="inline-block px-2 py-0.5 text-xs rounded text-[var(--text-secondary)] bg-[var(--card-bg)] border border-[var(--border-color)]">
+      {label}
     </span>
   );
 }

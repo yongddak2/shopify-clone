@@ -24,17 +24,14 @@ function formatDate(dateStr: string) {
   return `${yy}.${mm}.${dd}(${day})`;
 }
 
-const STATUS_STYLES: Record<
-  string,
-  { label: string; bg: string; text: string }
-> = {
-  PENDING: { label: "주문대기", bg: "var(--badge-gray-bg)", text: "var(--badge-gray-text)" },
-  PAID: { label: "결제완료", bg: "var(--badge-blue-bg)", text: "var(--badge-blue-text)" },
-  PREPARING: { label: "배송준비", bg: "var(--badge-blue-bg)", text: "var(--badge-blue-text)" },
-  SHIPPED: { label: "배송중", bg: "var(--badge-blue-bg)", text: "var(--badge-blue-text)" },
-  DELIVERED: { label: "배송완료", bg: "var(--badge-green-bg)", text: "var(--badge-green-text)" },
-  CANCELLED: { label: "주문취소", bg: "var(--badge-red-bg)", text: "var(--badge-red-text)" },
-  REFUNDED: { label: "환불완료", bg: "var(--badge-red-bg)", text: "var(--badge-red-text)" },
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: "주문대기",
+  PAID: "결제완료",
+  PREPARING: "배송준비중",
+  SHIPPED: "배송중",
+  DELIVERED: "배송완료",
+  CANCELLED: "주문취소",
+  REFUNDED: "환불완료",
 };
 
 const TABS: { key: string; label: string; statuses: string[] }[] = [
@@ -62,17 +59,10 @@ function filterByPeriod(orders: OrderResponse[], periodKey: string) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const style = STATUS_STYLES[status] ?? {
-    label: status,
-    bg: "var(--badge-gray-bg)",
-    text: "var(--badge-gray-text)",
-  };
+  const label = STATUS_LABELS[status] ?? status;
   return (
-    <span
-      className="inline-block px-2 py-0.5 text-xs rounded"
-      style={{ backgroundColor: style.bg, color: style.text }}
-    >
-      {style.label}
+    <span className="inline-block px-2 py-0.5 text-xs rounded text-[var(--text-secondary)] bg-[var(--card-bg)] border border-[var(--border-color)]">
+      {label}
     </span>
   );
 }
@@ -321,20 +311,15 @@ export default function MypageOrdersPage() {
                             {item.optionInfoSnapshot} / {item.quantity}개
                           </p>
                         </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-sm text-[var(--text-primary)]">
-                            {formatPrice(item.subtotal)}원
-                          </p>
-                        </div>
                       </div>
                     );
                   })}
                 </div>
 
-                {/* 주문 푸터: 합계 + 액션 */}
+                {/* 주문 푸터: 결제 금액 + 액션 */}
                 <div className="flex items-center justify-between px-5 py-3 border-t border-[var(--border-color)] bg-[var(--card-bg)]">
                   <span className="text-sm font-medium text-[var(--text-primary)]">
-                    총 {formatPrice(order.finalAmount)}원
+                    결제 금액: {formatPrice(order.finalAmount)}원
                   </span>
                   <div className="flex gap-2">
                     {canCancel && (

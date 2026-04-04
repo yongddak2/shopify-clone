@@ -63,16 +63,16 @@ export default function AdminProductsPage() {
         <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-12 bg-[var(--skeleton)] animate-pulse" />)}</div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[1000px]">
             <thead>
               <tr className="border-b border-[var(--border-color)] text-[var(--text-muted)] text-xs tracking-wider">
-                <th className="py-3 px-3 text-left">ID</th>
-                <th className="py-3 px-3 text-left">상품명</th>
-                <th className="py-3 px-3 text-right">가격</th>
-                <th className="py-3 px-3 text-center">상태</th>
+                <th className="py-3 px-3 text-left w-[60px]">ID</th>
+                <th className="py-3 px-3 text-left w-[250px]">상품명</th>
+                <th className="py-3 px-3 text-right w-[100px]">가격</th>
+                <th className="py-3 px-3 text-center w-[80px]">상태</th>
                 <th className="py-3 px-3 text-left">옵션</th>
-                <th className="py-3 px-3 text-left">등록일</th>
-                <th className="py-3 px-3 text-center">관리</th>
+                <th className="py-3 px-3 text-left w-[100px]">등록일</th>
+                <th className="py-3 px-3 text-center w-[100px]">관리</th>
               </tr>
             </thead>
             <tbody>

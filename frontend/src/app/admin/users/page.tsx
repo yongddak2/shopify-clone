@@ -34,7 +34,7 @@ export default function AdminUsersPage() {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[750px]">
             <thead>
               <tr className="border-b border-[var(--border-color)] text-[var(--text-muted)] text-xs tracking-wider">
                 <th className="py-3 px-3 text-left">ID</th>

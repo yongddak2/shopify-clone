@@ -56,6 +56,13 @@ public class AdminOrderService {
             }
         }
 
+        // 쿠폰 복원 (만료되지 않은 경우만)
+        if (isCancelOrRefund && order.getMemberCoupon() != null && order.getMemberCoupon().getUsedAt() != null) {
+            if (order.getMemberCoupon().getExpiredAt().isAfter(java.time.LocalDateTime.now())) {
+                order.getMemberCoupon().clearUsage();
+            }
+        }
+
         order.updateStatus(newStatus);
     }
 }

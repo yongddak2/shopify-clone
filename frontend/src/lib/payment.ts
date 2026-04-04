@@ -3,13 +3,15 @@ import type { ApiResponse } from "@/types";
 
 interface ConfirmPaymentRequest {
   paymentKey: string;
-  orderId: string;
+  orderNumber: string;
   amount: number;
 }
 
 interface ConfirmPaymentResponse {
   orderId: number;
+  orderNumber: string;
   paymentKey: string;
+  amount: number;
   status: string;
 }
 

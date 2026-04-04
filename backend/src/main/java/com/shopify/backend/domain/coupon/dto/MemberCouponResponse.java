@@ -19,6 +19,7 @@ public class MemberCouponResponse {
     private final BigDecimal discountValue;
     private final BigDecimal minOrderAmount;
     private final BigDecimal maxDiscountAmount;
+    private final LocalDateTime usedAt;
     private final LocalDateTime expiredAt;
     private final LocalDateTime createdAt;
     private final boolean usable;
@@ -32,6 +33,7 @@ public class MemberCouponResponse {
                 .discountValue(memberCoupon.getCoupon().getDiscountValue())
                 .minOrderAmount(memberCoupon.getCoupon().getMinOrderAmount())
                 .maxDiscountAmount(memberCoupon.getCoupon().getMaxDiscountAmount())
+                .usedAt(memberCoupon.getUsedAt())
                 .expiredAt(memberCoupon.getExpiredAt())
                 .createdAt(memberCoupon.getCreatedAt())
                 .usable(memberCoupon.isUsable())

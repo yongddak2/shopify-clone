@@ -64,7 +64,7 @@ public class CouponService {
     }
 
     public List<MemberCouponResponse> getMyCoupons(Long memberId) {
-        return memberCouponRepository.findByMemberIdAndUsedAtIsNull(memberId).stream()
+        return memberCouponRepository.findByMemberId(memberId).stream()
                 .map(MemberCouponResponse::from)
                 .toList();
     }

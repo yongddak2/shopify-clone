@@ -4,6 +4,7 @@ import com.shopify.backend.domain.auth.entity.Member;
 import com.shopify.backend.domain.auth.entity.Provider;
 import com.shopify.backend.domain.auth.entity.Role;
 import com.shopify.backend.domain.auth.repository.MemberRepository;
+import com.shopify.backend.domain.coupon.repository.MemberCouponRepository;
 import com.shopify.backend.domain.order.dto.OrderCreateRequest;
 import com.shopify.backend.domain.order.entity.*;
 import com.shopify.backend.domain.order.repository.CartItemRepository;
@@ -48,6 +49,9 @@ class OrderServiceTest {
 
     @Mock
     private MemberRepository memberRepository;
+
+    @Mock
+    private MemberCouponRepository memberCouponRepository;
 
     @InjectMocks
     private OrderService orderService;

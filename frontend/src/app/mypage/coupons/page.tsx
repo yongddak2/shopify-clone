@@ -30,7 +30,7 @@ function discountLabel(coupon: MemberCoupon) {
 }
 
 function couponStatus(coupon: MemberCoupon): "active" | "used" | "expired" {
-  if (!coupon.usable) return "used";
+  if (coupon.usedAt) return "used";
   if (new Date(coupon.expiredAt) < new Date()) return "expired";
   return "active";
 }

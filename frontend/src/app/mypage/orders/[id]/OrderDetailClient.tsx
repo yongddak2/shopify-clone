@@ -21,14 +21,14 @@ function formatDate(dateStr: string) {
   });
 }
 
-const STATUS_STYLES: Record<string, { label: string; bg: string; text: string }> = {
-  PENDING: { label: "주문 대기", bg: "var(--badge-gray-bg)", text: "var(--badge-gray-text)" },
-  PAID: { label: "결제 완료", bg: "var(--badge-blue-bg)", text: "var(--badge-blue-text)" },
-  PREPARING: { label: "배송 준비", bg: "var(--badge-yellow-bg)", text: "var(--badge-yellow-text)" },
-  SHIPPED: { label: "배송 중", bg: "var(--badge-orange-bg)", text: "var(--badge-orange-text)" },
-  DELIVERED: { label: "배송 완료", bg: "var(--badge-green-bg)", text: "var(--badge-green-text)" },
-  CANCELLED: { label: "주문 취소", bg: "var(--badge-red-bg)", text: "var(--badge-red-text)" },
-  REFUNDED: { label: "환불 완료", bg: "var(--badge-purple-bg)", text: "var(--badge-purple-text)" },
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: "주문대기",
+  PAID: "결제완료",
+  PREPARING: "배송준비중",
+  SHIPPED: "배송중",
+  DELIVERED: "배송완료",
+  CANCELLED: "주문취소",
+  REFUNDED: "환불완료",
 };
 
 export default function OrderDetailClient({ id }: { id: string }) {
@@ -78,11 +78,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
   }
 
   const order = data.data;
-  const statusStyle = STATUS_STYLES[order.status] ?? {
-    label: order.status,
-    bg: "var(--badge-gray-bg)",
-    text: "var(--badge-gray-text)",
-  };
+  const statusLabel = STATUS_LABELS[order.status] ?? order.status;
   const canCancel = order.status === "PENDING" || order.status === "PAID";
 
   return (
@@ -108,11 +104,8 @@ export default function OrderDetailClient({ id }: { id: string }) {
             </p>
             <p className="text-sm text-[var(--text-secondary)]">{order.orderNumber}</p>
           </div>
-          <span
-            className="inline-block px-3 py-1 text-xs rounded"
-            style={{ backgroundColor: statusStyle.bg, color: statusStyle.text }}
-          >
-            {statusStyle.label}
+          <span className="inline-block px-3 py-1 text-xs rounded text-[var(--text-secondary)] bg-[var(--card-bg)] border border-[var(--border-color)]">
+            {statusLabel}
           </span>
         </div>
       </section>
@@ -167,11 +160,8 @@ export default function OrderDetailClient({ id }: { id: string }) {
         <div className="space-y-2 text-sm">
           <div className="flex mb-4">
             <span className="w-20 text-[var(--text-muted)] flex-shrink-0">배송상태</span>
-            <span
-              className="text-sm font-medium"
-              style={{ color: statusStyle.text }}
-            >
-              {statusStyle.label}
+            <span className="text-sm font-medium text-[var(--text-secondary)]">
+              {statusLabel}
             </span>
           </div>
           <div className="flex">
@@ -203,7 +193,14 @@ export default function OrderDetailClient({ id }: { id: string }) {
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-[var(--text-muted)]">총 상품 금액</span>
-            <span className="text-[var(--text-secondary)]">{formatPrice(order.totalAmount)}원</span>
+            <span className="text-[var(--text-secondary)]">
+              {order.discountAmount > 0 && (
+                <span className="text-[var(--text-dim)] line-through mr-2">
+                  {formatPrice(order.totalAmount)}원
+                </span>
+              )}
+              {formatPrice(order.totalAmount - order.discountAmount)}원
+            </span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-[var(--text-muted)]">배송비</span>
@@ -213,7 +210,17 @@ export default function OrderDetailClient({ id }: { id: string }) {
                 : `${formatPrice(order.deliveryFee)}원`}
             </span>
           </div>
-          {order.discountAmount > 0 && (
+          {(order.couponDiscountAmount ?? 0) > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-[var(--text-muted)]">
+                쿠폰 할인{order.couponName ? ` (${order.couponName})` : ""}
+              </span>
+              <span className="text-red-400">
+                -{formatPrice(order.couponDiscountAmount!)}원
+              </span>
+            </div>
+          )}
+          {order.discountAmount > 0 && (order.discountAmount !== (order.couponDiscountAmount ?? 0)) && (
             <div className="flex justify-between text-sm">
               <span className="text-[var(--text-muted)]">할인 금액</span>
               <span className="text-red-400">

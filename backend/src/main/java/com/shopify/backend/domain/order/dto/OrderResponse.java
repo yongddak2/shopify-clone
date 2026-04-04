@@ -27,11 +27,20 @@ public class OrderResponse {
     private final String memo;
     private final LocalDateTime createdAt;
     private final List<OrderItemResponse> orderItems;
+    private final String couponName;
+    private final BigDecimal couponDiscountAmount;
 
     public static OrderResponse from(Order order, List<OrderItem> orderItemList) {
         List<OrderItemResponse> orderItems = orderItemList.stream()
                 .map(OrderItemResponse::from)
                 .toList();
+
+        String couponName = null;
+        BigDecimal couponDiscountAmount = null;
+        if (order.getMemberCoupon() != null) {
+            couponName = order.getMemberCoupon().getCoupon().getName();
+            couponDiscountAmount = order.getDiscountAmount();
+        }
 
         return OrderResponse.builder()
                 .id(order.getId())
@@ -47,6 +56,8 @@ public class OrderResponse {
                 .memo(order.getMemo())
                 .createdAt(order.getCreatedAt())
                 .orderItems(orderItems)
+                .couponName(couponName)
+                .couponDiscountAmount(couponDiscountAmount)
                 .build();
     }
 }

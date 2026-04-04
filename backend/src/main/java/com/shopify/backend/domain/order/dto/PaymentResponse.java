@@ -13,6 +13,7 @@ public class PaymentResponse {
 
     private Long id;
     private Long orderId;
+    private String orderNumber;
     private String paymentKey;
     private String method;
     private BigDecimal amount;
@@ -24,6 +25,7 @@ public class PaymentResponse {
         return PaymentResponse.builder()
                 .id(payment.getId())
                 .orderId(payment.getOrder().getId())
+                .orderNumber(payment.getOrder().getOrderNumber())
                 .paymentKey(payment.getPaymentKey())
                 .method(payment.getMethod().name())
                 .amount(payment.getAmount())

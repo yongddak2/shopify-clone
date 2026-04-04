@@ -22,4 +22,6 @@ public class OrderCreateRequest {
     private String address;
 
     private String memo;
+
+    private Long memberCouponId;
 }

@@ -2,6 +2,9 @@ package com.shopify.backend.domain.order.service;
 
 import com.shopify.backend.domain.auth.entity.Member;
 import com.shopify.backend.domain.auth.repository.MemberRepository;
+import com.shopify.backend.domain.coupon.entity.Coupon;
+import com.shopify.backend.domain.coupon.entity.MemberCoupon;
+import com.shopify.backend.domain.coupon.repository.MemberCouponRepository;
 import com.shopify.backend.domain.order.dto.OrderCreateRequest;
 import com.shopify.backend.domain.order.dto.OrderResponse;
 import com.shopify.backend.domain.order.entity.CartItem;
@@ -33,6 +36,7 @@ public class OrderService {
     private final OrderItemRepository orderItemRepository;
     private final CartItemRepository cartItemRepository;
     private final MemberRepository memberRepository;
+    private final MemberCouponRepository memberCouponRepository;
 
     private static final BigDecimal FREE_DELIVERY_THRESHOLD = new BigDecimal("50000");
     private static final BigDecimal DELIVERY_FEE = new BigDecimal("3000");
@@ -91,7 +95,39 @@ public class OrderService {
         BigDecimal deliveryFee = totalAmount.compareTo(FREE_DELIVERY_THRESHOLD) >= 0
                 ? BigDecimal.ZERO : DELIVERY_FEE;
         BigDecimal discountAmount = BigDecimal.ZERO;
-        BigDecimal finalAmount = totalAmount.add(deliveryFee);
+        MemberCoupon memberCoupon = null;
+
+        // 쿠폰 적용
+        if (request.getMemberCouponId() != null) {
+            memberCoupon = memberCouponRepository.findById(request.getMemberCouponId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_COUPON_NOT_FOUND));
+
+            if (!memberCoupon.getMember().getId().equals(memberId)) {
+                throw new BusinessException(ErrorCode.COUPON_NOT_OWNED);
+            }
+
+            if (memberCoupon.getUsedAt() != null) {
+                throw new BusinessException(ErrorCode.COUPON_ALREADY_USED);
+            }
+
+            if (memberCoupon.getExpiredAt().isBefore(java.time.LocalDateTime.now())) {
+                throw new BusinessException(ErrorCode.COUPON_EXPIRED);
+            }
+
+            Coupon coupon = memberCoupon.getCoupon();
+
+            if (coupon.getMinOrderAmount() != null && totalAmount.compareTo(coupon.getMinOrderAmount()) < 0) {
+                throw new BusinessException(ErrorCode.COUPON_MIN_ORDER_NOT_MET);
+            }
+
+            discountAmount = coupon.calculateDiscount(totalAmount);
+
+            if (discountAmount.compareTo(totalAmount) > 0) {
+                discountAmount = totalAmount;
+            }
+        }
+
+        BigDecimal finalAmount = totalAmount.subtract(discountAmount).add(deliveryFee);
 
         // Order 생성
         Order order = Order.builder()
@@ -106,6 +142,7 @@ public class OrderService {
                 .phone(request.getPhone())
                 .address(request.getAddress())
                 .memo(request.getMemo())
+                .memberCoupon(memberCoupon)
                 .build();
 
         orderRepository.save(order);
@@ -167,6 +204,13 @@ public class OrderService {
             }
             if (order.getStatus() == OrderStatus.PAID) {
                 orderItem.getProduct().decreaseSalesCount(orderItem.getQuantity());
+            }
+        }
+
+        // 쿠폰 복원 (만료되지 않은 경우만)
+        if (order.getMemberCoupon() != null && order.getMemberCoupon().getUsedAt() != null) {
+            if (order.getMemberCoupon().getExpiredAt().isAfter(java.time.LocalDateTime.now())) {
+                order.getMemberCoupon().clearUsage();
             }
         }
 
