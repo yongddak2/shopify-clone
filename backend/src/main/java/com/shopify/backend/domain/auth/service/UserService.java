@@ -3,14 +3,18 @@ package com.shopify.backend.domain.auth.service;
 import com.shopify.backend.domain.auth.dto.*;
 import com.shopify.backend.domain.auth.entity.Member;
 import com.shopify.backend.domain.auth.entity.MemberAddress;
+import com.shopify.backend.domain.auth.entity.Provider;
 import com.shopify.backend.domain.auth.repository.MemberAddressRepository;
 import com.shopify.backend.domain.auth.repository.MemberRepository;
 import com.shopify.backend.global.exception.BusinessException;
 import com.shopify.backend.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
@@ -20,6 +24,9 @@ public class UserService {
 
     private final MemberRepository memberRepository;
     private final MemberAddressRepository memberAddressRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    private static final String PASSWORD_PATTERN = "^(?=.*[a-zA-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?]).{8,}$";
 
     public UserResponse getMe(Long memberId) {
         Member member = findMemberOrThrow(memberId);
@@ -31,6 +38,41 @@ public class UserService {
         Member member = findMemberOrThrow(memberId);
         member.update(request.getName(), request.getPhone());
         return UserResponse.from(member);
+    }
+
+    @Transactional
+    public void changePassword(Long memberId, PasswordChangeRequest request) {
+        Member member = findMemberOrThrow(memberId);
+
+        if (member.getProvider() != Provider.LOCAL) {
+            throw new BusinessException(ErrorCode.SOCIAL_LOGIN_PASSWORD_CHANGE);
+        }
+
+        if (member.getPasswordChangedAt() != null
+                && member.getPasswordChangedAt().plusDays(30).isAfter(LocalDateTime.now())) {
+            String nextDate = member.getPasswordChangedAt().plusDays(30)
+                    .format(DateTimeFormatter.ofPattern("yyyy.MM.dd"));
+            throw new BusinessException(ErrorCode.PASSWORD_CHANGE_TOO_FREQUENT,
+                    "비밀번호는 30일에 한 번만 변경할 수 있습니다. 다음 변경 가능일: " + nextDate);
+        }
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), member.getPassword())) {
+            throw new BusinessException(ErrorCode.PASSWORD_MISMATCH);
+        }
+
+        if (!request.getNewPassword().equals(request.getNewPasswordConfirm())) {
+            throw new BusinessException(ErrorCode.PASSWORD_CONFIRM_MISMATCH);
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), member.getPassword())) {
+            throw new BusinessException(ErrorCode.PASSWORD_SAME_AS_CURRENT);
+        }
+
+        if (!request.getNewPassword().matches(PASSWORD_PATTERN)) {
+            throw new BusinessException(ErrorCode.PASSWORD_INVALID_FORMAT);
+        }
+
+        member.changePassword(passwordEncoder.encode(request.getNewPassword()));
     }
 
     @Transactional

@@ -54,3 +54,15 @@ export async function deleteMyAddress(id: number) {
   );
   return res.data;
 }
+
+export async function changePassword(data: {
+  currentPassword: string;
+  newPassword: string;
+  newPasswordConfirm: string;
+}) {
+  const res = await api.patch<ApiResponse<null>>(
+    "/api/users/me/password",
+    data
+  );
+  return res.data;
+}

@@ -9,6 +9,7 @@ import {
   ClipboardList,
   Users,
   Ticket,
+  Image,
   ExternalLink,
   LogOut,
 } from "lucide-react";
@@ -22,6 +23,7 @@ const menuItems = [
   { href: "/admin/orders", label: "주문관리", icon: ClipboardList, exact: false },
   { href: "/admin/users", label: "회원관리", icon: Users, exact: false },
   { href: "/admin/coupons", label: "쿠폰관리", icon: Ticket, exact: false },
+  { href: "/admin/banners", label: "배너관리", icon: Image, exact: false },
 ];
 
 export default function AdminLayout({

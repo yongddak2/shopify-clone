@@ -3,6 +3,7 @@ package com.shopify.backend.domain.order.service;
 import com.shopify.backend.domain.order.dto.PaymentConfirmRequest;
 import com.shopify.backend.domain.order.dto.PaymentResponse;
 import com.shopify.backend.domain.order.entity.*;
+import com.shopify.backend.domain.order.repository.OrderItemRepository;
 import com.shopify.backend.domain.order.repository.OrderRepository;
 import com.shopify.backend.domain.order.repository.PaymentRepository;
 import com.shopify.backend.global.config.TossPaymentsProperties;
@@ -16,6 +17,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -25,6 +27,7 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
     private final RestTemplate tossRestTemplate;
     private final TossPaymentsProperties tossProperties;
 
@@ -73,6 +76,12 @@ public class PaymentService {
 
         // 8. 주문 상태를 PAID로 변경
         order.updateStatus(OrderStatus.PAID);
+
+        // 9. 판매량 증가
+        List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
+        for (OrderItem orderItem : orderItems) {
+            orderItem.getProduct().increaseSalesCount(orderItem.getQuantity());
+        }
 
         return PaymentResponse.from(payment);
     }

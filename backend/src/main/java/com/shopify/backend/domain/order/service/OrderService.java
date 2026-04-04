@@ -159,11 +159,14 @@ public class OrderService {
             throw new BusinessException(ErrorCode.ORDER_CANCEL_NOT_ALLOWED);
         }
 
-        // 재고 복구
+        // 재고 복구 + 판매량 감소
         List<OrderItem> orderItems = orderItemRepository.findByOrderId(orderId);
         for (OrderItem orderItem : orderItems) {
             if (orderItem.getOptionValue() != null) {
                 orderItem.getOptionValue().increaseStock(orderItem.getQuantity());
+            }
+            if (order.getStatus() == OrderStatus.PAID) {
+                orderItem.getProduct().decreaseSalesCount(orderItem.getQuantity());
             }
         }
 

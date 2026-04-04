@@ -9,6 +9,7 @@ import type {
   AdminCoupon,
   CreateCouponRequest,
   Category,
+  Banner,
 } from "@/types";
 
 // 이미지 업로드/삭제
@@ -106,5 +107,55 @@ export async function createCoupon(data: CreateCouponRequest) {
     "/api/admin/coupons",
     data
   );
+  return res.data;
+}
+
+// 배너 관리
+export async function getBanners() {
+  const res = await api.get<ApiResponse<Banner[]>>("/api/admin/banners");
+  return res.data;
+}
+
+export async function createBanner(imageUrl: string, sortOrder: number) {
+  const res = await api.post<ApiResponse<Banner>>("/api/admin/banners", {
+    imageUrl,
+    sortOrder,
+  });
+  return res.data;
+}
+
+export async function updateBannerOrder(
+  orders: { id: number; sortOrder: number }[]
+) {
+  const res = await api.put<ApiResponse<null>>("/api/admin/banners/order", orders);
+  return res.data;
+}
+
+export async function toggleBannerActive(id: number) {
+  const res = await api.patch<ApiResponse<Banner>>(
+    `/api/admin/banners/${id}/toggle`
+  );
+  return res.data;
+}
+
+export async function deleteBanner(id: number) {
+  const res = await api.delete<ApiResponse<null>>(`/api/admin/banners/${id}`);
+  return res.data;
+}
+
+// 배너 이미지 업로드 (directory: banners)
+export async function uploadBannerImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("directory", "banners");
+  const res = await api.post<ApiResponse<string>>("/api/admin/images", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data.data;
+}
+
+// 공개 배너 조회
+export async function getPublicBanners() {
+  const res = await api.get<ApiResponse<Banner[]>>("/api/banners");
   return res.data;
 }

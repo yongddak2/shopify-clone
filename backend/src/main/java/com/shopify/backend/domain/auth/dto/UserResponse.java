@@ -19,6 +19,7 @@ public class UserResponse {
     private final Role role;
     private final Provider provider;
     private final LocalDateTime createdAt;
+    private final LocalDateTime passwordChangedAt;
 
     public static UserResponse from(Member member) {
         return UserResponse.builder()
@@ -29,6 +30,7 @@ public class UserResponse {
                 .role(member.getRole())
                 .provider(member.getProvider())
                 .createdAt(member.getCreatedAt())
+                .passwordChangedAt(member.getPasswordChangedAt())
                 .build();
     }
 }

@@ -17,6 +17,7 @@ export interface User {
   name: string;
   phone: string;
   role: string;
+  passwordChangedAt: string | null;
 }
 
 // 상품
@@ -278,6 +279,16 @@ export interface AdminCoupon {
   issuedQuantity: number;
   startDate: string;
   endDate: string;
+  createdAt: string;
+}
+
+// 배너
+export interface Banner {
+  id: number;
+  imageUrl: string;
+  sortOrder: number;
+  active: boolean;
+  linkUrl: string | null;
   createdAt: string;
 }
 

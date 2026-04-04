@@ -28,10 +28,16 @@ public class AuthService {
     private final JwtProperties jwtProperties;
     private final StringRedisTemplate redisTemplate;
 
+    private static final String PASSWORD_PATTERN = "^(?=.*[a-zA-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?]).{8,}$";
+
     @Transactional
     public MemberResponse signup(SignupRequest request) {
         if (memberRepository.existsByEmail(request.getEmail())) {
             throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+        }
+
+        if (!request.getPassword().matches(PASSWORD_PATTERN)) {
+            throw new BusinessException(ErrorCode.PASSWORD_INVALID_FORMAT);
         }
 
         Member member = Member.builder()

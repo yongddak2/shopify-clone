@@ -59,6 +59,7 @@ export default function Header() {
     await logout();
     setLogoutModalOpen(false);
     setSideOpen(false);
+    window.location.href = "/";
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {

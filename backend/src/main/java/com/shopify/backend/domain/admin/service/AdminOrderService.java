@@ -4,6 +4,7 @@ import com.shopify.backend.domain.admin.dto.AdminOrderResponse;
 import com.shopify.backend.domain.admin.dto.AdminOrderStatusUpdateRequest;
 import com.shopify.backend.domain.order.entity.Order;
 import com.shopify.backend.domain.order.entity.OrderItem;
+import com.shopify.backend.domain.order.entity.OrderStatus;
 import com.shopify.backend.domain.order.repository.OrderItemRepository;
 import com.shopify.backend.domain.order.repository.OrderRepository;
 import com.shopify.backend.global.exception.BusinessException;
@@ -39,6 +40,22 @@ public class AdminOrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
-        order.updateStatus(request.getStatus());
+        OrderStatus oldStatus = order.getStatus();
+        OrderStatus newStatus = request.getStatus();
+
+        // PAID 이상 상태에서 CANCELLED/REFUNDED로 변경 시 판매량 감소
+        boolean wasPaid = oldStatus != OrderStatus.PENDING
+                && oldStatus != OrderStatus.CANCELLED
+                && oldStatus != OrderStatus.REFUNDED;
+        boolean isCancelOrRefund = newStatus == OrderStatus.CANCELLED || newStatus == OrderStatus.REFUNDED;
+
+        if (wasPaid && isCancelOrRefund) {
+            List<OrderItem> orderItems = orderItemRepository.findByOrderId(orderId);
+            for (OrderItem orderItem : orderItems) {
+                orderItem.getProduct().decreaseSalesCount(orderItem.getQuantity());
+            }
+        }
+
+        order.updateStatus(newStatus);
     }
 }

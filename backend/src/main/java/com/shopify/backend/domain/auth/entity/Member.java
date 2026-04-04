@@ -50,6 +50,8 @@ public class Member {
 
     private LocalDateTime deletedAt;
 
+    private LocalDateTime passwordChangedAt;
+
     @Builder
     public Member(String email, String password, String name, String phone,
                   Role role, Provider provider, String providerId) {
@@ -65,6 +67,11 @@ public class Member {
     public void update(String name, String phone) {
         if (name != null) this.name = name;
         if (phone != null) this.phone = phone;
+    }
+
+    public void changePassword(String encodedPassword) {
+        this.password = encodedPassword;
+        this.passwordChangedAt = LocalDateTime.now();
     }
 
     public void softDelete() {

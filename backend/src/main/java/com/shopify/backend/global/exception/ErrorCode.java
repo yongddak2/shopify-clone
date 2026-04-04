@@ -62,10 +62,22 @@ public enum ErrorCode {
     // Wishlist
     WISHLIST_NOT_FOUND(HttpStatus.NOT_FOUND, "찜 목록에서 찾을 수 없습니다."),
 
+    // Banner
+    BANNER_NOT_FOUND(HttpStatus.NOT_FOUND, "배너를 찾을 수 없습니다."),
+    BANNER_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "배너는 최대 5개까지 등록 가능합니다."),
+
     // File
     INVALID_FILE_TYPE(HttpStatus.BAD_REQUEST, "허용되지 않는 파일 형식입니다."),
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드에 실패했습니다."),
     FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "파일 크기는 5MB 이하여야 합니다."),
+
+    // Password
+    PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "현재 비밀번호가 일치하지 않습니다."),
+    PASSWORD_CONFIRM_MISMATCH(HttpStatus.BAD_REQUEST, "새 비밀번호가 일치하지 않습니다."),
+    PASSWORD_SAME_AS_CURRENT(HttpStatus.BAD_REQUEST, "현재 비밀번호와 동일합니다."),
+    PASSWORD_INVALID_FORMAT(HttpStatus.BAD_REQUEST, "비밀번호는 8자 이상, 영문+숫자+특수문자를 포함해야 합니다."),
+    SOCIAL_LOGIN_PASSWORD_CHANGE(HttpStatus.BAD_REQUEST, "소셜 로그인 사용자는 비밀번호를 변경할 수 없습니다."),
+    PASSWORD_CHANGE_TOO_FREQUENT(HttpStatus.BAD_REQUEST, "비밀번호는 30일에 한 번만 변경할 수 있습니다."),
 
     // Auth
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다."),

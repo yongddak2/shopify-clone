@@ -33,8 +33,8 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Public - Products & Categories
-                        .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**", "/api/categories").permitAll()
+                        // Public - Products, Categories & Banners
+                        .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**", "/api/categories", "/api/banners").permitAll()
 
                         // Public - Auth
                         .requestMatchers(HttpMethod.POST,

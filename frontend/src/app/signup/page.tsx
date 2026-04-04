@@ -6,6 +6,13 @@ import Link from "next/link";
 import { signup } from "@/lib/auth";
 import Button from "@/components/common/Button";
 
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+}
+
 interface FormErrors {
   email?: string;
   password?: string;
@@ -28,7 +35,11 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
 
   const updateField = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    if (field === "phone") {
+      setForm((prev) => ({ ...prev, phone: formatPhone(value) }));
+    } else {
+      setForm((prev) => ({ ...prev, [field]: value }));
+    }
     setErrors((prev) => ({ ...prev, [field]: undefined }));
     setServerError("");
   };
@@ -77,7 +88,7 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      await signup(form.email, form.password, form.name, form.phone);
+      await signup(form.email, form.password, form.name, form.phone.replace(/\D/g, ""));
       alert("회원가입이 완료되었습니다.");
       router.push("/login");
     } catch (err: unknown) {
@@ -145,6 +156,7 @@ export default function SignupPage() {
                 type={field.type}
                 value={form[field.key]}
                 onChange={(e) => updateField(field.key, e.target.value)}
+                maxLength={field.key === "phone" ? 13 : undefined}
                 className="w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors placeholder-[var(--text-dim)]"
                 placeholder={field.placeholder}
               />

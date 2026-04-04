@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { getMyInfo } from "@/lib/user";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getMyInfo, changePassword } from "@/lib/user";
 import { logout } from "@/lib/auth";
+import { Eye, EyeOff } from "lucide-react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 import type { ApiResponse, User } from "@/types";
@@ -21,9 +22,19 @@ const inputClass =
 
 export default function MypageProfilePage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { isLoggedIn, setUser } = useAuthStore();
   const [withdrawModal, setWithdrawModal] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+  const [pwError, setPwError] = useState("");
+  const [pwSuccess, setPwSuccess] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["myInfo"],
@@ -41,7 +52,7 @@ export default function MypageProfilePage() {
   useEffect(() => {
     if (user) {
       setName(user.name);
-      setPhone(user.phone ?? "");
+      setPhone(formatPhone(user.phone ?? ""));
     }
   }, [user]);
 
@@ -75,7 +86,51 @@ export default function MypageProfilePage() {
       return;
     }
 
-    updateMutation.mutate({ name: name.trim(), phone: phone.trim() });
+    updateMutation.mutate({ name: name.trim(), phone: phone.replace(/\D/g, "") });
+  };
+
+  const pwMutation = useMutation({
+    mutationFn: changePassword,
+    onSuccess: () => {
+      setPwSuccess("비밀번호가 변경되었습니다.");
+      setPwError("");
+      setCurrentPassword("");
+      setNewPassword("");
+      setNewPasswordConfirm("");
+      queryClient.invalidateQueries({ queryKey: ["myInfo"] });
+    },
+    onError: (err: any) => {
+      const msg =
+        err?.response?.data?.message ?? "비밀번호 변경에 실패했습니다.";
+      setPwError(msg);
+      setPwSuccess("");
+    },
+  });
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwError("");
+    setPwSuccess("");
+
+    if (!currentPassword || !newPassword || !newPasswordConfirm) {
+      setPwError("모든 항목을 입력해주세요.");
+      return;
+    }
+    if (
+      newPassword.length < 8 ||
+      !/[a-zA-Z]/.test(newPassword) ||
+      !/\d/.test(newPassword) ||
+      !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword)
+    ) {
+      setPwError("비밀번호는 8자 이상, 영문+숫자+특수문자를 포함해야 합니다.");
+      return;
+    }
+    if (newPassword !== newPasswordConfirm) {
+      setPwError("새 비밀번호가 일치하지 않습니다.");
+      return;
+    }
+
+    pwMutation.mutate({ currentPassword, newPassword, newPasswordConfirm });
   };
 
   if (isLoading) {
@@ -161,11 +216,132 @@ export default function MypageProfilePage() {
         <h3 className="text-sm font-medium tracking-wider text-[var(--text-primary)] mb-4">
           비밀번호 변경
         </h3>
-        <div className="border border-dashed border-[var(--border-color)] p-6 text-center">
-          <p className="text-sm text-[var(--text-muted)]">
-            준비 중인 기능입니다.
+
+        {/* 마지막 변경일 + 안내 문구 */}
+        <div className="mb-6 text-xs text-[var(--text-muted)] space-y-1">
+          <p>
+            마지막 변경일:{" "}
+            {user?.passwordChangedAt
+              ? new Date(user.passwordChangedAt).toLocaleDateString("ko-KR", {
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                }).replace(/\. /g, ".").replace(/\.$/, "")
+              : "변경 이력 없음"}
           </p>
+          <p>비밀번호는 30일에 한 번 변경할 수 있습니다.</p>
         </div>
+
+        <form onSubmit={handlePasswordSubmit} noValidate className="space-y-4">
+          <div>
+            <label className="block text-xs text-[var(--text-muted)] mb-1">
+              현재 비밀번호
+            </label>
+            <div className="relative">
+              <input
+                type={showCurrent ? "text" : "password"}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className={inputClass}
+                placeholder="현재 비밀번호를 입력하세요"
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowCurrent(!showCurrent)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+              >
+                {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs text-[var(--text-muted)] mb-1">
+              새 비밀번호
+            </label>
+            <div className="relative">
+              <input
+                type={showNew ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className={inputClass}
+                placeholder="영문, 숫자, 특수문자 포함 8자 이상"
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowNew(!showNew)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+              >
+                {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {newPassword && (
+              <div className="mt-1.5 space-y-0.5">
+                <p className={`text-xs ${newPassword.length >= 8 ? "text-[var(--badge-green-text)]" : "text-[var(--text-dim)]"}`}>
+                  {newPassword.length >= 8 ? "\u2713" : "\u2022"} 8자 이상
+                </p>
+                <p className={`text-xs ${/[a-zA-Z]/.test(newPassword) ? "text-[var(--badge-green-text)]" : "text-[var(--text-dim)]"}`}>
+                  {/[a-zA-Z]/.test(newPassword) ? "\u2713" : "\u2022"} 영문 포함
+                </p>
+                <p className={`text-xs ${/\d/.test(newPassword) ? "text-[var(--badge-green-text)]" : "text-[var(--text-dim)]"}`}>
+                  {/\d/.test(newPassword) ? "\u2713" : "\u2022"} 숫자 포함
+                </p>
+                <p className={`text-xs ${/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? "text-[var(--badge-green-text)]" : "text-[var(--text-dim)]"}`}>
+                  {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? "\u2713" : "\u2022"} 특수문자 포함
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs text-[var(--text-muted)] mb-1">
+              새 비밀번호 확인
+            </label>
+            <div className="relative">
+              <input
+                type={showConfirm ? "text" : "password"}
+                value={newPasswordConfirm}
+                onChange={(e) => setNewPasswordConfirm(e.target.value)}
+                className={inputClass}
+                placeholder="새 비밀번호를 다시 입력하세요"
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowConfirm(!showConfirm)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+              >
+                {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {newPassword && newPasswordConfirm && (
+              <p className={`text-xs mt-1 ${newPassword === newPasswordConfirm ? "text-[var(--badge-green-text)]" : "text-red-400"}`}>
+                {newPassword === newPasswordConfirm
+                  ? "\u2713 비밀번호가 일치합니다"
+                  : "\u2717 비밀번호가 일치하지 않습니다"}
+              </p>
+            )}
+          </div>
+
+          <div className="min-h-[1.5rem]">
+            {pwError && <p className="text-sm text-red-400">{pwError}</p>}
+            {pwSuccess && (
+              <p className="text-sm text-[var(--badge-green-text)]">
+                {pwSuccess}
+              </p>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={pwMutation.isPending}
+            className="w-full py-3 text-sm bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] transition-colors"
+          >
+            {pwMutation.isPending ? "변경 중..." : "비밀번호 변경"}
+          </button>
+        </form>
       </div>
 
       {/* 회원 탈퇴 */}

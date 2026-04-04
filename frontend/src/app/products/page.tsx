@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProducts, getCategories } from "@/lib/product";
 import { getWishlists, toggleWishlist } from "@/lib/wishlist";
@@ -22,15 +22,21 @@ const SORT_OPTIONS = [
   { value: "createdAt,desc", label: "최신순" },
   { value: "basePrice,asc", label: "가격 낮은순" },
   { value: "basePrice,desc", label: "가격 높은순" },
+  { value: "sales", label: "판매량순" },
 ];
 
 export default function ProductsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { isLoggedIn } = useAuthStore();
   const [page, setPage] = useState(0);
   const [categoryId, setCategoryId] = useState<number | undefined>(undefined);
-  const [sort, setSort] = useState("createdAt,desc");
+  const [sort, setSort] = useState(() => {
+    const urlSort = searchParams.get("sort");
+    if (urlSort && SORT_OPTIONS.some((o) => o.value === urlSort)) return urlSort;
+    return "createdAt,desc";
+  });
 
   const { data: categoriesData } = useQuery({
     queryKey: ["categories"],

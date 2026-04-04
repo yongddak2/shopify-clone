@@ -35,6 +35,7 @@ public class ProductService {
         Sort sorting = switch (sort) {
             case "price_asc" -> Sort.by(Sort.Direction.ASC, "basePrice");
             case "price_desc" -> Sort.by(Sort.Direction.DESC, "basePrice");
+            case "sales" -> Sort.by(Sort.Order.desc("salesCount"), Sort.Order.desc("createdAt"));
             default -> Sort.by(Sort.Direction.DESC, "createdAt");
         };
 
@@ -59,6 +60,7 @@ public class ProductService {
             case "price_low" -> Sort.by(Sort.Direction.ASC, "basePrice");
             case "price_high" -> Sort.by(Sort.Direction.DESC, "basePrice");
             case "popular" -> Sort.by(Sort.Direction.DESC, "viewCount");
+            case "sales" -> Sort.by(Sort.Order.desc("salesCount"), Sort.Order.desc("createdAt"));
             default -> Sort.by(Sort.Direction.DESC, "createdAt");
         };
 

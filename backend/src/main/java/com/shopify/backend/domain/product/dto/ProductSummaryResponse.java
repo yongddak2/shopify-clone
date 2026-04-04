@@ -19,6 +19,7 @@ public class ProductSummaryResponse {
     private final BigDecimal discountRate;
     private final String thumbnailUrl;
     private final ProductStatus status;
+    private final int salesCount;
 
     public static ProductSummaryResponse from(Product product) {
         String thumbnailUrl = product.getImages().stream()
@@ -36,6 +37,7 @@ public class ProductSummaryResponse {
                 .discountRate(product.getDiscountRate())
                 .thumbnailUrl(thumbnailUrl)
                 .status(product.getStatus())
+                .salesCount(product.getSalesCount())
                 .build();
     }
 }

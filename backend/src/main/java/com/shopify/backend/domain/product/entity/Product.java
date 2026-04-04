@@ -46,6 +46,9 @@ public class Product {
 
     private int viewCount;
 
+    @Column(nullable = false)
+    private int salesCount;
+
     @OneToMany(mappedBy = "product")
     private List<ProductImage> images = new ArrayList<>();
 
@@ -91,5 +94,13 @@ public class Product {
 
     public void incrementViewCount() {
         this.viewCount++;
+    }
+
+    public void increaseSalesCount(int quantity) {
+        this.salesCount += quantity;
+    }
+
+    public void decreaseSalesCount(int quantity) {
+        this.salesCount = Math.max(0, this.salesCount - quantity);
     }
 }
