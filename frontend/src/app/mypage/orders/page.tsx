@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getOrders, cancelOrder } from "@/lib/order";
+import { getMyReviews } from "@/lib/review";
 import { useAuthStore } from "@/stores/authStore";
-import type { OrderResponse } from "@/types";
+import type { OrderResponse, Review } from "@/types";
 
 function formatPrice(price: number) {
   return price.toLocaleString("ko-KR");
@@ -120,6 +121,17 @@ export default function MypageOrdersPage() {
     queryFn: () => getOrders(page, 100),
     enabled: isLoggedIn(),
   });
+
+  const { data: myReviewsData } = useQuery({
+    queryKey: ["myReviews"],
+    queryFn: getMyReviews,
+    enabled: isLoggedIn(),
+  });
+
+  const myReviews: Review[] = myReviewsData?.data ?? [];
+  const reviewedOrderItemIds = new Set(
+    myReviews.filter((r) => r.orderItemId).map((r) => r.orderItemId!)
+  );
 
   const cancelMutation = useMutation({
     mutationFn: (id: number) => cancelOrder(id),
@@ -280,43 +292,49 @@ export default function MypageOrdersPage() {
 
                 {/* 주문 상품 목록 */}
                 <div className="divide-y divide-[var(--border-color)]">
-                  {(order.orderItems ?? []).map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-4 px-5 py-4"
-                    >
-                      <div className="w-[60px] h-[60px] bg-[var(--card-bg)] flex-shrink-0 overflow-hidden">
-                        {item.thumbnailUrl ? (
-                          <img
-                            src={item.thumbnailUrl}
-                            alt={item.productNameSnapshot}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-[var(--section-bg)]" />
-                        )}
+                  {(order.orderItems ?? []).map((item) => {
+                    const hasReview = reviewedOrderItemIds.has(item.id);
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-4 px-5 py-4"
+                      >
+                        <div className="w-[60px] h-[60px] bg-[var(--card-bg)] flex-shrink-0 overflow-hidden">
+                          {item.thumbnailUrl ? (
+                            <img
+                              src={item.thumbnailUrl}
+                              alt={item.productNameSnapshot}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-[var(--section-bg)]" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <Link
+                            href={`/products/${item.productId}`}
+                            className="text-sm text-[var(--text-secondary)] truncate block hover:underline cursor-pointer"
+                          >
+                            {item.productNameSnapshot}
+                          </Link>
+                          <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                            {item.optionInfoSnapshot} / {item.quantity}개
+                          </p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm text-[var(--text-primary)]">
+                            {formatPrice(item.subtotal)}원
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-[var(--text-secondary)] truncate">
-                          {item.productNameSnapshot}
-                        </p>
-                        <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                          {item.optionInfoSnapshot} / {item.quantity}개
-                        </p>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-sm text-[var(--text-primary)]">
-                          {formatPrice(item.subtotal)}원
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* 주문 푸터: 합계 + 액션 */}
                 <div className="flex items-center justify-between px-5 py-3 border-t border-[var(--border-color)] bg-[var(--card-bg)]">
                   <span className="text-sm font-medium text-[var(--text-primary)]">
-                    {formatPrice(order.finalAmount)}원
+                    총 {formatPrice(order.finalAmount)}원
                   </span>
                   <div className="flex gap-2">
                     {canCancel && (
@@ -357,14 +375,24 @@ export default function MypageOrdersPage() {
                         </button>
                       </>
                     )}
-                    {isDelivered && confirmedIds.has(order.id) && (
-                      <button
-                        onClick={() => router.push("/mypage/reviews")}
-                        className="px-3 py-1.5 text-xs bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] transition-colors"
-                      >
-                        리뷰 작성
-                      </button>
-                    )}
+                    {isDelivered && confirmedIds.has(order.id) && (() => {
+                      const allReviewed = (order.orderItems ?? []).length > 0 &&
+                        (order.orderItems ?? []).every(
+                          (item) => reviewedOrderItemIds.has(item.id)
+                        );
+                      return allReviewed ? (
+                        <span className="px-3 py-1.5 text-xs text-[var(--text-muted)]">
+                          리뷰 작성완료
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => router.push("/mypage/reviews")}
+                          className="px-3 py-1.5 text-xs bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] transition-colors"
+                        >
+                          리뷰 작성
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

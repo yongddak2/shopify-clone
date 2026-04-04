@@ -56,6 +56,7 @@ public enum ErrorCode {
     REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "리뷰를 찾을 수 없습니다."),
     REVIEW_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "이미 해당 주문 상품에 리뷰를 작성했습니다."),
     REVIEW_NOT_OWNER(HttpStatus.FORBIDDEN, "본인의 리뷰만 삭제할 수 있습니다."),
+    REVIEW_IMAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "리뷰 이미지는 최대 10장까지 가능합니다."),
     ORDER_ITEM_NOT_DELIVERED(HttpStatus.BAD_REQUEST, "배송 완료된 상품만 리뷰를 작성할 수 있습니다."),
 
     // Wishlist

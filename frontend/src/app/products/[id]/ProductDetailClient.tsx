@@ -10,6 +10,7 @@ import { useAuthStore } from "@/stores/authStore";
 import Button from "@/components/common/Button";
 import { Heart } from "lucide-react";
 import type { ProductOptionValue } from "@/types";
+import ReviewSection from "./ReviewSection";
 
 function formatPrice(price: number) {
   return price.toLocaleString("ko-KR");
@@ -324,6 +325,9 @@ export default function ProductDetailClient({ id }: { id: string }) {
           )}
         </div>
       </div>
+      {/* 리뷰 섹션 */}
+      <ReviewSection productId={id} />
+
       {/* 장바구니 담기 완료 모달 */}
       {cartModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">

@@ -150,11 +150,27 @@ export interface MemberCoupon {
 // 리뷰
 export interface Review {
   id: number;
+  orderItemId?: number;
   memberName: string;
   rating: number;
   content: string;
+  optionInfo: string | null;
   images: string[];
+  likeCount: number;
+  liked: boolean;
   createdAt: string;
+}
+
+export interface ReviewPage {
+  content: Review[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+}
+
+export interface ReviewLikeResponse {
+  liked: boolean;
+  likeCount: number;
 }
 
 // 배송지

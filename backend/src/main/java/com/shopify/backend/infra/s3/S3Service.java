@@ -27,9 +27,13 @@ public class S3Service {
     private String region;
 
     public String uploadFile(MultipartFile file) {
+        return uploadFile(file, "products");
+    }
+
+    public String uploadFile(MultipartFile file, String directory) {
         String originalFilename = file.getOriginalFilename();
         String extension = extractExtension(originalFilename);
-        String key = "products/" + UUID.randomUUID() + "." + extension;
+        String key = directory + "/" + UUID.randomUUID() + "." + extension;
 
         try {
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
