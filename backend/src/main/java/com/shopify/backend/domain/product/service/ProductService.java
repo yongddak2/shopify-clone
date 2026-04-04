@@ -3,6 +3,7 @@ package com.shopify.backend.domain.product.service;
 import com.shopify.backend.domain.product.dto.CategoryResponse;
 import com.shopify.backend.domain.product.dto.ProductDetailResponse;
 import com.shopify.backend.domain.product.dto.ProductSummaryResponse;
+import com.shopify.backend.domain.product.entity.Category;
 import com.shopify.backend.domain.product.entity.Product;
 import com.shopify.backend.domain.product.entity.ProductStatus;
 import com.shopify.backend.domain.product.repository.CategoryRepository;
@@ -17,6 +18,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -46,6 +50,43 @@ public class ProductService {
 
         product.incrementViewCount();
         return ProductDetailResponse.from(product);
+    }
+
+    public Page<ProductSummaryResponse> searchProducts(String keyword, Long categoryId,
+                                                       BigDecimal minPrice, BigDecimal maxPrice,
+                                                       int page, int size, String sort) {
+        Sort sorting = switch (sort) {
+            case "price_low" -> Sort.by(Sort.Direction.ASC, "basePrice");
+            case "price_high" -> Sort.by(Sort.Direction.DESC, "basePrice");
+            case "popular" -> Sort.by(Sort.Direction.DESC, "viewCount");
+            default -> Sort.by(Sort.Direction.DESC, "createdAt");
+        };
+
+        Pageable pageable = PageRequest.of(page, size, sorting);
+
+        boolean filterCategory = categoryId != null;
+        List<Long> categoryIds = filterCategory
+                ? collectCategoryIds(categoryId)
+                : Collections.emptyList();
+
+        return productRepository.searchProducts(keyword, filterCategory, categoryIds, minPrice, maxPrice, pageable)
+                .map(ProductSummaryResponse::from);
+    }
+
+    private List<Long> collectCategoryIds(Long categoryId) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+
+        List<Long> ids = new ArrayList<>();
+        collectDescendantIds(category, ids);
+        return ids;
+    }
+
+    private void collectDescendantIds(Category category, List<Long> ids) {
+        ids.add(category.getId());
+        for (Category child : category.getChildren()) {
+            collectDescendantIds(child, ids);
+        }
     }
 
     public List<CategoryResponse> getCategories() {

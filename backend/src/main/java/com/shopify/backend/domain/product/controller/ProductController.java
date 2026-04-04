@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -26,6 +27,22 @@ public class ProductController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "latest") String sort) {
         Page<ProductSummaryResponse> response = productService.getProducts(page, size, sort);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/api/products/search")
+    public ResponseEntity<ApiResponse<Page<ProductSummaryResponse>>> searchProducts(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long category,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "latest") String sort) {
+        if (keyword == null || keyword.isBlank()) {
+            return ResponseEntity.ok(ApiResponse.success(Page.empty()));
+        }
+        Page<ProductSummaryResponse> response = productService.searchProducts(keyword, category, minPrice, maxPrice, page, size, sort);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

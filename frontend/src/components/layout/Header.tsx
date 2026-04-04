@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Search, ShoppingBag, User, Menu, X } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { logout } from "@/lib/auth";
@@ -22,6 +23,7 @@ const sideMenuLinks = [
 ];
 
 export default function Header() {
+  const router = useRouter();
   const [sideOpen, setSideOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
@@ -61,7 +63,11 @@ export default function Header() {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("검색어:", searchQuery);
+    const trimmed = searchQuery.trim();
+    if (!trimmed) return;
+    router.push(`/search?keyword=${encodeURIComponent(trimmed)}`);
+    setSearchOpen(false);
+    setSearchQuery("");
   };
 
   const closeSearch = () => {
