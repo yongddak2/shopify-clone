@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createCoupon } from "@/lib/admin";
 
 export default function NewCouponPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [discountType, setDiscountType] = useState("FIXED");
   const [discountValue, setDiscountValue] = useState("");
@@ -19,7 +20,10 @@ export default function NewCouponPage() {
 
   const mutation = useMutation({
     mutationFn: createCoupon,
-    onSuccess: () => router.push("/admin/coupons"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "coupons"] });
+      router.push("/admin/coupons");
+    },
     onError: () => setError("쿠폰 생성에 실패했습니다"),
   });
 
@@ -82,12 +86,18 @@ export default function NewCouponPage() {
             <label className="block text-xs text-[var(--text-muted)] mb-1">최소 주문 금액 *</label>
             <input type="number" value={minOrderAmount} onChange={(e) => setMinOrderAmount(e.target.value)} className={inputClass} />
           </div>
-          {discountType === "PERCENT" && (
-            <div>
-              <label className="block text-xs text-[var(--text-muted)] mb-1">최대 할인 금액</label>
-              <input type="number" value={maxDiscountAmount} onChange={(e) => setMaxDiscountAmount(e.target.value)} className={inputClass} />
-            </div>
-          )}
+          <div>
+            <label className="block text-xs text-[var(--text-muted)] mb-1">
+              최대 할인 금액 {discountType === "FIXED" && "(PERCENT 전용)"}
+            </label>
+            <input
+              type="number"
+              value={maxDiscountAmount}
+              onChange={(e) => setMaxDiscountAmount(e.target.value)}
+              disabled={discountType === "FIXED"}
+              className={`${inputClass} disabled:opacity-40 disabled:cursor-not-allowed`}
+            />
+          </div>
           <div>
             <label className="block text-xs text-[var(--text-muted)] mb-1">총 발급 수량 *</label>
             <input type="number" value={totalQuantity} onChange={(e) => setTotalQuantity(e.target.value)} className={inputClass} />

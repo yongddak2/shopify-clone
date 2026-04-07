@@ -35,3 +35,10 @@ export async function cancelOrder(id: number) {
   );
   return res.data;
 }
+
+export async function confirmOrder(id: number) {
+  const res = await api.post<ApiResponse<null>>(
+    `/api/orders/${id}/confirm`
+  );
+  return res.data;
+}

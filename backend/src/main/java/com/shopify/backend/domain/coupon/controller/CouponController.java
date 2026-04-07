@@ -1,6 +1,7 @@
 package com.shopify.backend.domain.coupon.controller;
 
 import com.shopify.backend.domain.coupon.dto.CouponApplyResponse;
+import com.shopify.backend.domain.coupon.dto.CouponListResponse;
 import com.shopify.backend.domain.coupon.dto.MemberCouponResponse;
 import com.shopify.backend.domain.coupon.service.CouponService;
 import com.shopify.backend.global.common.ApiResponse;
@@ -24,6 +25,13 @@ public class CouponController {
     public ResponseEntity<ApiResponse<List<MemberCouponResponse>>> getMyCoupons(Authentication authentication) {
         Long memberId = (Long) authentication.getPrincipal();
         List<MemberCouponResponse> response = couponService.getMyCoupons(memberId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<CouponListResponse>>> getAvailableCoupons(Authentication authentication) {
+        Long memberId = (Long) authentication.getPrincipal();
+        List<CouponListResponse> response = couponService.getAvailableCoupons(memberId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

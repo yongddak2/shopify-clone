@@ -110,6 +110,28 @@ export async function createCoupon(data: CreateCouponRequest) {
   return res.data;
 }
 
+export interface UpdateCouponRequest {
+  name: string;
+  totalQuantity: number;
+  startDate: string;
+  endDate: string;
+}
+
+export async function updateCoupon(id: number, data: UpdateCouponRequest) {
+  const res = await api.patch<ApiResponse<AdminCoupon>>(
+    `/api/admin/coupons/${id}`,
+    data
+  );
+  return res.data;
+}
+
+export async function deleteCoupon(id: number) {
+  const res = await api.delete<ApiResponse<null>>(
+    `/api/admin/coupons/${id}`
+  );
+  return res.data;
+}
+
 // 배너 관리
 export async function getBanners() {
   const res = await api.get<ApiResponse<Banner[]>>("/api/admin/banners");

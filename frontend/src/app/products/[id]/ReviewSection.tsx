@@ -250,7 +250,7 @@ function ReviewCard({ review }: { review: Review }) {
       )}
 
       {review.content && (
-        <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-3">
+        <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-3 whitespace-pre-wrap">
           {review.content}
         </p>
       )}

@@ -58,4 +58,13 @@ public class OrderController {
         orderService.cancelOrder(memberId, id);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
+
+    @PostMapping("/{id}/confirm")
+    public ResponseEntity<ApiResponse<Void>> confirmOrder(
+            Authentication authentication,
+            @PathVariable Long id) {
+        Long memberId = (Long) authentication.getPrincipal();
+        orderService.confirmOrder(memberId, id);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
 }

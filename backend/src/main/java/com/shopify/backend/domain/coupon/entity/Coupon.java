@@ -70,6 +70,13 @@ public class Coupon {
         this.issuedQuantity++;
     }
 
+    public void update(String name, int totalQuantity, LocalDateTime startDate, LocalDateTime endDate) {
+        this.name = name;
+        this.totalQuantity = totalQuantity;
+        this.startDate = startDate;
+        this.endDate = endDate;
+    }
+
     public BigDecimal calculateDiscount(BigDecimal orderAmount) {
         BigDecimal discount;
         if (discountType == DiscountType.FIXED) {

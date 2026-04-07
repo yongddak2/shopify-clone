@@ -4,9 +4,6 @@ import com.shopify.backend.domain.admin.dto.*;
 import com.shopify.backend.domain.admin.service.AdminMemberService;
 import com.shopify.backend.domain.admin.service.AdminOrderService;
 import com.shopify.backend.domain.admin.service.AdminProductService;
-import com.shopify.backend.domain.coupon.dto.CouponCreateRequest;
-import com.shopify.backend.domain.coupon.dto.CouponResponse;
-import com.shopify.backend.domain.coupon.service.CouponService;
 import com.shopify.backend.global.common.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -25,7 +22,6 @@ public class AdminController {
     private final AdminProductService adminProductService;
     private final AdminOrderService adminOrderService;
     private final AdminMemberService adminMemberService;
-    private final CouponService couponService;
 
     // ── 상품 관리 ──
 
@@ -87,21 +83,4 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // ── 쿠폰 관리 ──
-
-    @GetMapping("/coupons")
-    public ResponseEntity<ApiResponse<Page<CouponResponse>>> getCoupons(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Page<CouponResponse> response = couponService.getAllCoupons(page, size);
-        return ResponseEntity.ok(ApiResponse.success(response));
-    }
-
-    @PostMapping("/coupons")
-    public ResponseEntity<ApiResponse<CouponResponse>> createCoupon(
-            @Valid @RequestBody CouponCreateRequest request) {
-        CouponResponse response = couponService.createCoupon(request);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("쿠폰이 생성되었습니다.", response));
-    }
 }

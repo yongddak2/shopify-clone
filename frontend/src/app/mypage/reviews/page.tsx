@@ -20,6 +20,7 @@ interface ReviewableItem {
   productNameSnapshot: string;
   optionInfoSnapshot: string;
   thumbnailUrl: string | null;
+  confirmedAt: string | null;
 }
 
 interface ReviewModalState {
@@ -351,14 +352,6 @@ export default function MypageReviewsPage() {
   const { isLoggedIn } = useAuthStore();
   const [modalState, setModalState] = useState<ReviewModalState | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Review | null>(null);
-  const [confirmedIds] = useState<Set<number>>(() => {
-    try {
-      const stored = localStorage.getItem("confirmedOrderIds");
-      return stored ? new Set<number>(JSON.parse(stored)) : new Set<number>();
-    } catch {
-      return new Set<number>();
-    }
-  });
 
   const { data: ordersData, isLoading: ordersLoading } = useQuery({
     queryKey: ["orders", 0],
@@ -399,6 +392,7 @@ export default function MypageReviewsPage() {
         productNameSnapshot: item.productNameSnapshot,
         optionInfoSnapshot: item.optionInfoSnapshot,
         thumbnailUrl: (item as OrderItemResponse).thumbnailUrl ?? null,
+        confirmedAt: order.confirmedAt,
       });
     }
   }
@@ -438,7 +432,7 @@ export default function MypageReviewsPage() {
         <div className="space-y-4">
           {reviewableItems.map((item) => {
             const existingReview = getReviewForItem(item.orderItemId);
-            const isConfirmed = confirmedIds.has(item.orderId);
+            const isConfirmed = item.confirmedAt !== null;
 
             return (
               <div

@@ -26,6 +26,7 @@ public class OrderResponse {
     private final String address;
     private final String memo;
     private final LocalDateTime createdAt;
+    private final LocalDateTime confirmedAt;
     private final List<OrderItemResponse> orderItems;
     private final String couponName;
     private final BigDecimal couponDiscountAmount;
@@ -55,6 +56,7 @@ public class OrderResponse {
                 .address(order.getAddress())
                 .memo(order.getMemo())
                 .createdAt(order.getCreatedAt())
+                .confirmedAt(order.getConfirmedAt())
                 .orderItems(orderItems)
                 .couponName(couponName)
                 .couponDiscountAmount(couponDiscountAmount)

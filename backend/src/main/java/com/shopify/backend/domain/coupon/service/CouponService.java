@@ -3,8 +3,7 @@ package com.shopify.backend.domain.coupon.service;
 import com.shopify.backend.domain.auth.entity.Member;
 import com.shopify.backend.domain.auth.repository.MemberRepository;
 import com.shopify.backend.domain.coupon.dto.CouponApplyResponse;
-import com.shopify.backend.domain.coupon.dto.CouponCreateRequest;
-import com.shopify.backend.domain.coupon.dto.CouponResponse;
+import com.shopify.backend.domain.coupon.dto.CouponListResponse;
 import com.shopify.backend.domain.coupon.dto.MemberCouponResponse;
 import com.shopify.backend.domain.coupon.entity.Coupon;
 import com.shopify.backend.domain.coupon.entity.MemberCoupon;
@@ -13,14 +12,14 @@ import com.shopify.backend.domain.coupon.repository.MemberCouponRepository;
 import com.shopify.backend.global.exception.BusinessException;
 import com.shopify.backend.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -69,6 +68,16 @@ public class CouponService {
                 .toList();
     }
 
+    public List<CouponListResponse> getAvailableCoupons(Long memberId) {
+        List<Coupon> coupons = couponRepository.findAvailableCoupons(LocalDateTime.now());
+        Set<Long> issuedCouponIds = memberCouponRepository.findByMemberId(memberId).stream()
+                .map(mc -> mc.getCoupon().getId())
+                .collect(Collectors.toSet());
+        return coupons.stream()
+                .map(c -> CouponListResponse.from(c, issuedCouponIds.contains(c.getId())))
+                .toList();
+    }
+
     public CouponApplyResponse previewCouponDiscount(Long memberId, Long memberCouponId, BigDecimal orderAmount) {
         MemberCoupon memberCoupon = memberCouponRepository.findById(memberCouponId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_COUPON_NOT_FOUND));
@@ -102,27 +111,4 @@ public class CouponService {
         memberCoupon.use();
     }
 
-    // ── Admin ──
-
-    @Transactional
-    public CouponResponse createCoupon(CouponCreateRequest request) {
-        Coupon coupon = Coupon.builder()
-                .name(request.getName())
-                .discountType(request.getDiscountType())
-                .discountValue(request.getDiscountValue())
-                .minOrderAmount(request.getMinOrderAmount())
-                .maxDiscountAmount(request.getMaxDiscountAmount())
-                .totalQuantity(request.getTotalQuantity())
-                .startDate(request.getStartDate())
-                .endDate(request.getEndDate())
-                .build();
-
-        couponRepository.save(coupon);
-        return CouponResponse.from(coupon);
-    }
-
-    public Page<CouponResponse> getAllCoupons(int page, int size) {
-        return couponRepository.findAll(PageRequest.of(page, size))
-                .map(CouponResponse::from);
-    }
 }

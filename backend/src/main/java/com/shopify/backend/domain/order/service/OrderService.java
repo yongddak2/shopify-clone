@@ -188,6 +188,22 @@ public class OrderService {
     }
 
     @Transactional
+    public void confirmOrder(Long memberId, Long orderId) {
+        Order order = orderRepository.findByIdAndMemberId(orderId, memberId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
+        if (order.getStatus() != OrderStatus.DELIVERED) {
+            throw new BusinessException(ErrorCode.ORDER_NOT_DELIVERED);
+        }
+
+        if (order.getConfirmedAt() != null) {
+            throw new BusinessException(ErrorCode.ORDER_ALREADY_CONFIRMED);
+        }
+
+        order.confirm();
+    }
+
+    @Transactional
     public void cancelOrder(Long memberId, Long orderId) {
         Order order = orderRepository.findByIdAndMemberId(orderId, memberId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));

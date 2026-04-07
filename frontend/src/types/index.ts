@@ -111,6 +111,7 @@ export interface OrderResponse {
   address: string;
   memo: string;
   createdAt: string;
+  confirmedAt: string | null;
   couponName: string | null;
   couponDiscountAmount: number | null;
   orderItems: OrderItemResponse[];
@@ -135,6 +136,21 @@ export interface WishlistItem {
   productPrice: number;
   thumbnailUrl: string | null;
   createdAt: string;
+}
+
+// 다운로드 가능한 쿠폰 (공개 쿠폰 목록)
+export interface CouponListItem {
+  id: number;
+  name: string;
+  discountType: string;
+  discountValue: number;
+  minOrderAmount: number;
+  maxDiscountAmount: number | null;
+  totalQuantity: number;
+  issuedQuantity: number;
+  startDate: string;
+  endDate: string;
+  isIssued: boolean;
 }
 
 // 내 쿠폰

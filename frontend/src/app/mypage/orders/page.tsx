@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getOrders, cancelOrder } from "@/lib/order";
+import { getOrders, cancelOrder, confirmOrder } from "@/lib/order";
 import { getMyReviews } from "@/lib/review";
 import { useAuthStore } from "@/stores/authStore";
 import type { OrderResponse, Review } from "@/types";
@@ -90,21 +90,6 @@ export default function MypageOrdersPage() {
 
   const [cancelTarget, setCancelTarget] = useState<number | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<number | null>(null);
-  const [confirmedIds, setConfirmedIds] = useState<Set<number>>(() => {
-    try {
-      const stored = localStorage.getItem("confirmedOrderIds");
-      return stored ? new Set(JSON.parse(stored)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
-
-  const confirmOrder = (id: number) => {
-    const next = new Set(confirmedIds).add(id);
-    setConfirmedIds(next);
-    localStorage.setItem("confirmedOrderIds", JSON.stringify([...next]));
-    setConfirmTarget(null);
-  };
 
   const { data, isLoading } = useQuery({
     queryKey: ["orders", page],
@@ -132,6 +117,18 @@ export default function MypageOrdersPage() {
     onError: () => {
       alert("주문 취소에 실패했습니다.");
       setCancelTarget(null);
+    },
+  });
+
+  const confirmMutation = useMutation({
+    mutationFn: (id: number) => confirmOrder(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      setConfirmTarget(null);
+    },
+    onError: () => {
+      alert("구매 확정에 실패했습니다.");
+      setConfirmTarget(null);
     },
   });
 
@@ -338,7 +335,7 @@ export default function MypageOrdersPage() {
                         </button>
                       </>
                     )}
-                    {isDelivered && !confirmedIds.has(order.id) && (
+                    {isDelivered && order.confirmedAt === null && (
                       <>
                         <button
                           onClick={() => setConfirmTarget(order.id)}
@@ -360,7 +357,7 @@ export default function MypageOrdersPage() {
                         </button>
                       </>
                     )}
-                    {isDelivered && confirmedIds.has(order.id) && (() => {
+                    {isDelivered && order.confirmedAt !== null && (() => {
                       const allReviewed = (order.orderItems ?? []).length > 0 &&
                         (order.orderItems ?? []).every(
                           (item) => reviewedOrderItemIds.has(item.id)
@@ -437,10 +434,11 @@ export default function MypageOrdersPage() {
                 취소
               </button>
               <button
-                onClick={() => confirmOrder(confirmTarget)}
+                onClick={() => confirmMutation.mutate(confirmTarget)}
+                disabled={confirmMutation.isPending}
                 className="flex-1 py-3 text-sm bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] transition-colors"
               >
-                확정
+                {confirmMutation.isPending ? "확정 중..." : "확정"}
               </button>
             </div>
           </div>

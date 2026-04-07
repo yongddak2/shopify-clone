@@ -60,6 +60,8 @@ public class Order {
     @JoinColumn(name = "member_coupon_id")
     private MemberCoupon memberCoupon;
 
+    private LocalDateTime confirmedAt;
+
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;
@@ -98,5 +100,9 @@ public class Order {
 
     public void updateStatus(OrderStatus status) {
         this.status = status;
+    }
+
+    public void confirm() {
+        this.confirmedAt = LocalDateTime.now();
     }
 }
