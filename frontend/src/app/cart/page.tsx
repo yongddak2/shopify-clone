@@ -72,6 +72,7 @@ export default function CartPage() {
   const [checkedIds, setCheckedIds] = useState<Set<number>>(new Set());
   const [initialized, setInitialized] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [orderError, setOrderError] = useState("");
 
   useEffect(() => {
     setMounted(true);
@@ -106,10 +107,12 @@ export default function CartPage() {
     }
   }, [items, initialized]);
 
-  // 삭제 후 checkedIds에서 없어진 항목 정리
+  // 삭제 후 checkedIds에서 없어진 항목 + 재고 부족 항목 정리
   useEffect(() => {
     if (initialized && items.length > 0) {
-      const validIds = new Set(items.map((i) => i.id));
+      const validIds = new Set(
+        items.filter((i) => i.quantity <= i.stockQuantity).map((i) => i.id)
+      );
       setCheckedIds((prev) => {
         const next = new Set<number>();
         prev.forEach((id) => {
@@ -120,6 +123,8 @@ export default function CartPage() {
     }
   }, [items, initialized]);
 
+  const hasOverStock = items.some((i) => i.quantity > i.stockQuantity);
+
   const toggleCheck = (id: number) => {
     setCheckedIds((prev) => {
       const next = new Set(prev);
@@ -129,13 +134,16 @@ export default function CartPage() {
     });
   };
 
-  const allChecked = items.length > 0 && items.every((i) => checkedIds.has(i.id));
+  const selectableItems = items.filter((i) => i.quantity <= i.stockQuantity);
+  const allChecked =
+    selectableItems.length > 0 &&
+    selectableItems.every((i) => checkedIds.has(i.id));
 
   const toggleAll = () => {
     if (allChecked) {
       setCheckedIds(new Set());
     } else {
-      setCheckedIds(new Set(items.map((i) => i.id)));
+      setCheckedIds(new Set(selectableItems.map((i) => i.id)));
     }
   };
 
@@ -170,6 +178,12 @@ export default function CartPage() {
 
   const handleOrder = () => {
     const ids = Array.from(checkedIds);
+    const checked = items.filter((i) => checkedIds.has(i.id));
+    if (checked.some((i) => i.quantity > i.stockQuantity)) {
+      setOrderError("재고가 부족한 상품은 주문할 수 없습니다.");
+      return;
+    }
+    setOrderError("");
     sessionStorage.setItem("orderCartItemIds", JSON.stringify(ids));
     router.push("/order");
   };
@@ -245,6 +259,13 @@ export default function CartPage() {
 
       {!isLoading && items.length > 0 && (
         <>
+          {/* 재고 부족 경고 배너 */}
+          {hasOverStock && (
+            <div className="sticky top-0 z-40 mb-6 px-4 py-3 bg-orange-500/20 border border-orange-500 text-sm text-orange-300">
+              ⚠ 재고가 부족한 상품이 있습니다. 수량을 조정하거나 해당 상품을 제거해주세요.
+            </div>
+          )}
+
           {/* 전체 선택 + 선택 삭제 */}
           <div className="flex items-center justify-between pb-4 mb-6 border-b border-[var(--border-color)]">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -270,10 +291,14 @@ export default function CartPage() {
 
           {/* 장바구니 아이템 목록 */}
           <div className="space-y-6 mb-12">
-            {groups.map((group) => (
+            {groups.map((group) => {
+              const groupOverStock = group.items.some((i) => i.quantity > i.stockQuantity);
+              return (
               <div
                 key={group.productId}
-                className="flex gap-4 py-6 border-b border-[var(--border-color)]"
+                className={`flex gap-4 py-6 border-b border-[var(--border-color)] transition-opacity ${
+                  groupOverStock ? "opacity-40 grayscale" : ""
+                }`}
               >
                 {/* 썸네일 이미지 */}
                 <div className="w-24 h-32 bg-[var(--card-bg)] flex-shrink-0 overflow-hidden">
@@ -298,79 +323,103 @@ export default function CartPage() {
                   </Link>
 
                   <div className="mt-3 space-y-3">
-                    {group.items.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-2"
-                      >
-                        {/* 체크박스 */}
-                        <input
-                          type="checkbox"
-                          checked={checkedIds.has(item.id)}
-                          onChange={() => toggleCheck(item.id)}
-                          className="w-4 h-4 accent-[var(--text-primary)] flex-shrink-0"
-                        />
+                    {group.items.map((item) => {
+                      const isOverStock = item.quantity > item.stockQuantity;
+                      const atMax = item.quantity >= item.stockQuantity;
+                      return (
+                      <div key={item.id} className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          {/* 체크박스 */}
+                          <input
+                            type="checkbox"
+                            checked={checkedIds.has(item.id) && !isOverStock}
+                            onChange={() => toggleCheck(item.id)}
+                            disabled={isOverStock}
+                            className="w-4 h-4 accent-[var(--text-primary)] flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                          />
 
-                        {/* 옵션값 */}
-                        <span className="text-xs text-[var(--text-muted)] min-w-[3rem] flex-shrink-0">
-                          {item.optionValue}
-                        </span>
-
-                        {/* 수량 조절 */}
-                        <div className="inline-flex items-center border border-[var(--border-color)]">
-                          <button
-                            onClick={() =>
-                              item.quantity > 1 &&
-                              updateMutation.mutate({
-                                id: item.id,
-                                quantity: item.quantity - 1,
-                              })
-                            }
-                            className="w-7 h-7 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                          >
-                            −
-                          </button>
-                          <span className="w-8 text-center text-xs text-[var(--text-secondary)]">
-                            {item.quantity}
+                          {/* 옵션값 */}
+                          <span className="text-xs text-[var(--text-muted)] min-w-[3rem] flex-shrink-0">
+                            {item.optionValue}
                           </span>
-                          <button
-                            onClick={() =>
-                              updateMutation.mutate({
-                                id: item.id,
-                                quantity: item.quantity + 1,
-                              })
-                            }
-                            className="w-7 h-7 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                          >
-                            +
-                          </button>
-                        </div>
 
-                        {/* 소계 */}
-                        <div className="min-w-[5rem] text-right flex-1">
-                          {(item.discountRate ?? 0) > 0 && (
-                            <span className="text-xs text-[var(--text-dim)] line-through mr-1">
-                              {formatPrice(originalPrice(item) * item.quantity)}원
+                          {/* 수량 조절 */}
+                          <div className="inline-flex items-center border border-[var(--border-color)]">
+                            <button
+                              onClick={() =>
+                                item.quantity > 1 &&
+                                updateMutation.mutate({
+                                  id: item.id,
+                                  quantity: item.quantity - 1,
+                                })
+                              }
+                              disabled={item.quantity <= 1}
+                              className="w-7 h-7 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              −
+                            </button>
+                            <input
+                              type="number"
+                              min={1}
+                              max={item.stockQuantity}
+                              value={item.quantity}
+                              onChange={(e) => {
+                                const v = parseInt(e.target.value, 10);
+                                if (isNaN(v) || v < 1) return;
+                                const next = item.stockQuantity > 0 && v > item.stockQuantity ? item.stockQuantity : v;
+                                if (next === item.quantity) return;
+                                updateMutation.mutate({ id: item.id, quantity: next });
+                              }}
+                              className="w-10 text-center text-xs text-[var(--text-secondary)] bg-transparent border-0 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            />
+                            <button
+                              onClick={() => {
+                                if (atMax) return;
+                                updateMutation.mutate({
+                                  id: item.id,
+                                  quantity: item.quantity + 1,
+                                });
+                              }}
+                              disabled={atMax}
+                              className="w-7 h-7 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              +
+                            </button>
+                          </div>
+
+                          {/* 소계 */}
+                          <div className="min-w-[5rem] text-right flex-1">
+                            {(item.discountRate ?? 0) > 0 && (
+                              <span className="text-xs text-[var(--text-dim)] line-through mr-1">
+                                {formatPrice(originalPrice(item) * item.quantity)}원
+                              </span>
+                            )}
+                            <span className="text-sm text-[var(--text-secondary)]">
+                              {formatPrice(discountedPrice(item) * item.quantity)}원
                             </span>
-                          )}
-                          <span className="text-sm text-[var(--text-secondary)]">
-                            {formatPrice(discountedPrice(item) * item.quantity)}원
-                          </span>
-                        </div>
+                          </div>
 
-                        {/* 삭제 */}
-                        <button
-                          onClick={() => handleRemove(item.id)}
-                          className="text-[var(--text-dim)] hover:text-[var(--text-primary)] text-lg flex-shrink-0"
-                        >
-                          ×
-                        </button>
+                          {/* 삭제 */}
+                          <button
+                            onClick={() => handleRemove(item.id)}
+                            className="text-[var(--text-dim)] hover:text-[var(--text-primary)] text-lg flex-shrink-0"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        {isOverStock && (
+                          <p className="text-sm text-red-400 ml-6">
+                            재고 부족 (현재 재고: {item.stockQuantity}개)
+                          </p>
+                        )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* 요약 */}
@@ -401,6 +450,9 @@ export default function CartPage() {
           </div>
 
           <div className="mt-8 space-y-3">
+            <div className="min-h-[1.25rem]">
+              {orderError && <p className="text-sm text-red-400">{orderError}</p>}
+            </div>
             <Button
               fullWidth
               onClick={handleOrder}

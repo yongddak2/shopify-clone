@@ -85,6 +85,7 @@ export interface CartItem {
   additionalPrice: number;
   discountRate: number;
   quantity: number;
+  stockQuantity: number;
   thumbnailUrl: string | null;
 }
 
@@ -233,6 +234,13 @@ export interface AdminProduct {
   deletedAt: string | null;
   images: ProductImage[];
   optionGroups: ProductOptionGroup[];
+}
+
+export interface AdminProductOptionUpdate {
+  id: number | null; // null이면 신규
+  value: string;
+  additionalPrice: number;
+  stockQuantity: number;
 }
 
 export interface CreateProductRequest {

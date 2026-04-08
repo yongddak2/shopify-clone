@@ -19,6 +19,7 @@ import com.shopify.backend.domain.order.repository.OrderItemRepository;
 import com.shopify.backend.domain.order.repository.OrderRepository;
 import com.shopify.backend.domain.order.repository.ReturnExchangeRequestRepository;
 import com.shopify.backend.domain.product.entity.ProductOptionValue;
+import com.shopify.backend.domain.product.repository.ProductOptionValueRepository;
 import com.shopify.backend.global.exception.BusinessException;
 import com.shopify.backend.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,7 @@ public class OrderService {
     private final MemberRepository memberRepository;
     private final MemberCouponRepository memberCouponRepository;
     private final ReturnExchangeRequestRepository returnExchangeRequestRepository;
+    private final ProductOptionValueRepository productOptionValueRepository;
 
     private static final List<RequestStatus> ACTIVE_REQUEST_STATUSES =
             List.of(RequestStatus.REQUESTED, RequestStatus.APPROVED);
@@ -203,10 +205,13 @@ public class OrderService {
         }
         orderItemRepository.saveAll(orderItems);
 
-        // 재고 차감
+        // 재고 차감 (비관적 락으로 동시 차감 방지)
         for (CartItem cartItem : cartItems) {
             if (cartItem.getOptionValue() != null) {
-                cartItem.getOptionValue().decreaseStock(cartItem.getQuantity());
+                ProductOptionValue lockedOption = productOptionValueRepository
+                        .findByIdWithLock(cartItem.getOptionValue().getId())
+                        .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_OPTION_NOT_FOUND));
+                lockedOption.decreaseStock(cartItem.getQuantity());
             }
         }
 

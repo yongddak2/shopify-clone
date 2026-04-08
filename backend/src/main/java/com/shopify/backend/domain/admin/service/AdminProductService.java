@@ -1,8 +1,10 @@
 package com.shopify.backend.domain.admin.service;
 
 import com.shopify.backend.domain.admin.dto.AdminProductCreateRequest;
+import com.shopify.backend.domain.admin.dto.AdminProductOptionUpdateRequest;
 import com.shopify.backend.domain.admin.dto.AdminProductResponse;
 import com.shopify.backend.domain.admin.dto.AdminProductUpdateRequest;
+import com.shopify.backend.domain.order.repository.OrderItemRepository;
 import com.shopify.backend.domain.product.entity.*;
 import com.shopify.backend.domain.product.repository.*;
 import com.shopify.backend.global.exception.BusinessException;
@@ -17,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +32,7 @@ public class AdminProductService {
     private final ProductImageRepository productImageRepository;
     private final ProductOptionGroupRepository productOptionGroupRepository;
     private final ProductOptionValueRepository productOptionValueRepository;
+    private final OrderItemRepository orderItemRepository;
 
     public Page<AdminProductResponse> getProducts(int page, int size) {
         Page<Product> products = productRepository.findAll(
@@ -111,6 +116,65 @@ public class AdminProductService {
             Category category = categoryRepository.findById(request.getCategoryId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
             product.updateCategory(category);
+        }
+
+        // 옵션 수정
+        if (request.getOptionValues() != null) {
+            ProductOptionGroup group;
+            if (product.getOptionGroups().isEmpty()) {
+                // 옵션 그룹이 없으면 새로 생성
+                group = ProductOptionGroup.builder()
+                        .product(product)
+                        .name(request.getOptionGroupName() != null ? request.getOptionGroupName() : "옵션")
+                        .build();
+                productOptionGroupRepository.save(group);
+                product.getOptionGroups().add(group);
+            } else {
+                group = product.getOptionGroups().get(0);
+            }
+
+            // 요청에 포함된 기존 옵션 ID 목록
+            Set<Long> requestedIds = request.getOptionValues().stream()
+                    .filter(o -> o.getId() != null)
+                    .map(AdminProductOptionUpdateRequest::getId)
+                    .collect(Collectors.toSet());
+
+            // 삭제 대상 별도 수집 (ConcurrentModificationException 방지)
+            List<ProductOptionValue> toDelete = new ArrayList<>();
+            for (ProductOptionValue existing : group.getOptionValues()) {
+                if (requestedIds.contains(existing.getId())) {
+                    // 기존 옵션 수정
+                    AdminProductOptionUpdateRequest req = request.getOptionValues().stream()
+                            .filter(o -> existing.getId().equals(o.getId()))
+                            .findFirst().orElseThrow();
+                    existing.update(req.getValue(), req.getStockQuantity(), req.getAdditionalPrice());
+                } else {
+                    // 요청에 없는 옵션 → 삭제 분기
+                    if (orderItemRepository.existsByOptionValueId(existing.getId())) {
+                        existing.softDelete(); // 주문 이력 있으면 재고 0 처리
+                    } else {
+                        toDelete.add(existing);
+                    }
+                }
+            }
+            group.getOptionValues().removeAll(toDelete);
+            for (ProductOptionValue del : toDelete) {
+                productOptionValueRepository.delete(del);
+            }
+
+            // 신규 옵션 추가 (id == null인 항목)
+            for (AdminProductOptionUpdateRequest req : request.getOptionValues()) {
+                if (req.getId() == null) {
+                    ProductOptionValue newOption = ProductOptionValue.builder()
+                            .optionGroup(group)
+                            .value(req.getValue())
+                            .stockQuantity(req.getStockQuantity())
+                            .additionalPrice(BigDecimal.valueOf(req.getAdditionalPrice()))
+                            .build();
+                    productOptionValueRepository.save(newOption);
+                    group.getOptionValues().add(newOption);
+                }
+            }
         }
 
         return AdminProductResponse.from(product);

@@ -157,11 +157,14 @@ public class ReturnExchangeService {
             throw new BusinessException(ErrorCode.INVALID_REQUEST_STATUS);
         }
 
-        // 재고 복구
+        // 재고 복구 (비관적 락으로 동시 변경 방지)
         List<OrderItem> orderItems = orderItemRepository.findByOrderId(request.getOrder().getId());
         for (OrderItem item : orderItems) {
             if (item.getOptionValue() != null) {
-                item.getOptionValue().increaseStock(item.getQuantity());
+                ProductOptionValue lockedOption = productOptionValueRepository
+                        .findByIdWithLock(item.getOptionValue().getId())
+                        .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_OPTION_NOT_FOUND));
+                lockedOption.increaseStock(item.getQuantity());
             }
         }
 

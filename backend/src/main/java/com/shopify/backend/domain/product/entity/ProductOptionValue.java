@@ -50,4 +50,14 @@ public class ProductOptionValue {
     public void increaseStock(int quantity) {
         this.stockQuantity += quantity;
     }
+
+    public void update(String value, int stockQuantity, int additionalPrice) {
+        this.value = value;
+        this.stockQuantity = stockQuantity;
+        this.additionalPrice = BigDecimal.valueOf(additionalPrice);
+    }
+
+    public void softDelete() {
+        this.stockQuantity = 0;
+    }
 }

@@ -88,13 +88,45 @@ src/
 
 ## Product Options (상품 옵션)
 
-- 사이즈: S, M, L, XL, XXL, FREE (체크박스)
-- 색상: 블랙, 화이트, 네이비, 그레이, 베이지 + 커스텀 색상 추가 가능
-- 선택 시 조합별 재고 수량 입력 테이블 자동 생성
-- **조합형 옵션**: 등록 시 사이즈×색상 조합을 하나의 optionGroup("옵션")으로 전송 (예: "S-블랙", "M-블랙")
-  - 상품 상세에서 조합값이 하나의 그룹에 버튼으로 나열, 선택 시 해당 optionValueId가 장바구니로 전송
+- **상품 등록 페이지** (`admin/products/new`):
+  - 사이즈/색상 각각 라디오 2개 (`'none' | 'custom'`) — '직접 설정' 선택 시 입력 영역 노출
+  - 기본 사이즈: S/M/L/XL/XXL/FREE, 기본 색상: 블랙/화이트/네이비/그레이/베이지/브라운/카키/버건디 (버튼 토글 방식)
+  - 직접 입력 input + 추가 버튼/Enter로 임의 값 추가, 중복 무시, 추가된 커스텀 값은 X 버튼 칩으로 표시
+  - `optionCombinations` useEffect로 자동 생성:
+    - 둘 다 none → `[{value: 'FREE', stock: 0}]` (단일 행, 표시는 "옵션 없음")
+    - size만 custom → 사이즈 단일 행
+    - color만 custom → 색상 단일 행
+    - 둘 다 custom → 사이즈 × 색상 cross product (`"S-블랙"` 형식)
+  - 기존 stock은 value 매칭으로 보존, 신규 조합은 0으로 초기화
+- **조합형 옵션**: 등록 시 모든 조합을 하나의 optionGroup("옵션")으로 전송
   - 기존 분리형 옵션(사이즈/색상 별도 그룹)으로 등록된 레거시 상품도 하위 호환 유지
-- 수정 모달: 기존 옵션 읽기 전용 (백엔드 PATCH 옵션 수정 미지원)
+- **상품 수정 모달** (`admin/products/page.tsx`): 옵션 편집 UI 지원 (백엔드 PATCH 옵션 수정 API 연동)
+  - 기존 옵션은 `optionGroups[0].values`로 초기화, 행 단위로 옵션값/재고 수정·삭제·추가 가능
+  - 저장 시 `optionGroupName: "옵션"` + `optionValues: [{id, value, additionalPrice, stockQuantity}]` 전송 (id가 null이면 신규)
+- **상품 상세 옵션 선택 UI** (`products/[id]/ProductDetailClient.tsx`): 드롭다운 방식
+  - 파싱: `value === "FREE"` → 드롭다운 없이 자동 선택 / `-` 포함 → 사이즈×색상 조합 / 그 외 → 단일 옵션
+  - 조합형: **색상 → 사이즈** 순서. 색상 선택 후 사이즈 활성화. 사이즈 dropdown은 항상 클릭 가능하지만 색상 미선택 상태에서 클릭 시 `alert("상위 옵션을 선택해주세요.")`
+  - 색상 변경 시 `selectedSize` 자동 초기화
+  - 각 항목 stock=0이면 `(품절)` + disabled, 색상 항목은 해당 색상의 모든 사이즈 stock=0이면 disabled
+  - 외부 클릭 시 드롭다운 자동 닫힘 (mousedown 이벤트 + ref 검사)
+  - 옵션 stock 입력칸 편의성: `onFocus={(e) => e.target.select()}` — 마우스 클릭 시 0이 자동 선택되어 새 입력으로 대체
+
+## Cart Stock Handling (장바구니 재고)
+
+- **타입**: `CartItem.stockQuantity: number` (백엔드 CartItemResponse에서 제공)
+- **상품 상세 재고 제한** (`ProductDetailClient.tsx`):
+  - `currentStock` 상태 — `selectedOptionValueId` 변경 시 useEffect로 추적, 옵션 변경 시 quantity를 1로 리셋
+  - 수량 −/+ 버튼: `quantity <= 1` / `quantity >= currentStock`이면 disabled, 직접 입력 시에도 초과 자동 클램핑
+  - 1~10개일 때 "수량 (N개 남음)" — 라벨 옆 빨간 인라인 표시 (쿠팡 스타일)
+  - currentStock=0이면 장바구니 담기 버튼도 "품절" + disabled (드롭다운 차단의 이중 방어)
+- **장바구니 페이지** (`cart/page.tsx`):
+  - 재고 부족 항목(`item.quantity > item.stockQuantity`) 시각화: 카드에 `opacity-40 grayscale` 적용 — 빨간 강조 대신 어둡고 채도 빠진 "비활성" 느낌
+  - 항목별 빨간 경고 문구: "재고 부족 (현재 재고: N개)"
+  - 상단 sticky 경고 배너 (주황): "⚠ 재고가 부족한 상품이 있습니다..."
+  - 수량 input + −/+ 버튼: max=`stockQuantity`, 초과 입력 자동 조정. **− 버튼은 재고 초과 상태에서도 항상 활성화** (사용자가 수량을 줄일 수 있어야 하므로 `quantity <= 1`만 검사)
+  - 체크박스: 재고 초과 항목은 자동 해제 + disabled. useEffect의 `validIds`가 `i.quantity <= i.stockQuantity` 기준으로 정리, 수량을 stock 이하로 줄이면 자동으로 다시 체크 가능 상태로 전환
+  - 전체 선택도 `selectableItems` 기준
+  - 주문하기 차단: checked 항목 중 over-stock 발견 시 인라인 에러 "재고가 부족한 상품은 주문할 수 없습니다."
 
 ## Key API Response Differences
 
@@ -252,13 +284,24 @@ src/
 
 ## Known Issues
 
-- 옵션 변경: 버튼만 존재, "준비 중" alert
 - 소셜 로그인: 쇼핑몰 사업자 정보 확정 후 진행 예정
 - 토스 환불 API: 미연동
 - 회원가입 약관: 현재 플레이스홀더, 실제 약관 내용 교체 예정
 
 ## Next Up
 
+- **상품 수정 페이지 분리**: 현재 모달 방식 → `/admin/products/{id}/edit` 별도 페이지로 이동
+  - 2컬럼 레이아웃: 좌측(기본 정보), 우측(옵션 관리 + 이미지 관리)
+  - 이미지 추가/삭제/순서 변경 포함
+  - 관리자 목록 "수정" 버튼 클릭 시 모달 대신 페이지 라우팅
+  - 백엔드 `GET /api/admin/products/{id}` 단건 조회 API 신규 필요 (현재 미존재, 목록·상세 공개 API 재활용 여부 검토)
 - 소셜 로그인 (사업자 정보 확정 후)
-- 상품 옵션 수정 UI
 - 3단계: Elasticsearch, Kafka, CI/CD, 배포
+
+## Recent Changes (2026-04-09)
+
+- **상품 옵션 수정 UI**: admin/products/page.tsx 수정 모달에 옵션 편집 섹션 추가 (백엔드 PATCH 옵션 수정 API 연동). `AdminProductOptionUpdate` 타입 신규
+- **상품 등록 옵션 UI 전면 개편**: admin/products/new/page.tsx — 사이즈/색상 라디오('없음'/'직접 설정') + 기본값 토글 버튼 + 직접 입력 + 자동 조합 생성
+- **상품 상세 옵션 드롭다운**: ProductDetailClient.tsx — 버튼 나열 → 색상/사이즈 드롭다운 전환, FREE/조합형/단일 옵션 자동 분기, 색상 → 사이즈 순서, 외부 클릭 닫기
+- **재고 초과 방지**: 상품 상세 수량 컨트롤 + "(N개 남음)" 인라인 표시, 장바구니 over-stock 항목 grayscale 처리 + 체크박스/주문 차단, 수량 감소 항상 허용
+- **편의성**: 관리자 옵션 재고 input `onFocus select()` 적용 (0이 안 지워지고 "10"이 되는 버그 해결)

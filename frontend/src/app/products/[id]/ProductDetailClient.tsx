@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProductDetail } from "@/lib/product";
@@ -12,8 +12,7 @@ import {
 } from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
 import Button from "@/components/common/Button";
-import { Heart } from "lucide-react";
-import type { ProductOptionValue } from "@/types";
+import { Heart, ChevronDown, ChevronUp } from "lucide-react";
 import ReviewSection from "./ReviewSection";
 
 function formatPrice(price: number) {
@@ -25,10 +24,17 @@ export default function ProductDetailClient({ id }: { id: string }) {
   const queryClient = useQueryClient();
   const { isLoggedIn } = useAuthStore();
   const [mainImageIndex, setMainImageIndex] = useState(0);
-  const [selectedOptions, setSelectedOptions] = useState<
-    Record<number, ProductOptionValue>
-  >({});
+  const [selectedSize, setSelectedSize] = useState<string>('');
+  const [selectedColor, setSelectedColor] = useState<string>('');
+  const [selectedOptionValueId, setSelectedOptionValueId] = useState<number | null>(null);
+  const [sizeDropdownOpen, setSizeDropdownOpen] = useState(false);
+  const [colorDropdownOpen, setColorDropdownOpen] = useState(false);
+  const [singleDropdownOpen, setSingleDropdownOpen] = useState(false);
+  const sizeDropdownRef = useRef<HTMLDivElement>(null);
+  const colorDropdownRef = useRef<HTMLDivElement>(null);
+  const singleDropdownRef = useRef<HTMLDivElement>(null);
   const [quantity, setQuantity] = useState(1);
+  const [currentStock, setCurrentStock] = useState<number>(0);
   const [optionError, setOptionError] = useState("");
   const [cartError, setCartError] = useState("");
   const [cartModal, setCartModal] = useState(false);
@@ -81,6 +87,77 @@ export default function ProductDetailClient({ id }: { id: string }) {
     },
   });
 
+  // 옵션 파싱
+  const optionGroup = data?.data?.optionGroups?.[0];
+  const optionValues = useMemo(() => optionGroup?.values ?? [], [optionGroup]);
+
+  const optionMode: 'free' | 'combo' | 'single' = useMemo(() => {
+    if (optionValues.length === 0) return 'free';
+    if (optionValues.length === 1 && optionValues[0].value === 'FREE') return 'free';
+    const hasDash = optionValues.some((v) => v.value.includes('-'));
+    return hasDash ? 'combo' : 'single';
+  }, [optionValues]);
+
+  const colors = useMemo(() => {
+    if (optionMode !== 'combo') return [];
+    return Array.from(new Set(optionValues.map((v) => v.value.split('-').slice(1).join('-'))));
+  }, [optionMode, optionValues]);
+
+  const sizesForColor = useMemo(() => {
+    if (optionMode !== 'combo' || !selectedColor) return [];
+    return optionValues
+      .filter((v) => v.value.split('-').slice(1).join('-') === selectedColor)
+      .map((v) => v.value.split('-')[0]);
+  }, [optionMode, optionValues, selectedColor]);
+
+  // FREE 옵션이면 자동 선택
+  useEffect(() => {
+    if (optionMode === 'free' && optionValues.length > 0) {
+      setSelectedOptionValueId(optionValues[0].id);
+    }
+  }, [optionMode, optionValues]);
+
+  // 사이즈+색상 모두 선택되면 optionValueId 매칭
+  useEffect(() => {
+    if (optionMode !== 'combo') return;
+    if (selectedSize && selectedColor) {
+      const target = `${selectedSize}-${selectedColor}`;
+      const found = optionValues.find((v) => v.value === target);
+      setSelectedOptionValueId(found ? found.id : null);
+    } else {
+      setSelectedOptionValueId(null);
+    }
+  }, [optionMode, optionValues, selectedSize, selectedColor]);
+
+  // 선택된 옵션의 재고 추적
+  useEffect(() => {
+    if (selectedOptionValueId == null) {
+      setCurrentStock(0);
+      return;
+    }
+    const found = optionValues.find((v) => v.id === selectedOptionValueId);
+    setCurrentStock(found?.stockQuantity ?? 0);
+    // 옵션 변경 시 수량을 1로 리셋
+    setQuantity(1);
+  }, [selectedOptionValueId, optionValues]);
+
+  // 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (sizeDropdownRef.current && !sizeDropdownRef.current.contains(e.target as Node)) {
+        setSizeDropdownOpen(false);
+      }
+      if (colorDropdownRef.current && !colorDropdownRef.current.contains(e.target as Node)) {
+        setColorDropdownOpen(false);
+      }
+      if (singleDropdownRef.current && !singleDropdownRef.current.contains(e.target as Node)) {
+        setSingleDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-6 lg:px-10 py-12">
@@ -111,17 +188,9 @@ export default function ProductDetailClient({ id }: { id: string }) {
     ? Math.round(basePrice * (1 - product.discountRate / 100))
     : basePrice;
 
-  const additionalPrice = Object.values(selectedOptions).reduce(
-    (sum, opt) => sum + opt.additionalPrice,
-    0
-  );
+  const selectedOption = optionValues.find((v) => v.id === selectedOptionValueId) ?? null;
+  const additionalPrice = selectedOption?.additionalPrice ?? 0;
   const totalPrice = (discountedBase + additionalPrice) * quantity;
-
-  const optionGroups = product.optionGroups ?? [];
-
-  const allOptionsSelected =
-    optionGroups.length === 0 ||
-    optionGroups.every((group) => selectedOptions[group.id]);
 
   const handleAddToCart = () => {
     if (!isLoggedIn()) {
@@ -131,26 +200,14 @@ export default function ProductDetailClient({ id }: { id: string }) {
       return;
     }
 
-    if (!allOptionsSelected) {
-      setOptionError("필수 옵션을 선택해주세요");
+    if (selectedOptionValueId == null) {
+      setOptionError("옵션을 선택해주세요.");
       return;
     }
 
     setOptionError("");
     setCartError("");
-
-    // 선택된 옵션 값들에서 optionValueId 추출
-    const selectedValues = Object.values(selectedOptions);
-    const optionValueId = selectedValues.length > 0
-      ? selectedValues[selectedValues.length - 1].id
-      : 0;
-
-    cartMutation.mutate({ optionValueId, qty: quantity });
-  };
-
-  const handleOptionSelect = (groupId: number, opt: ProductOptionValue) => {
-    setSelectedOptions((prev) => ({ ...prev, [groupId]: opt }));
-    setOptionError("");
+    cartMutation.mutate({ optionValueId: selectedOptionValueId, qty: quantity });
   };
 
   const images = (product.images ?? []).length > 0 ? product.images : [null];
@@ -233,61 +290,212 @@ export default function ProductDetailClient({ id }: { id: string }) {
             )}
           </div>
 
-          {/* 옵션 선택 */}
-          {optionGroups.map((group) => (
-            <div key={group.id} className="mb-6">
-              <p className="text-xs tracking-wider text-[var(--text-muted)] mb-3">
-                {group.name}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {(group.values ?? []).map((opt) => {
-                  const isSelected =
-                    selectedOptions[group.id]?.id === opt.id;
-                  const outOfStock = opt.stockQuantity === 0;
+          {/* 옵션 선택 - 드롭다운 (색상 → 사이즈 순) */}
+          {optionMode === 'combo' && (
+            <div className="mb-6">
+              {/* 색상 드롭다운 */}
+              <div ref={colorDropdownRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setColorDropdownOpen((v) => !v)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-sm bg-[#2a2a2a] border border-[#555] text-left hover:border-[var(--text-muted)] transition-colors"
+                >
+                  <span className={selectedColor ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}>
+                    {selectedColor || "색상을 선택해주세요"}
+                  </span>
+                  {colorDropdownOpen ? (
+                    <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
+                  )}
+                </button>
+                {colorDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-[#2a2a2a] border border-[#555] z-50 max-h-64 overflow-y-auto">
+                    {colors.map((color) => {
+                      const matching = optionValues.filter((v) => v.value.split('-').slice(1).join('-') === color);
+                      const allOut = matching.every((v) => v.stockQuantity === 0);
+                      return (
+                        <button
+                          key={color}
+                          type="button"
+                          disabled={allOut}
+                          onClick={() => {
+                            if (allOut) return;
+                            setSelectedColor(color);
+                            setSelectedSize('');
+                            setColorDropdownOpen(false);
+                            setOptionError("");
+                          }}
+                          className={`w-full text-left px-4 py-3 text-sm transition-colors ${
+                            allOut
+                              ? "text-[#666] cursor-not-allowed"
+                              : selectedColor === color
+                                ? "text-white bg-[#3a3a3a]"
+                                : "text-[var(--text-secondary)] hover:bg-[#3a3a3a]"
+                          }`}
+                        >
+                          {color}{allOut && " (품절)"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
-                  return (
-                    <button
-                      key={opt.id}
-                      disabled={outOfStock}
-                      onClick={() => handleOptionSelect(group.id, opt)}
-                      className={`px-4 py-2 text-xs border transition-colors ${
-                        outOfStock
-                          ? "border-[var(--border-color)] text-[var(--text-dim)] cursor-not-allowed"
-                          : isSelected
-                            ? "border-[var(--text-primary)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
-                            : "border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-primary)]"
-                      }`}
-                    >
-                      {opt.value}
-                      {opt.additionalPrice > 0 &&
-                        ` (+${formatPrice(opt.additionalPrice)}원)`}
-                      {outOfStock && " (품절)"}
-                    </button>
-                  );
-                })}
+              {/* 사이즈 드롭다운 (색상 선택 후 활성화) */}
+              <div ref={sizeDropdownRef} className="relative mt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!selectedColor) {
+                      alert("상위 옵션을 선택해주세요.");
+                      return;
+                    }
+                    setSizeDropdownOpen((v) => !v);
+                  }}
+                  className="w-full flex items-center justify-between px-4 py-3 text-sm bg-[#2a2a2a] border border-[#555] text-left hover:border-[var(--text-muted)] transition-colors"
+                >
+                  <span className={selectedSize ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}>
+                    {selectedSize || "사이즈"}
+                  </span>
+                  {sizeDropdownOpen ? (
+                    <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
+                  )}
+                </button>
+                {sizeDropdownOpen && selectedColor && (
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-[#2a2a2a] border border-[#555] z-50 max-h-64 overflow-y-auto">
+                    {sizesForColor.map((size) => {
+                      const target = `${size}-${selectedColor}`;
+                      const opt = optionValues.find((v) => v.value === target);
+                      const outOfStock = !opt || opt.stockQuantity === 0;
+                      return (
+                        <button
+                          key={size}
+                          type="button"
+                          disabled={outOfStock}
+                          onClick={() => {
+                            if (outOfStock) return;
+                            setSelectedSize(size);
+                            setSizeDropdownOpen(false);
+                            setOptionError("");
+                          }}
+                          className={`w-full text-left px-4 py-3 text-sm transition-colors ${
+                            outOfStock
+                              ? "text-[#666] cursor-not-allowed"
+                              : selectedSize === size
+                                ? "text-white bg-[#3a3a3a]"
+                                : "text-[var(--text-secondary)] hover:bg-[#3a3a3a]"
+                          }`}
+                        >
+                          {size}{outOfStock && " (품절)"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
-          ))}
+          )}
+
+          {optionMode === 'single' && (
+            <div className="mb-6">
+              <div ref={singleDropdownRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setSingleDropdownOpen((v) => !v)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-sm bg-[#2a2a2a] border border-[#555] text-left hover:border-[var(--text-muted)] transition-colors"
+                >
+                  <span className={selectedOption ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}>
+                    {selectedOption ? selectedOption.value : "옵션을 선택해주세요"}
+                  </span>
+                  {singleDropdownOpen ? (
+                    <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
+                  )}
+                </button>
+                {singleDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-[#2a2a2a] border border-[#555] z-50 max-h-64 overflow-y-auto">
+                    {optionValues.map((opt) => {
+                      const outOfStock = opt.stockQuantity === 0;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          disabled={outOfStock}
+                          onClick={() => {
+                            if (outOfStock) return;
+                            setSelectedOptionValueId(opt.id);
+                            setSingleDropdownOpen(false);
+                            setOptionError("");
+                          }}
+                          className={`w-full text-left px-4 py-3 text-sm transition-colors ${
+                            outOfStock
+                              ? "text-[#666] cursor-not-allowed"
+                              : selectedOptionValueId === opt.id
+                                ? "text-white bg-[#3a3a3a]"
+                                : "text-[var(--text-secondary)] hover:bg-[#3a3a3a]"
+                          }`}
+                        >
+                          {opt.value}{outOfStock && " (품절)"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* 수량 */}
-          <div className="mb-8">
-            <p className="text-xs tracking-wider text-[var(--text-muted)] mb-3">수량</p>
+          <div className="mb-2">
+            <p className="text-xs tracking-wider text-[var(--text-muted)] mb-3">
+              수량
+              {selectedOptionValueId != null && currentStock > 0 && currentStock <= 10 && (
+                <span className="ml-2 text-red-400 normal-case tracking-normal">
+                  ({currentStock}개 남음)
+                </span>
+              )}
+            </p>
             <div className="inline-flex items-center border border-[var(--border-color)]">
               <button
+                type="button"
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="w-10 h-10 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                disabled={quantity <= 1}
+                className="w-10 h-10 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 −
               </button>
-              <span className="w-12 text-center text-sm text-[var(--text-secondary)]">{quantity}</span>
+              <input
+                type="number"
+                min={1}
+                max={currentStock || 1}
+                value={quantity}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  if (isNaN(v) || v < 1) { setQuantity(1); return; }
+                  if (currentStock > 0 && v > currentStock) { setQuantity(currentStock); return; }
+                  setQuantity(v);
+                }}
+                className="w-12 h-10 text-center text-sm text-[var(--text-secondary)] bg-transparent border-0 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
               <button
-                onClick={() => setQuantity(quantity + 1)}
-                className="w-10 h-10 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                type="button"
+                onClick={() => {
+                  if (currentStock > 0 && quantity + 1 > currentStock) return;
+                  setQuantity(quantity + 1);
+                }}
+                disabled={currentStock === 0 || quantity >= currentStock}
+                className="w-10 h-10 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 +
               </button>
             </div>
           </div>
+
+          <div className="mb-6" />
 
           {/* 총 가격 */}
           <div className="flex items-center justify-between py-4 border-t border-[var(--border-color)] mb-6">
@@ -311,9 +519,11 @@ export default function ProductDetailClient({ id }: { id: string }) {
             fullWidth
             onClick={handleAddToCart}
             loading={cartMutation.isPending}
-            disabled={product.status === "SOLDOUT"}
+            disabled={product.status === "SOLDOUT" || (selectedOptionValueId != null && currentStock === 0)}
           >
-            {product.status === "SOLDOUT" ? "품절" : "장바구니 담기"}
+            {product.status === "SOLDOUT" || (selectedOptionValueId != null && currentStock === 0)
+              ? "품절"
+              : "장바구니 담기"}
           </Button>
 
           {/* 상품 설명 */}

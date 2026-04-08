@@ -89,7 +89,9 @@ public class CartService {
             throw new BusinessException(ErrorCode.CART_ITEM_FORBIDDEN);
         }
 
-        if (cartItem.getOptionValue() != null
+        // 수량이 증가하는 경우에만 재고 검증 (감소는 재고 부족 상태에서도 항상 허용)
+        if (request.getQuantity() > cartItem.getQuantity()
+                && cartItem.getOptionValue() != null
                 && cartItem.getOptionValue().getStockQuantity() < request.getQuantity()) {
             throw new BusinessException(ErrorCode.OUT_OF_STOCK);
         }

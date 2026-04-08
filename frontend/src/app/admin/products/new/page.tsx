@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCategories, createProduct, uploadProductImage, deleteProductImage } from "@/lib/admin";
@@ -17,7 +17,7 @@ function fromComma(s: string): number {
 }
 
 const SIZE_OPTIONS = ["S", "M", "L", "XL", "XXL", "FREE"];
-const COLOR_OPTIONS = ["블랙", "화이트", "네이비", "그레이", "베이지"];
+const COLOR_OPTIONS = ["블랙", "화이트", "네이비", "그레이", "베이지", "브라운", "카키", "버건디"];
 const STATUS_OPTIONS = [
   { value: "ACTIVE", label: "ACTIVE" },
   { value: "INACTIVE", label: "INACTIVE" },
@@ -39,12 +39,6 @@ const ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_IMAGES = 5;
 
-interface OptionCombo {
-  size: string;
-  color: string;
-  stockQuantity: string;
-}
-
 export default function AdminProductNewPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -58,10 +52,13 @@ export default function AdminProductNewPage() {
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [sizeMode, setSizeMode] = useState<'none' | 'custom'>('none');
+  const [colorMode, setColorMode] = useState<'none' | 'custom'>('none');
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
-  const [customColors, setCustomColors] = useState<string[]>([]);
-  const [combos, setCombos] = useState<OptionCombo[]>([]);
+  const [customSizeInput, setCustomSizeInput] = useState('');
+  const [customColorInput, setCustomColorInput] = useState('');
+  const [optionCombinations, setOptionCombinations] = useState<{ value: string; stock: number }[]>([]);
 
   const [error, setError] = useState("");
 
@@ -87,60 +84,70 @@ export default function AdminProductNewPage() {
   const basePrice = fromComma(priceDisplay);
   const discountedPrice = discountRate > 0 ? Math.round(basePrice * (1 - discountRate / 100)) : basePrice;
 
-  // 사이즈/색상 변경 시 조합 테이블 재생성
-  const allColors = useMemo(() => {
-    return [...selectedColors, ...customColors.filter((c) => c.trim())];
-  }, [selectedColors, customColors]);
-
-  const regenerateCombos = (sizes: string[], colors: string[]) => {
-    if (sizes.length === 0 || colors.length === 0) {
-      setCombos([]);
-      return;
-    }
-    const newCombos: OptionCombo[] = [];
-    for (const size of sizes) {
-      for (const color of colors) {
-        const existing = combos.find((c) => c.size === size && c.color === color);
-        newCombos.push(
-          existing ?? { size, color, stockQuantity: "0" }
-        );
+  // 사이즈/색상 변경 시 조합 자동 갱신 (기존 stock 값 보존)
+  useEffect(() => {
+    let nextValues: string[];
+    if (sizeMode === 'none' && colorMode === 'none') {
+      nextValues = ['FREE'];
+    } else if (sizeMode === 'custom' && colorMode === 'none') {
+      nextValues = selectedSizes;
+    } else if (sizeMode === 'none' && colorMode === 'custom') {
+      nextValues = selectedColors;
+    } else {
+      // 둘 다 custom
+      if (selectedSizes.length === 0 || selectedColors.length === 0) {
+        nextValues = [];
+      } else {
+        nextValues = [];
+        for (const size of selectedSizes) {
+          for (const color of selectedColors) {
+            nextValues.push(`${size}-${color}`);
+          }
+        }
       }
     }
-    setCombos(newCombos);
-  };
+
+    setOptionCombinations((prev) => {
+      const prevMap = new Map(prev.map((c) => [c.value, c.stock]));
+      return nextValues.map((value) => ({
+        value,
+        stock: prevMap.get(value) ?? 0,
+      }));
+    });
+  }, [sizeMode, colorMode, selectedSizes, selectedColors]);
 
   const toggleSize = (s: string) => {
-    const next = selectedSizes.includes(s)
-      ? selectedSizes.filter((v) => v !== s)
-      : [...selectedSizes, s];
-    setSelectedSizes(next);
-    regenerateCombos(next, [...(next.length ? allColors : [])]); // use current allColors
+    setSelectedSizes((prev) => (prev.includes(s) ? prev.filter((v) => v !== s) : [...prev, s]));
   };
-
   const toggleColor = (c: string) => {
-    const next = selectedColors.includes(c)
-      ? selectedColors.filter((v) => v !== c)
-      : [...selectedColors, c];
-    setSelectedColors(next);
-    regenerateCombos(selectedSizes, [...next, ...customColors.filter((v) => v.trim())]);
+    setSelectedColors((prev) => (prev.includes(c) ? prev.filter((v) => v !== c) : [...prev, c]));
   };
 
-  const addCustomColor = () => setCustomColors((prev) => [...prev, ""]);
-  const updateCustomColor = (idx: number, value: string) => {
-    setCustomColors((prev) => prev.map((c, i) => (i === idx ? value : c)));
+  const addCustomSize = () => {
+    const v = customSizeInput.trim();
+    if (!v) return;
+    setSelectedSizes((prev) => (prev.includes(v) ? prev : [...prev, v]));
+    setCustomSizeInput('');
   };
-  const removeCustomColor = (idx: number) => {
-    const next = customColors.filter((_, i) => i !== idx);
-    setCustomColors(next);
-    regenerateCombos(selectedSizes, [...selectedColors, ...next.filter((c) => c.trim())]);
+  const addCustomColor = () => {
+    const v = customColorInput.trim();
+    if (!v) return;
+    setSelectedColors((prev) => (prev.includes(v) ? prev : [...prev, v]));
+    setCustomColorInput('');
   };
-  const handleCustomColorBlur = () => {
-    regenerateCombos(selectedSizes, [...selectedColors, ...customColors.filter((c) => c.trim())]);
+  const removeSelectedSize = (s: string) => {
+    setSelectedSizes((prev) => prev.filter((v) => v !== s));
+  };
+  const removeSelectedColor = (c: string) => {
+    setSelectedColors((prev) => prev.filter((v) => v !== c));
   };
 
-  const updateCombo = (idx: number, value: string) => {
-    setCombos((prev) => prev.map((c, i) => (i === idx ? { ...c, stockQuantity: value } : c)));
+  const updateCombinationStock = (idx: number, stock: number) => {
+    setOptionCombinations((prev) => prev.map((c, i) => (i === idx ? { ...c, stock } : c)));
   };
+
+  const isOptionInvalid =
+    (sizeMode === 'custom' || colorMode === 'custom') && optionCombinations.length === 0;
 
   const handleDiscountChange = (raw: string) => {
     if (raw === "") { setDiscountRate(0); return; }
@@ -211,21 +218,21 @@ export default function AdminProductNewPage() {
     if (!name.trim()) { setError("상품명을 입력하세요."); return; }
     if (basePrice <= 0) { setError("가격을 입력하세요."); return; }
     if (categoryId === 0) { setError("카테고리를 선택하세요."); return; }
-    if (combos.length === 0) { setError("사이즈와 색상을 각각 1개 이상 선택하세요."); return; }
+    if (isOptionInvalid) { setError("옵션을 선택해주세요."); return; }
 
     const readyImages = uploadedImages.filter((img) => !img.uploading && img.url);
     if (readyImages.length === 0) { setError("최소 1장의 이미지를 등록해주세요."); return; }
     if (uploadedImages.some((img) => img.uploading)) { setError("이미지 업로드가 진행 중입니다. 잠시 후 다시 시도해주세요."); return; }
 
-    // 옵션 그룹 빌드: 사이즈×색상 조합을 하나의 그룹으로 전송
-    const comboValues = combos.map((combo) => ({
-      value: `${combo.size}-${combo.color}`,
-      additionalPrice: 0,
-      stockQuantity: Number(combo.stockQuantity) || 0,
-    }));
-
     const optionGroups = [
-      { name: "옵션", optionValues: comboValues },
+      {
+        name: "옵션",
+        optionValues: optionCombinations.map((combo) => ({
+          value: combo.value,
+          additionalPrice: 0,
+          stockQuantity: combo.stock,
+        })),
+      },
     ];
 
     const images = readyImages.map((img, i) => ({
@@ -248,7 +255,13 @@ export default function AdminProductNewPage() {
 
   const inputClass =
     "w-full bg-[var(--input-bg)] border border-[var(--border-color)] px-3 py-2 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-muted)] transition-colors";
-  const checkClass = "w-4 h-4 accent-[var(--text-primary)]";
+  const radioClass = "w-4 h-4 accent-[var(--text-primary)]";
+  const optionBtnClass = (selected: boolean) =>
+    `px-3 py-1.5 text-xs border transition-colors ${
+      selected
+        ? "bg-white text-black border-white"
+        : "bg-transparent text-[var(--text-secondary)] border-[var(--border-color)] hover:border-[var(--text-muted)]"
+    }`;
 
   return (
     <div className="p-8 max-w-3xl">
@@ -322,89 +335,143 @@ export default function AdminProductNewPage() {
         {/* 사이즈 옵션 */}
         <div>
           <label className="block text-xs text-[var(--text-muted)] mb-2">사이즈</label>
-          <div className="flex flex-wrap gap-3">
-            {SIZE_OPTIONS.map((s) => (
-              <label key={s} className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] cursor-pointer">
-                <input type="checkbox" checked={selectedSizes.includes(s)} onChange={() => toggleSize(s)} className={checkClass} />
-                {s}
-              </label>
-            ))}
+          <div className="flex gap-4 mb-3">
+            <label className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] cursor-pointer">
+              <input type="radio" name="sizeMode" checked={sizeMode === 'none'} onChange={() => setSizeMode('none')} className={radioClass} />
+              없음
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] cursor-pointer">
+              <input type="radio" name="sizeMode" checked={sizeMode === 'custom'} onChange={() => setSizeMode('custom')} className={radioClass} />
+              직접 설정
+            </label>
           </div>
+          {sizeMode === 'custom' && (
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {SIZE_OPTIONS.map((s) => (
+                  <button key={s} type="button" onClick={() => toggleSize(s)} className={optionBtnClass(selectedSizes.includes(s))}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2 max-w-xs">
+                <input
+                  type="text"
+                  value={customSizeInput}
+                  onChange={(e) => setCustomSizeInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomSize(); } }}
+                  className={`${inputClass} flex-1`}
+                  placeholder="직접 입력"
+                />
+                <button type="button" onClick={addCustomSize} className="px-3 py-2 text-xs border border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-muted)] transition-colors flex-shrink-0">
+                  추가
+                </button>
+              </div>
+              {selectedSizes.filter((s) => !SIZE_OPTIONS.includes(s)).length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {selectedSizes.filter((s) => !SIZE_OPTIONS.includes(s)).map((s) => (
+                    <button key={s} type="button" onClick={() => removeSelectedSize(s)} className="px-3 py-1.5 text-xs bg-white text-black border border-white inline-flex items-center gap-1.5">
+                      {s}
+                      <span className="text-[10px]">✕</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* 색상 옵션 */}
         <div>
           <label className="block text-xs text-[var(--text-muted)] mb-2">색상</label>
-          <div className="flex flex-wrap gap-3">
-            {COLOR_OPTIONS.map((c) => (
-              <label key={c} className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] cursor-pointer">
-                <input type="checkbox" checked={selectedColors.includes(c)} onChange={() => toggleColor(c)} className={checkClass} />
-                {c}
-              </label>
-            ))}
+          <div className="flex gap-4 mb-3">
+            <label className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] cursor-pointer">
+              <input type="radio" name="colorMode" checked={colorMode === 'none'} onChange={() => setColorMode('none')} className={radioClass} />
+              없음
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] cursor-pointer">
+              <input type="radio" name="colorMode" checked={colorMode === 'custom'} onChange={() => setColorMode('custom')} className={radioClass} />
+              직접 설정
+            </label>
           </div>
-          {customColors.length > 0 && (
-            <div className="mt-3 space-y-2">
-              {customColors.map((color, idx) => (
-                <div key={idx} className="flex gap-2 items-center max-w-xs">
-                  <input
-                    value={color}
-                    onChange={(e) => updateCustomColor(idx, e.target.value)}
-                    onBlur={handleCustomColorBlur}
-                    className={`${inputClass} flex-1`}
-                    placeholder="색상명 입력"
-                  />
-                  <button type="button" onClick={() => removeCustomColor(idx)} className="text-xs text-[var(--badge-red-text)] hover:underline flex-shrink-0">
-                    삭제
+          {colorMode === 'custom' && (
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {COLOR_OPTIONS.map((c) => (
+                  <button key={c} type="button" onClick={() => toggleColor(c)} className={optionBtnClass(selectedColors.includes(c))}>
+                    {c}
                   </button>
+                ))}
+              </div>
+              <div className="flex gap-2 max-w-xs">
+                <input
+                  type="text"
+                  value={customColorInput}
+                  onChange={(e) => setCustomColorInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomColor(); } }}
+                  className={`${inputClass} flex-1`}
+                  placeholder="직접 입력"
+                />
+                <button type="button" onClick={addCustomColor} className="px-3 py-2 text-xs border border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-muted)] transition-colors flex-shrink-0">
+                  추가
+                </button>
+              </div>
+              {selectedColors.filter((c) => !COLOR_OPTIONS.includes(c)).length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {selectedColors.filter((c) => !COLOR_OPTIONS.includes(c)).map((c) => (
+                    <button key={c} type="button" onClick={() => removeSelectedColor(c)} className="px-3 py-1.5 text-xs bg-white text-black border border-white inline-flex items-center gap-1.5">
+                      {c}
+                      <span className="text-[10px]">✕</span>
+                    </button>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           )}
-          <button
-            type="button"
-            onClick={addCustomColor}
-            className="mt-2 text-xs text-[var(--badge-blue-text)] hover:underline"
-          >
-            + 색상 추가
-          </button>
         </div>
 
-        {/* 옵션 조합 테이블 */}
-        {combos.length > 0 && (
-          <div>
-            <label className="block text-xs text-[var(--text-muted)] mb-2">옵션별 재고수량</label>
+        {/* 옵션 조합 및 재고 */}
+        <div>
+          <label className="block text-xs text-[var(--text-muted)] mb-2">옵션 조합 및 재고</label>
+          {optionCombinations.length === 0 ? (
+            <p className="text-xs text-[var(--text-muted)]">사이즈 또는 색상을 선택하면 조합이 자동 생성됩니다.</p>
+          ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[500px]">
+              <table className="w-full text-sm min-w-[400px]">
                 <thead>
                   <tr className="border-b border-[var(--border-color)] text-[var(--text-muted)] text-xs tracking-wider">
-                    <th className="py-2 px-3 text-left">사이즈</th>
-                    <th className="py-2 px-3 text-left">색상</th>
-                    <th className="py-2 px-3 text-right w-32">재고수량</th>
+                    <th className="py-2 px-3 text-left">옵션값</th>
+                    <th className="py-2 px-3 text-right w-32">재고</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {combos.map((combo, idx) => (
-                    <tr key={`${combo.size}-${combo.color}`} className="border-b border-[var(--border-color)]">
-                      <td className="py-2 px-3 text-[var(--text-secondary)]">{combo.size}</td>
-                      <td className="py-2 px-3 text-[var(--text-secondary)]">{combo.color}</td>
-                      <td className="py-2 px-3 text-right">
-                        <input
-                          inputMode="numeric"
-                          value={combo.stockQuantity}
-                          onChange={(e) => updateCombo(idx, e.target.value.replace(/[^\d]/g, ""))}
-                          onFocus={(e) => { if (e.target.value === "0") updateCombo(idx, ""); }}
-                          onBlur={(e) => { if (e.target.value === "") updateCombo(idx, "0"); }}
-                          className="w-full bg-[var(--input-bg)] border border-[var(--border-color)] px-2 py-1 text-xs text-right text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-muted)] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                        />
-                      </td>
-                    </tr>
-                  ))}
+                  {optionCombinations.map((combo, idx) => {
+                    const displayValue =
+                      sizeMode === 'none' && colorMode === 'none' ? '옵션 없음' : combo.value;
+                    return (
+                      <tr key={combo.value} className="border-b border-[var(--border-color)]">
+                        <td className="py-2 px-3 text-[var(--text-secondary)]">{displayValue}</td>
+                        <td className="py-2 px-3 text-right">
+                          <input
+                            type="number"
+                            min={0}
+                            value={combo.stock}
+                            onChange={(e) => updateCombinationStock(idx, Math.max(0, parseInt(e.target.value, 10) || 0))}
+                            onFocus={(e) => e.target.select()}
+                            className="w-full bg-[var(--input-bg)] border border-[var(--border-color)] px-2 py-1 text-xs text-right text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-muted)] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
+          )}
+          {isOptionInvalid && (
+            <p className="text-xs text-red-400 mt-2">옵션을 선택해주세요.</p>
+          )}
+        </div>
 
         {/* 이미지 업로드 */}
         <div>
@@ -471,8 +538,8 @@ export default function AdminProductNewPage() {
           </button>
           <button
             type="submit"
-            disabled={mutation.isPending}
-            className="flex-1 py-3 text-sm bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] transition-colors"
+            disabled={mutation.isPending || isOptionInvalid}
+            className="flex-1 py-3 text-sm bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {mutation.isPending ? "등록 중..." : "상품 등록"}
           </button>

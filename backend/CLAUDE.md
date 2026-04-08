@@ -52,7 +52,7 @@ docker compose -f ../docker-compose.yml up -d   # 인프라 시작
 - 소프트 삭제: MEMBER, PRODUCT, REVIEW에 deletedAt
 - 결제 분리: ORDERS와 PAYMENT 분리 (PG 교체 용이), 토스페이먼츠 confirm API는 백엔드, 결제 위젯 키는 프론트에서 개별 관리, PaymentConfirmRequest는 orderNumber(String) 기준
 - 쿠폰 실적용: Orders.memberCoupon FK로 사용 쿠폰 기록, 주문 생성 시 할인 계산(FIXED/PERCENT), 결제 완료(PAID) 시 usedAt 기록, 취소/환불 시 미만료 쿠폰 복원
-- 재고: 주문 시 decreaseStock(), 취소 시 increaseStock() (비관적 락 미적용)
+- 재고: 주문 시 decreaseStock(), 취소 시 increaseStock(), 비관적 락(PESSIMISTIC_WRITE) 적용 — ProductOptionValueRepository.findByIdWithLock()으로 동시 차감/복구 시 Race Condition 방지
 - 배송비: 50,000원 이상 무료, 미만 3,000원
 - 썸네일 추출: isThumbnail=true 우선, 없으면 sortOrder 최소값 fallback (ProductSummaryResponse, CartItemResponse, WishlistResponse, OrderItemResponse)
 - 이미지 fetch join: ProductRepository, CartItemRepository, WishlistRepository, OrderItemRepository에 `@EntityGraph(attributePaths)` 적용
@@ -84,6 +84,14 @@ docker compose -f ../docker-compose.yml up -d   # 인프라 시작
 - AuthServiceTest (5): 회원가입/로그인 성공·실패
 - OrderServiceTest (9): 주문 생성/취소/배송비
 - PaymentServiceTest (7): 결제 승인/실패 시나리오
+
+## Recent Changes (2026-04-08) — 재고 비관적 락
+
+- **Race Condition 방지**: 재고 동시 차감 시 음수 재고 발생 가능 문제 해결
+- **ProductOptionValueRepository.findByIdWithLock(id)**: `@Lock(LockModeType.PESSIMISTIC_WRITE)` + JPQL `SELECT FOR UPDATE`
+- **OrderService.createOrder()**: 재고 차감 루프에서 `cartItem.getOptionValue()` 직접 사용 대신 `findByIdWithLock()`으로 다시 로드 후 `decreaseStock()` 호출 (영속 컨텍스트의 비락 엔티티로는 행 잠금이 걸리지 않으므로 반드시 재조회 필요)
+- **ReturnExchangeService.completeRequest()**: 재고 복구 시에도 동일하게 `findByIdWithLock()`으로 재조회 후 `increaseStock()`
+- 옵션 미존재 시 `ErrorCode.PRODUCT_OPTION_NOT_FOUND` 처리
 
 ## Recent Changes (2026-04-08) — 반품/교환 요청 시스템
 
@@ -141,8 +149,6 @@ docker compose -f ../docker-compose.yml up -d   # 인프라 시작
 
 ## Known Issues
 
-- PATCH /api/admin/products/{id}: 옵션 수정 미지원 (기본 정보만 수정 가능)
-- Race Condition: 재고 동시 차감 시 락 미적용 (비관적 락 적용 예정)
 - 기존 주문 데이터: 할인가 반영 전에 생성된 주문의 priceSnapshot은 원가 기준 (소급 수정 불가)
 - 테스트 6개 실패 중 (Product.discountRate null 처리 미비, PaymentServiceTest OrderItemRepository mock 누락 등 기존 이슈)
 - 토스 환불 API: 미연동
@@ -150,7 +156,23 @@ docker compose -f ../docker-compose.yml up -d   # 인프라 시작
 
 ## Next Up
 
-- 재고 비관적 락 (Race Condition 처리)
-- 상품 옵션 수정 API
+- **GET /api/admin/products/{id}** 단건 조회 엔드포인트 신규 (프론트 상품 수정 페이지 분리에 필요 — 현재는 목록 API만 존재)
 - 소셜 로그인 (사업자 정보 확정 후)
 - 3단계: Elasticsearch, Kafka, CI/CD, 배포
+
+## Recent Changes (2026-04-09)
+
+### 상품 옵션 수정 API
+- **PATCH /api/admin/products/{id}**: 옵션 추가/수정/삭제 지원 (이전엔 기본 정보만 수정 가능했음)
+- **DTO**: `AdminProductOptionUpdateRequest` (id nullable, value, additionalPrice int, stockQuantity), `AdminProductUpdateRequest`에 `optionGroupName`, `optionValues` 필드 추가
+- **AdminProductService.updateProduct() 옵션 처리 로직**:
+  - 기존 옵션 그룹이 없으면 신규 생성 (`optionGroupName` 또는 "옵션")
+  - 요청에 ID가 있는 항목 → `existing.update()` 호출
+  - 요청에 없는 기존 항목 → 주문 이력 있으면(`OrderItemRepository.existsByOptionValueId`) `softDelete()`(재고 0), 없으면 `productOptionValueRepository.delete()` (cascade 없음 → 직접 호출 필요)
+  - id == null 항목 → 신규 `ProductOptionValue` 생성·`save()` 후 그룹에 추가
+- **ProductOptionValue 엔티티**: `update(value, stockQuantity, additionalPrice)`, `softDelete()` 메서드 추가 (additionalPrice는 int 파라미터를 BigDecimal로 변환)
+- **OrderItemRepository**: `existsByOptionValueId(Long)` 추가 (옵션 삭제 가능 여부 판별용)
+
+### 장바구니 재고 표시 + 수량 검증 완화
+- **CartItemResponse**: `int stockQuantity` 필드 추가, `from()`에서 `cartItem.getOptionValue().getStockQuantity()` 세팅 (옵션 null이면 0). 프론트가 재고 부족 항목을 식별/UI 처리하기 위함
+- **CartService.updateCartItem()**: 재고 검증 조건을 **수량 증가 시에만** 적용 (`request.getQuantity() > cartItem.getQuantity()`). 감소는 재고 부족 상태에서도 항상 허용 → 사용자가 재고 초과 항목을 줄일 수 있음 (이전엔 4→3 감소도 stock=2이면 OUT_OF_STOCK으로 차단됐음)

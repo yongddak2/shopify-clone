@@ -4,6 +4,7 @@ import com.shopify.backend.domain.product.entity.ProductStatus;
 import lombok.Getter;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Getter
 public class AdminProductUpdateRequest {
@@ -14,4 +15,6 @@ public class AdminProductUpdateRequest {
     private BigDecimal discountRate;
     private ProductStatus status;
     private Long categoryId;
+    private String optionGroupName;
+    private List<AdminProductOptionUpdateRequest> optionValues;
 }
