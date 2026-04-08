@@ -11,6 +11,7 @@ import {
   uploadBannerImage,
 } from "@/lib/admin";
 import { ChevronUp, ChevronDown, Trash2 } from "lucide-react";
+import { invalidateBannerRelated } from "@/lib/queryInvalidator";
 import type { Banner } from "@/types";
 
 const MAX_BANNERS = 5;
@@ -36,7 +37,7 @@ export default function AdminBannersPage() {
     mutationFn: (imageUrl: string) =>
       createBanner(imageUrl, banners.length + 1),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "banners"] });
+      invalidateBannerRelated(queryClient);
     },
     onError: () => setError("배너 추가에 실패했습니다."),
   });
@@ -45,7 +46,7 @@ export default function AdminBannersPage() {
     mutationFn: (orders: { id: number; sortOrder: number }[]) =>
       updateBannerOrder(orders),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "banners"] });
+      invalidateBannerRelated(queryClient);
     },
     onError: () => setError("순서 변경에 실패했습니다."),
   });
@@ -53,14 +54,14 @@ export default function AdminBannersPage() {
   const toggleMutation = useMutation({
     mutationFn: (id: number) => toggleBannerActive(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "banners"] });
+      invalidateBannerRelated(queryClient);
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deleteBanner(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "banners"] });
+      invalidateBannerRelated(queryClient);
       setDeleteTarget(null);
     },
     onError: () => setError("삭제에 실패했습니다."),

@@ -9,6 +9,7 @@ import {
   updateMyAddress,
   deleteMyAddress,
 } from "@/lib/user";
+import { invalidateAddressRelated } from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
 import type { MemberAddress } from "@/types";
 
@@ -279,7 +280,7 @@ export default function MypageAddressesPage() {
   const isFull = addresses.length >= MAX_ADDRESSES;
 
   const refresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["addresses"] });
+    invalidateAddressRelated(queryClient);
   };
 
   const handleDelete = async () => {

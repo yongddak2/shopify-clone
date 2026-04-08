@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { confirmPayment } from "@/lib/payment";
+import { invalidateAfterPayment } from "@/lib/queryInvalidator";
 
 function formatPrice(price: number) {
   return price.toLocaleString("ko-KR");
@@ -49,8 +50,8 @@ export default function PaymentSuccessPage() {
         });
         setStatus("success");
 
-        // 장바구니 캐시 무효화 + sessionStorage 정리
-        queryClient.invalidateQueries({ queryKey: ["cart"] });
+        // 결제 완료 — 주문/장바구니/재고/쿠폰 모두 무효화 + sessionStorage 정리
+        invalidateAfterPayment(queryClient);
         try {
           sessionStorage.removeItem("orderCartItemIds");
         } catch {

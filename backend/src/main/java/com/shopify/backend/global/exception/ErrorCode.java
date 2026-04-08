@@ -75,7 +75,15 @@ public enum ErrorCode {
     // File
     INVALID_FILE_TYPE(HttpStatus.BAD_REQUEST, "허용되지 않는 파일 형식입니다."),
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드에 실패했습니다."),
-    FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "파일 크기는 5MB 이하여야 합니다."),
+    FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "파일 크기 제한을 초과했습니다."),
+
+    // Return/Exchange
+    RETURN_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "반품/교환 요청을 찾을 수 없습니다."),
+    DUPLICATE_RETURN_REQUEST(HttpStatus.BAD_REQUEST, "이미 동일한 요청이 진행 중입니다."),
+    CONFIRMED_ORDER_CANNOT_REQUEST(HttpStatus.BAD_REQUEST, "구매 확정된 주문은 반품/교환을 신청할 수 없습니다."),
+    INVALID_REQUEST_STATUS(HttpStatus.BAD_REQUEST, "현재 상태에서는 처리할 수 없습니다."),
+    EXCHANGE_OPTION_REQUIRED(HttpStatus.BAD_REQUEST, "교환 신청 시 원하는 옵션을 선택해야 합니다."),
+    TOO_MANY_IMAGES(HttpStatus.BAD_REQUEST, "이미지는 최대 3장까지 첨부 가능합니다."),
 
     // Password
     PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "현재 비밀번호가 일치하지 않습니다."),
@@ -88,6 +96,14 @@ public enum ErrorCode {
     // Auth
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
+
+    // Password Reset
+    EMAIL_NOT_FOUND(HttpStatus.NOT_FOUND, "가입되지 않은 이메일입니다."),
+    INVALID_RESET_CODE(HttpStatus.BAD_REQUEST, "인증번호가 일치하지 않거나 만료되었습니다."),
+    RESET_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "이메일 인증이 완료되지 않았습니다."),
+    SOCIAL_LOGIN_CANNOT_RESET_PASSWORD(HttpStatus.BAD_REQUEST, "소셜 로그인 사용자는 비밀번호를 재설정할 수 없습니다."),
+    EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이메일 발송에 실패했습니다."),
+    RESET_CODE_COOLTIME(HttpStatus.TOO_MANY_REQUESTS, "잠시 후 다시 시도해주세요."),
 
     // Common
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "잘못된 입력값입니다.");

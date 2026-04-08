@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createCoupon } from "@/lib/admin";
+import { invalidateCouponRelated } from "@/lib/queryInvalidator";
 
 export default function NewCouponPage() {
   const router = useRouter();
@@ -21,7 +22,7 @@ export default function NewCouponPage() {
   const mutation = useMutation({
     mutationFn: createCoupon,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "coupons"] });
+      invalidateCouponRelated(queryClient);
       router.push("/admin/coupons");
     },
     onError: () => setError("쿠폰 생성에 실패했습니다"),

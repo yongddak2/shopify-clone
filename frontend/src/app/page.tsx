@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProducts } from "@/lib/product";
 import { getWishlists, toggleWishlist } from "@/lib/wishlist";
 import { getPublicBanners } from "@/lib/admin";
+import { invalidateWishlistRelated } from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
 import { Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Product, Banner } from "@/types";
@@ -318,7 +319,7 @@ export default function Home() {
   const wishlistMutation = useMutation({
     mutationFn: (productId: number) => toggleWishlist(productId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["wishlists"] });
+      invalidateWishlistRelated(queryClient);
     },
   });
 

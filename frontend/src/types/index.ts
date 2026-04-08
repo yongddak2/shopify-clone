@@ -115,6 +115,8 @@ export interface OrderResponse {
   couponName: string | null;
   couponDiscountAmount: number | null;
   orderItems: OrderItemResponse[];
+  returnRequested: boolean;
+  exchangeRequested: boolean;
 }
 
 export interface OrderItemResponse {
@@ -309,6 +311,33 @@ export interface Banner {
   sortOrder: number;
   active: boolean;
   linkUrl: string | null;
+  createdAt: string;
+}
+
+// 반품/교환
+export type ReasonType = 'RETURN' | 'EXCHANGE';
+export type ReasonCategory = 'CHANGE_OF_MIND' | 'SELLER_FAULT';
+export type RequestStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'COMPLETED';
+
+export type ReasonDetail =
+  | 'DISLIKE' | 'WRONG_SIZE' | 'WRONG_ORDER' | 'FOUND_CHEAPER'
+  | 'WRONG_ITEM_SENT' | 'WRONG_OPTION_SENT' | 'PRODUCT_DEFECT'
+  | 'DIFFERENT_FROM_DESC' | 'SEWING_DEFECT';
+
+export interface ReturnExchangeRequest {
+  id: number;
+  orderId: number;
+  orderNumber: string;
+  type: ReasonType;
+  reasonDetail: ReasonDetail;
+  reasonDetailLabel: string;
+  reasonCategory: ReasonCategory;
+  reasonText: string;
+  status: RequestStatus;
+  adminMemo: string | null;
+  imageUrls: string[];
+  desiredOptionValueId: number | null;
+  desiredOptionValue: string | null;
   createdAt: string;
 }
 

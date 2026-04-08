@@ -6,6 +6,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProductDetail } from "@/lib/product";
 import { addToCart } from "@/lib/cart";
 import { getWishlists, toggleWishlist } from "@/lib/wishlist";
+import {
+  invalidateCartRelated,
+  invalidateWishlistRelated,
+} from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
 import Button from "@/components/common/Button";
 import { Heart } from "lucide-react";
@@ -47,7 +51,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
   const wishlistMutation = useMutation({
     mutationFn: () => toggleWishlist(Number(id)),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["wishlists"] });
+      invalidateWishlistRelated(queryClient);
     },
   });
 
@@ -69,7 +73,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
     }) => addToCart(Number(id), optionValueId, qty),
     onSuccess: () => {
       setCartError("");
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
+      invalidateCartRelated(queryClient);
       setCartModal(true);
     },
     onError: () => {

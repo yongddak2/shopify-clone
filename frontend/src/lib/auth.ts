@@ -46,6 +46,34 @@ export async function logout() {
   useAuthStore.getState().logout();
 }
 
+export async function sendResetCode(email: string) {
+  const res = await api.post<ApiResponse<null>>(
+    "/api/auth/password-reset/send",
+    { email }
+  );
+  return res.data;
+}
+
+export async function verifyResetCode(email: string, code: string) {
+  const res = await api.post<ApiResponse<null>>(
+    "/api/auth/password-reset/verify",
+    { email, code }
+  );
+  return res.data;
+}
+
+export async function resetPassword(
+  email: string,
+  newPassword: string,
+  newPasswordConfirm: string
+) {
+  const res = await api.post<ApiResponse<null>>(
+    "/api/auth/password-reset/reset",
+    { email, newPassword, newPasswordConfirm }
+  );
+  return res.data;
+}
+
 export async function refresh(refreshToken: string) {
   const res = await api.post<ApiResponse<LoginResponse>>(
     "/api/auth/refresh",

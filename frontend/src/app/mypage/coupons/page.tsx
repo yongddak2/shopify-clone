@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react";
 import { getAvailableCoupons, getMyCoupons, issueCoupon } from "@/lib/coupon";
+import { invalidateCouponRelated } from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
 import type { CouponListItem, MemberCoupon } from "@/types";
 
@@ -72,8 +73,7 @@ export default function MypageCouponsPage() {
   const issueMutation = useMutation({
     mutationFn: (couponId: number) => issueCoupon(couponId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["myCoupons"] });
-      queryClient.invalidateQueries({ queryKey: ["availableCoupons"] });
+      invalidateCouponRelated(queryClient);
     },
     onError: (err: unknown) => {
       const message =

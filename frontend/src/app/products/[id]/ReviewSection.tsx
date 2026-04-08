@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProductReviews, toggleReviewLike } from "@/lib/review";
+import { invalidateReviewRelated } from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "next/navigation";
 import { Star, ThumbsUp, ChevronLeft, ChevronRight, X } from "lucide-react";
@@ -216,7 +217,7 @@ function ReviewCard({ review }: { review: Review }) {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["reviews"], exact: false });
+      invalidateReviewRelated(queryClient);
     },
   });
 

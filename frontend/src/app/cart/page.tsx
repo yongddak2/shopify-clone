@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCart, updateCartQuantity, removeCartItem } from "@/lib/cart";
+import { invalidateCartRelated } from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
 import Button from "@/components/common/Button";
 import type { CartItem } from "@/types";
@@ -85,13 +86,13 @@ export default function CartPage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, quantity }: { id: number; quantity: number }) =>
       updateCartQuantity(id, quantity),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cart"] }),
+    onSuccess: () => invalidateCartRelated(queryClient),
   });
 
   const removeMutation = useMutation({
     mutationFn: (id: number) => removeCartItem(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
+      invalidateCartRelated(queryClient);
     },
   });
 
@@ -164,7 +165,7 @@ export default function CartPage() {
       await removeCartItem(id);
     }
     setCheckedIds(new Set());
-    queryClient.invalidateQueries({ queryKey: ["cart"] });
+    invalidateCartRelated(queryClient);
   };
 
   const handleOrder = () => {

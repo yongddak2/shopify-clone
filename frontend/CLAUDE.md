@@ -29,7 +29,8 @@ src/
 ├── app/                    # 페이지 (Next.js App Router)
 │   ├── layout.tsx          # 루트 레이아웃 (Header/Footer/Providers)
 │   ├── page.tsx            # 메인 (배너 슬라이더 + NEW ARRIVALS + BEST)
-│   ├── login/, signup/     # 인증 페이지
+│   ├── login/, signup/     # 인증 페이지 (signup: 이용약관/개인정보/마케팅 3종 동의)
+│   ├── forgot-password/    # 비밀번호 찾기 (3단계: 이메일 → 인증번호 → 새 비밀번호)
 │   ├── products/           # 상품 목록 + 상품 상세 (리뷰 섹션 포함)
 │   ├── search/             # 검색 결과 페이지 (키워드/카테고리/가격 필터)
 │   ├── cart/, order/, orders/  # 장바구니, 주문, 주문내역
@@ -37,10 +38,11 @@ src/
 │   ├── mypage/             # 마이페이지 (사이드메뉴 + 대시보드 레이아웃)
 │   │   ├── layout.tsx      # 사이드메뉴(200px) + 대시보드 카드(배송중/배송완료/쿠폰/찜) + 모바일 탭
 │   │   ├── page.tsx        # /mypage → /mypage/orders 리다이렉트
-│   │   ├── orders/         # 주문내역 (5탭: 전체/주문결제/배송중/배송완료/취소환불 + 기간필터 + 액션버튼)
+│   │   ├── orders/         # 주문내역 (5탭 + 기간필터 + 반품/교환/구매확정/리뷰 액션, 신청완료 텍스트 표시)
+│   │   │   └── [id]/return-exchange/  # 반품/교환 신청 페이지 (?type=RETURN|EXCHANGE)
 │   │   ├── addresses/      # 배송지 관리 (인라인 수정, 10개 제한, 카카오 주소 API)
 │   │   ├── wishlist/       # 찜 목록 (하트 토글, 장바구니 담기)
-│   │   ├── coupons/        # 쿠폰함 (3탭: 사용가능/사용완료/만료)
+│   │   ├── coupons/        # 쿠폰함 (다운로드 가능 섹션 + 3탭: 사용가능/사용완료/만료)
 │   │   ├── reviews/        # 리뷰 관리 (모달 방식 작성/수정/삭제, 사진 S3 업로드, 별점 필수)
 │   │   └── profile/        # 회원정보 수정 + 비밀번호 변경 + 회원 탈퇴
 │   └── admin/              # 관리자 페이지 (별도 레이아웃)
@@ -49,12 +51,13 @@ src/
 │       ├── products/       # 상품 관리 (등록/수정/삭제, S3 이미지 업로드)
 │       ├── orders/         # 주문 관리 (상태 변경, 한글 상태 뱃지)
 │       ├── users/          # 회원 관리 (읽기 전용)
-│       ├── coupons/        # 쿠폰 관리 (생성)
-│       └── banners/        # 배너 관리 (등록/삭제/순서변경, S3 이미지 업로드)
+│       ├── coupons/        # 쿠폰 관리 (생성/수정 인라인 폼/삭제 확인 모달)
+│       ├── banners/        # 배너 관리 (등록/삭제/순서변경, S3 이미지 업로드)
+│       └── requests/       # 반품/교환 관리 (5탭, 승인/거절/처리완료 모달, 희망옵션 컬럼)
 ├── components/
 │   ├── layout/             # Header, Footer
 │   └── common/             # Button 등 공통 컴포넌트
-├── lib/                    # API 호출 (api.ts, auth.ts, product.ts, cart.ts, order.ts, user.ts, admin.ts, wishlist.ts, coupon.ts, review.ts, payment.ts)
+├── lib/                    # API 호출 (api.ts, auth.ts, product.ts, cart.ts, order.ts, user.ts, admin.ts, wishlist.ts, coupon.ts, review.ts, payment.ts) + queryInvalidator.ts (React Query 캐시 헬퍼)
 ├── stores/authStore.ts     # zustand 인증 스토어
 └── types/index.ts          # 공통 타입
 ```
@@ -143,16 +146,31 @@ src/
 
 ## Coupon (쿠폰)
 
-- 마이페이지 쿠폰함: 3탭 (사용가능/사용완료/만료), usedAt 기반 필터링
+- 마이페이지 쿠폰함: 상단 다운로드 가능 쿠폰 섹션 + 3탭 (사용가능/사용완료/만료), usedAt 기반 필터링
+- 다운로드 버튼 상태: 다운로드 가능 / 다운로드 완료(isIssued) / 마감(소진/만료)
 - 주문 페이지 쿠폰 적용: 드롭다운 select로 사용 가능한 쿠폰 선택, 할인 금액 프론트 미리 계산 (FIXED/PERCENT)
 - 주문 생성 시 memberCouponId 전달, 결제 확인 시 백엔드에서 markUsed() + 명시적 save()
-- `lib/coupon.ts`: `getMyCoupons()` (GET /api/coupons/me) — 전체 쿠폰 반환 (사용완료 포함)
+- 관리자 쿠폰 관리: 생성/수정(인라인 폼)/삭제(확인 모달) — GET/POST/PATCH/DELETE /api/admin/coupons
+- `lib/coupon.ts`: `getMyCoupons()` (GET /api/coupons/me), `getAvailableCoupons()` (GET /api/coupons, 다운로드 가능 목록 + isIssued)
 
 ## Purchase Confirmation (구매확정)
 
-- 백엔드 API 없음 — localStorage `confirmedOrderIds` 배열로 프론트 관리
-- 주문내역: DELIVERED 상태에서 구매확정 전/후 버튼 분기
-- 리뷰 관리: confirmedOrderIds에 포함된 주문만 리뷰 작성 가능
+- POST /api/orders/{id}/confirm — 백엔드 API 연동 (Orders.confirmedAt)
+- 주문내역: DELIVERED 상태에서 confirmedAt 유무로 구매확정 전/후 버튼 분기
+- 리뷰 관리: confirmedAt 기반 분기 (이전 localStorage `confirmedOrderIds` 코드 제거됨)
+
+## Signup Terms (회원가입 약관 동의)
+
+- 이용약관(필수) / 개인정보 처리방침(필수) / 마케팅 수신(선택) 3종 체크박스
+- 전체 동의 토글, 필수 미동의 시 가입 버튼 비활성화
+- 약관 내용 모달 (현재 플레이스홀더, 추후 실제 내용 교체 예정)
+
+## Forgot Password (비밀번호 찾기)
+
+- /forgot-password 3단계 스텝 UI: 이메일 입력 → 인증번호 입력 → 새 비밀번호 설정
+- POST /api/auth/password-reset/send / verify / reset 호출
+- 재발송 30초 쿨타임 (프론트 카운트다운 + 백엔드 검증)
+- 로그인 페이지에 "비밀번호를 잊으셨나요?" 링크 추가
 
 ## Password Change (비밀번호 변경)
 
@@ -184,11 +202,63 @@ src/
 - S3 이미지 업로드, 링크 URL 설정, 활성/비활성 토글
 - 최대 5개 제한
 
+## Return/Exchange (반품/교환)
+
+- **신청 페이지**: `mypage/orders/[id]/return-exchange/page.tsx` (?type=RETURN|EXCHANGE 쿼리)
+  - 주문 상품 정보 카드 (썸네일/상품명/옵션/수량/금액)
+  - 사유 라디오 2그룹 (단순 변심 4개 / 상품·배송 문제 5개)
+  - 상세 사유 텍스트 (500자 카운터, SELLER_FAULT 선택 시 사진 첨부 권장 안내)
+  - 사진 첨부 (최대 3장, 20MB, S3 업로드)
+  - **교환 시 옵션 선택 드롭다운**: getProductDetail로 optionGroups[0].values 조회, 재고 표시, 품절 disabled
+  - 제출 성공 시 invalidateOrderRelated 후 /mypage/orders 이동
+- **마이페이지 주문내역 버튼 분기**:
+  - returnRequested === true → "반품 신청완료" (회색 텍스트, 버튼 아님)
+  - exchangeRequested === true → "교환 신청완료"
+  - REFUNDED → "환불완료"
+  - DELIVERED + 미확정 + 신청 없음 → 구매확정/반품요청/교환요청 3버튼
+  - DELIVERED + 확정됨 → 리뷰 작성
+  - OrderStatus RETURN_REQUESTED/EXCHANGE_REQUESTED → 주황색 뱃지
+- **관리자 페이지**: `admin/requests/page.tsx`
+  - 5탭 필터 (전체/신청완료/승인/거절/처리완료)
+  - 가로 스크롤 테이블 (주문번호/유형/사유/희망옵션/상태/신청일/관리)
+  - 행 클릭 시 펼침 — 상세 사유, 이미지 썸네일, 관리자 메모, 희망 교환 옵션 (굵게)
+  - 승인/거절 모달 (거절 시 메모 필수)
+  - 처리완료 모달 (재고 복구 안내)
+- **lib/order.ts**: createReturnExchangeRequest, getReturnExchangeRequests, uploadReturnImage
+- **lib/admin.ts**: getAdminRequests, approveRequest, rejectRequest, completeRequest
+
+## React Query 캐시 전략 (queryInvalidator)
+
+- **lib/queryInvalidator.ts**: 도메인별 무효화 헬퍼 함수 모음
+  - invalidateOrderRelated: orders/order/admin orders/admin requests
+  - invalidateProductRelated: products/product/admin products/main 목록/검색
+  - invalidateCartRelated, invalidateWishlistRelated, invalidateCouponRelated
+  - invalidateBannerRelated, invalidateReviewRelated, invalidateAddressRelated, invalidateUserRelated
+  - invalidateAfterPayment: 결제 완료 시 4개 도메인 일괄 갱신
+- **운영 원칙**:
+  - 모든 mutation의 onSuccess에서 도메인 헬퍼 호출
+  - 쿼리 키는 도메인 prefix 통일 (예: ["orders", page], ["product", id])
+  - 새 쿼리 추가 시 헬퍼만 업데이트하면 모든 mutation에 자동 반영
+  - cross-invalidation: admin mutation 시 user 캐시도 함께 무효화 (예: admin/orders 상태 변경 시 user mypage 캐시도 갱신)
+- **staleTime 튜닝**:
+  - 실시간 중요 (mypage/orders, admin/orders, admin/requests): 0
+  - 일반 (전역 기본값): 60초
+  - 거의 안 바뀜 (categories): 5분
+- **mypage/wishlist**: 이 페이지에서만 mutation 후 invalidate 안 함 (즉시 카드 사라지는 것을 막기 위해 toggledOff 로컬 상태로 하트 색상만 전환, 새로고침 시 사라짐)
+
 ## Backend Config
 
 - `application-example.yml` 존재 (GitHub 공유용, 민감 키 제외)
 
 ## Known Issues
 
-- 옵션 변경/반품/교환: 버튼만 존재, "준비 중" alert
-- 구매확정: 백엔드 API 없음, localStorage로 프론트 관리
+- 옵션 변경: 버튼만 존재, "준비 중" alert
+- 소셜 로그인: 쇼핑몰 사업자 정보 확정 후 진행 예정
+- 토스 환불 API: 미연동
+- 회원가입 약관: 현재 플레이스홀더, 실제 약관 내용 교체 예정
+
+## Next Up
+
+- 소셜 로그인 (사업자 정보 확정 후)
+- 상품 옵션 수정 UI
+- 3단계: Elasticsearch, Kafka, CI/CD, 배포

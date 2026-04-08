@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getAdminProducts, updateProduct, deleteProduct } from "@/lib/admin";
+import { invalidateProductRelated } from "@/lib/queryInvalidator";
 import type { AdminProduct } from "@/types";
 
 function formatPrice(n: number) { return n.toLocaleString("ko-KR"); }
@@ -36,7 +37,7 @@ export default function AdminProductsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deleteProduct(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
+      invalidateProductRelated(queryClient);
       setDeleteTarget(null);
       setDeleteError("");
     },
@@ -158,7 +159,7 @@ function EditProductModal({ product, onClose }: { product: AdminProduct; onClose
   const mutation = useMutation({
     mutationFn: (data: Record<string, unknown>) => updateProduct(product.id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
+      invalidateProductRelated(queryClient);
       onClose();
     },
     onError: () => setError("수정에 실패했습니다"),

@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { getWishlists, toggleWishlist } from "@/lib/wishlist";
 import { useAuthStore } from "@/stores/authStore";
 import { Heart } from "lucide-react";
@@ -21,8 +22,12 @@ function formatDate(dateStr: string) {
 
 export default function MypageWishlistPage() {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { isLoggedIn } = useAuthStore();
+
+  // 페이지 머무는 동안만 유지되는 "해제된 상품" 상태.
+  // 카드를 즉시 제거하지 않고 하트 아이콘만 비활성화로 표시한다.
+  // 새로고침/페이지 재진입 시 ["wishlists"] 쿼리가 다시 fetch되며 자연스럽게 사라진다.
+  const [toggledOff, setToggledOff] = useState<Set<number>>(new Set());
 
   const { data, isLoading } = useQuery({
     queryKey: ["wishlists"],
@@ -30,12 +35,21 @@ export default function MypageWishlistPage() {
     enabled: isLoggedIn(),
   });
 
-  const removeMutation = useMutation({
+  const toggleMutation = useMutation({
     mutationFn: (productId: number) => toggleWishlist(productId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["wishlists"] });
-    },
+    // 이 페이지에 있는 동안에는 캐시를 invalidate하지 않는다.
+    // (즉시 사라지는 것을 막기 위함 — 새로고침 시점에 갱신됨)
   });
+
+  const handleToggle = (productId: number) => {
+    setToggledOff((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
+    toggleMutation.mutate(productId);
+  };
 
   const items = data?.data ?? [];
 
@@ -102,13 +116,17 @@ export default function MypageWishlistPage() {
                   {formatDate(item.createdAt)} 찜
                 </p>
               </Link>
-              {/* 하트 해제 */}
+              {/* 하트 토글 (즉시 제거되지 않음 — 새로고침 시 사라짐) */}
               <button
-                onClick={() => removeMutation.mutate(item.productId)}
+                onClick={() => handleToggle(item.productId)}
                 className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-black/60 transition-colors"
               >
                 <Heart
-                  className="w-4 h-4 text-red-400 fill-red-400"
+                  className={
+                    toggledOff.has(item.productId)
+                      ? "w-4 h-4 text-white"
+                      : "w-4 h-4 text-red-400 fill-red-400"
+                  }
                   strokeWidth={1.5}
                 />
               </button>

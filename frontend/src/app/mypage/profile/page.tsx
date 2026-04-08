@@ -7,6 +7,7 @@ import { getMyInfo, changePassword } from "@/lib/user";
 import { logout } from "@/lib/auth";
 import { Eye, EyeOff } from "lucide-react";
 import api from "@/lib/api";
+import { invalidateUserRelated } from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
 import type { ApiResponse, User } from "@/types";
 
@@ -97,7 +98,7 @@ export default function MypageProfilePage() {
       setCurrentPassword("");
       setNewPassword("");
       setNewPasswordConfirm("");
-      queryClient.invalidateQueries({ queryKey: ["myInfo"] });
+      invalidateUserRelated(queryClient);
     },
     onError: (err: any) => {
       const msg =

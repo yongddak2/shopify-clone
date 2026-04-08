@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getOrderDetail, cancelOrder } from "@/lib/order";
+import {
+  invalidateOrderRelated,
+  invalidateProductRelated,
+} from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
 import Button from "@/components/common/Button";
 
@@ -52,8 +56,8 @@ export default function OrderDetailClient({ id }: { id: string }) {
   const cancelMutation = useMutation({
     mutationFn: () => cancelOrder(Number(id)),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["order", id] });
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      invalidateOrderRelated(queryClient);
+      invalidateProductRelated(queryClient);
     },
     onError: () => {
       alert("주문 취소에 실패했습니다.");

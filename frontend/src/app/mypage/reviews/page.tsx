@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getOrders } from "@/lib/order";
 import { createReview, deleteReview, getMyReviews, uploadReviewImage } from "@/lib/review";
+import { invalidateReviewRelated } from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
 import { Star, X, ImagePlus } from "lucide-react";
 import Link from "next/link";
@@ -369,7 +370,7 @@ export default function MypageReviewsPage() {
     mutationFn: (id: number) => deleteReview(id),
     onSuccess: () => {
       setDeleteTarget(null);
-      queryClient.invalidateQueries({ queryKey: ["myReviews"] });
+      invalidateReviewRelated(queryClient);
     },
   });
 
@@ -403,7 +404,7 @@ export default function MypageReviewsPage() {
 
   const handleModalSuccess = () => {
     setModalState(null);
-    queryClient.invalidateQueries({ queryKey: ["myReviews"] });
+    invalidateReviewRelated(queryClient);
   };
 
   return (

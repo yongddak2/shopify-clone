@@ -10,7 +10,7 @@ import java.util.Optional;
 public interface WishlistRepository extends JpaRepository<Wishlist, Long> {
 
     @EntityGraph(attributePaths = {"product.images"})
-    List<Wishlist> findByMemberId(Long memberId);
+    List<Wishlist> findByMemberIdOrderByCreatedAtDesc(Long memberId);
 
     Optional<Wishlist> findByMemberIdAndProductId(Long memberId, Long productId);
 

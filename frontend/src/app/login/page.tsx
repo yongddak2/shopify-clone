@@ -105,6 +105,14 @@ export default function LoginPage() {
             <Button type="submit" fullWidth loading={loading}>
               로그인
             </Button>
+            <div className="text-center mt-4">
+              <Link
+                href="/forgot-password"
+                className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors underline underline-offset-4"
+              >
+                비밀번호를 잊으셨나요?
+              </Link>
+            </div>
           </div>
         </form>
 

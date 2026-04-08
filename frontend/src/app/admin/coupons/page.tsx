@@ -10,6 +10,7 @@ import {
   updateCoupon,
   type UpdateCouponRequest,
 } from "@/lib/admin";
+import { invalidateCouponRelated } from "@/lib/queryInvalidator";
 import type { AdminCoupon } from "@/types";
 
 type ErrorResponse = { success: boolean; message: string | null; data: unknown };
@@ -51,7 +52,7 @@ export default function AdminCouponsPage() {
     mutationFn: ({ id, data }: { id: number; data: UpdateCouponRequest }) =>
       updateCoupon(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "coupons"] });
+      invalidateCouponRelated(queryClient);
       setEditingId(null);
       setEditError("");
     },
@@ -63,7 +64,7 @@ export default function AdminCouponsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deleteCoupon(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "coupons"] });
+      invalidateCouponRelated(queryClient);
       setDeleteTarget(null);
     },
     onError: (err: AxiosError<ErrorResponse>) => {

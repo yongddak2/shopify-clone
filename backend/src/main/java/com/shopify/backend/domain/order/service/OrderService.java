@@ -11,9 +11,13 @@ import com.shopify.backend.domain.order.entity.CartItem;
 import com.shopify.backend.domain.order.entity.Order;
 import com.shopify.backend.domain.order.entity.OrderItem;
 import com.shopify.backend.domain.order.entity.OrderStatus;
+import com.shopify.backend.domain.order.entity.ReasonType;
+import com.shopify.backend.domain.order.entity.RequestStatus;
+import com.shopify.backend.domain.order.entity.ReturnExchangeRequest;
 import com.shopify.backend.domain.order.repository.CartItemRepository;
 import com.shopify.backend.domain.order.repository.OrderItemRepository;
 import com.shopify.backend.domain.order.repository.OrderRepository;
+import com.shopify.backend.domain.order.repository.ReturnExchangeRequestRepository;
 import com.shopify.backend.domain.product.entity.ProductOptionValue;
 import com.shopify.backend.global.exception.BusinessException;
 import com.shopify.backend.global.exception.ErrorCode;
@@ -37,15 +41,24 @@ public class OrderService {
     private final CartItemRepository cartItemRepository;
     private final MemberRepository memberRepository;
     private final MemberCouponRepository memberCouponRepository;
+    private final ReturnExchangeRequestRepository returnExchangeRequestRepository;
+
+    private static final List<RequestStatus> ACTIVE_REQUEST_STATUSES =
+            List.of(RequestStatus.REQUESTED, RequestStatus.APPROVED);
 
     private static final BigDecimal FREE_DELIVERY_THRESHOLD = new BigDecimal("50000");
     private static final BigDecimal DELIVERY_FEE = new BigDecimal("3000");
 
     public Page<OrderResponse> getOrders(Long memberId, int page, int size) {
         Page<Order> orders = orderRepository.findByMemberIdOrderByCreatedAtDesc(memberId, PageRequest.of(page, size));
+
+        List<Long> orderIds = orders.getContent().stream().map(Order::getId).toList();
+        java.util.Map<Long, boolean[]> requestFlagMap = computeRequestFlags(orderIds);
+
         return orders.map(order -> {
             List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
-            return OrderResponse.from(order, orderItems);
+            boolean[] flags = requestFlagMap.getOrDefault(order.getId(), new boolean[]{false, false});
+            return OrderResponse.from(order, orderItems, flags[0], flags[1]);
         });
     }
 
@@ -54,7 +67,23 @@ public class OrderService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
         List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
-        return OrderResponse.from(order, orderItems);
+        boolean[] flags = computeRequestFlags(List.of(orderId))
+                .getOrDefault(orderId, new boolean[]{false, false});
+        return OrderResponse.from(order, orderItems, flags[0], flags[1]);
+    }
+
+    private java.util.Map<Long, boolean[]> computeRequestFlags(List<Long> orderIds) {
+        java.util.Map<Long, boolean[]> map = new java.util.HashMap<>();
+        if (orderIds.isEmpty()) return map;
+        List<ReturnExchangeRequest> requests = returnExchangeRequestRepository.findByOrderIdIn(orderIds);
+        for (ReturnExchangeRequest r : requests) {
+            if (!ACTIVE_REQUEST_STATUSES.contains(r.getStatus())) continue;
+            Long oid = r.getOrder().getId();
+            boolean[] flags = map.computeIfAbsent(oid, k -> new boolean[]{false, false});
+            if (r.getType() == ReasonType.RETURN) flags[0] = true;
+            else if (r.getType() == ReasonType.EXCHANGE) flags[1] = true;
+        }
+        return map;
     }
 
     @Transactional

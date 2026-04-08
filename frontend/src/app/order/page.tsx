@@ -13,6 +13,7 @@ import {
   deleteMyAddress,
 } from "@/lib/user";
 import { getMyCoupons } from "@/lib/coupon";
+import { invalidateAddressRelated } from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
 import Button from "@/components/common/Button";
 import type { CartItem, MemberAddress, MemberCoupon } from "@/types";
@@ -726,7 +727,7 @@ export default function OrderPage() {
   };
 
   const refreshAddresses = () => {
-    queryClient.invalidateQueries({ queryKey: ["addresses"] });
+    invalidateAddressRelated(queryClient);
   };
 
   return (

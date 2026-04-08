@@ -26,7 +26,7 @@ public class WishlistService {
     private final ProductRepository productRepository;
 
     public List<WishlistResponse> getWishlists(Long memberId) {
-        return wishlistRepository.findByMemberId(memberId).stream()
+        return wishlistRepository.findByMemberIdOrderByCreatedAtDesc(memberId).stream()
                 .map(WishlistResponse::from)
                 .toList();
     }

@@ -41,7 +41,8 @@ public class SecurityConfig {
                                 "/api/auth/signup",
                                 "/api/auth/login",
                                 "/api/auth/refresh",
-                                "/api/auth/oauth/**").permitAll()
+                                "/api/auth/oauth/**",
+                                "/api/auth/password-reset/**").permitAll()
 
                         // Public - Health & Docs
                         .requestMatchers(HttpMethod.GET, "/health").permitAll()

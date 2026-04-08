@@ -3,6 +3,7 @@
 import { useState, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getAdminOrders, updateOrderStatus } from "@/lib/admin";
+import { invalidateOrderRelated } from "@/lib/queryInvalidator";
 import type { AdminOrder } from "@/types";
 
 function formatPrice(n: number) {
@@ -20,9 +21,20 @@ const STATUS_LABELS: Record<string, string> = {
   DELIVERED: "배송완료",
   CANCELLED: "주문취소",
   REFUNDED: "환불완료",
+  RETURN_REQUESTED: "반품신청",
+  EXCHANGE_REQUESTED: "교환신청",
 };
 
-const ORDER_STATUSES = Object.keys(STATUS_LABELS);
+// 관리자가 직접 변경 가능한 상태 (반품/교환 신청 상태는 제외)
+const ORDER_STATUSES = [
+  "PENDING",
+  "PAID",
+  "PREPARING",
+  "SHIPPED",
+  "DELIVERED",
+  "CANCELLED",
+  "REFUNDED",
+];
 
 const STATUS_BADGE: Record<string, string> = {
   PENDING: "bg-[var(--badge-yellow-bg)] text-[var(--badge-yellow-text)]",
@@ -32,6 +44,8 @@ const STATUS_BADGE: Record<string, string> = {
   DELIVERED: "bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]",
   CANCELLED: "bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]",
   REFUNDED: "bg-[var(--badge-gray-bg)] text-[var(--badge-gray-text)]",
+  RETURN_REQUESTED: "bg-orange-500/20 text-orange-300",
+  EXCHANGE_REQUESTED: "bg-orange-500/20 text-orange-300",
 };
 
 export default function AdminOrdersPage() {
@@ -46,13 +60,14 @@ export default function AdminOrdersPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "orders", page],
     queryFn: () => getAdminOrders(page),
+    staleTime: 0,
   });
 
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: number; status: string }) =>
       updateOrderStatus(id, status),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
+      invalidateOrderRelated(queryClient);
       setStatusChange(null);
     },
   });

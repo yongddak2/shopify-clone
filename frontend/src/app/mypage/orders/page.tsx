@@ -6,6 +6,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getOrders, cancelOrder, confirmOrder } from "@/lib/order";
 import { getMyReviews } from "@/lib/review";
+import {
+  invalidateOrderRelated,
+  invalidateProductRelated,
+} from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
 import type { OrderResponse, Review } from "@/types";
 
@@ -32,13 +36,15 @@ const STATUS_LABELS: Record<string, string> = {
   DELIVERED: "배송완료",
   CANCELLED: "주문취소",
   REFUNDED: "환불완료",
+  RETURN_REQUESTED: "반품신청",
+  EXCHANGE_REQUESTED: "교환신청",
 };
 
 const TABS: { key: string; label: string; statuses: string[] }[] = [
   { key: "all", label: "전체", statuses: [] },
   { key: "order", label: "주문/결제", statuses: ["PENDING", "PAID"] },
   { key: "shipping", label: "배송중", statuses: ["PREPARING", "SHIPPED"] },
-  { key: "delivered", label: "배송완료", statuses: ["DELIVERED"] },
+  { key: "delivered", label: "배송완료", statuses: ["DELIVERED", "RETURN_REQUESTED", "EXCHANGE_REQUESTED"] },
   { key: "cancel", label: "취소/환불", statuses: ["CANCELLED", "REFUNDED"] },
 ];
 
@@ -60,8 +66,12 @@ function filterByPeriod(orders: OrderResponse[], periodKey: string) {
 
 function StatusBadge({ status }: { status: string }) {
   const label = STATUS_LABELS[status] ?? status;
+  const isRequest = status === "RETURN_REQUESTED" || status === "EXCHANGE_REQUESTED";
+  const cls = isRequest
+    ? "text-orange-300 bg-orange-500/10 border border-orange-500/30"
+    : "text-[var(--text-secondary)] bg-[var(--card-bg)] border border-[var(--border-color)]";
   return (
-    <span className="inline-block px-2 py-0.5 text-xs rounded text-[var(--text-secondary)] bg-[var(--card-bg)] border border-[var(--border-color)]">
+    <span className={`inline-block px-2 py-0.5 text-xs rounded ${cls}`}>
       {label}
     </span>
   );
@@ -95,6 +105,7 @@ export default function MypageOrdersPage() {
     queryKey: ["orders", page],
     queryFn: () => getOrders(page, 100),
     enabled: isLoggedIn(),
+    staleTime: 0, // 주문 상태는 변동이 잦아 항상 최신 보장
   });
 
   const { data: myReviewsData } = useQuery({
@@ -111,7 +122,8 @@ export default function MypageOrdersPage() {
   const cancelMutation = useMutation({
     mutationFn: (id: number) => cancelOrder(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      invalidateOrderRelated(queryClient);
+      invalidateProductRelated(queryClient); // 재고 복구
       setCancelTarget(null);
     },
     onError: () => {
@@ -123,7 +135,7 @@ export default function MypageOrdersPage() {
   const confirmMutation = useMutation({
     mutationFn: (id: number) => confirmOrder(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      invalidateOrderRelated(queryClient);
       setConfirmTarget(null);
     },
     onError: () => {
@@ -249,7 +261,18 @@ export default function MypageOrdersPage() {
           {filteredOrders.map((order: OrderResponse) => {
             const canCancel =
               order.status === "PENDING" || order.status === "PAID";
-            const isDelivered = order.status === "DELIVERED";
+            const isReturnRequested =
+              order.returnRequested || order.status === "RETURN_REQUESTED";
+            const isExchangeRequested =
+              order.exchangeRequested || order.status === "EXCHANGE_REQUESTED";
+            const isRefunded = order.status === "REFUNDED";
+            const canShowDeliveredActions =
+              order.status === "DELIVERED" &&
+              order.confirmedAt === null &&
+              !isReturnRequested &&
+              !isExchangeRequested;
+            const isConfirmed =
+              order.status === "DELIVERED" && order.confirmedAt !== null;
 
             return (
               <div
@@ -335,7 +358,16 @@ export default function MypageOrdersPage() {
                         </button>
                       </>
                     )}
-                    {isDelivered && order.confirmedAt === null && (
+                    {isReturnRequested && (
+                      <span className="text-sm text-gray-400">반품 신청완료</span>
+                    )}
+                    {!isReturnRequested && isExchangeRequested && (
+                      <span className="text-sm text-gray-400">교환 신청완료</span>
+                    )}
+                    {!isReturnRequested && !isExchangeRequested && isRefunded && (
+                      <span className="text-sm text-gray-400">환불완료</span>
+                    )}
+                    {canShowDeliveredActions && (
                       <>
                         <button
                           onClick={() => setConfirmTarget(order.id)}
@@ -344,20 +376,28 @@ export default function MypageOrdersPage() {
                           구매 확정
                         </button>
                         <button
-                          onClick={() => alert("반품 요청 기능은 준비 중입니다.")}
-                          className="px-3 py-1.5 text-xs border border-[var(--border-color)] text-[var(--text-muted)] opacity-70 hover:text-[var(--text-primary)] transition-colors"
+                          onClick={() =>
+                            router.push(
+                              `/mypage/orders/${order.id}/return-exchange?type=RETURN`
+                            )
+                          }
+                          className="px-3 py-1.5 text-xs border border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)] transition-colors"
                         >
                           반품 요청
                         </button>
                         <button
-                          onClick={() => alert("교환 요청 기능은 준비 중입니다.")}
-                          className="px-3 py-1.5 text-xs border border-[var(--border-color)] text-[var(--text-muted)] opacity-70 hover:text-[var(--text-primary)] transition-colors"
+                          onClick={() =>
+                            router.push(
+                              `/mypage/orders/${order.id}/return-exchange?type=EXCHANGE`
+                            )
+                          }
+                          className="px-3 py-1.5 text-xs border border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)] transition-colors"
                         >
                           교환 요청
                         </button>
                       </>
                     )}
-                    {isDelivered && order.confirmedAt !== null && (() => {
+                    {isConfirmed && (() => {
                       const allReviewed = (order.orderItems ?? []).length > 0 &&
                         (order.orderItems ?? []).every(
                           (item) => reviewedOrderItemIds.has(item.id)

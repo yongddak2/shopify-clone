@@ -4,6 +4,7 @@ import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCategories, createProduct, uploadProductImage, deleteProductImage } from "@/lib/admin";
+import { invalidateProductRelated } from "@/lib/queryInvalidator";
 import type { CreateProductRequest } from "@/types";
 
 function toComma(n: number | string): string {
@@ -195,7 +196,7 @@ export default function AdminProductNewPage() {
   const mutation = useMutation({
     mutationFn: (data: CreateProductRequest) => createProduct(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
+      invalidateProductRelated(queryClient);
       router.push("/admin/products");
     },
     onError: () => {

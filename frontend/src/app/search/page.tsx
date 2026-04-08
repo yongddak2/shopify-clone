@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { searchProducts, getCategories } from "@/lib/product";
 import { getWishlists, toggleWishlist } from "@/lib/wishlist";
+import { invalidateWishlistRelated } from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
 import { Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Product } from "@/types";
@@ -150,7 +151,7 @@ export default function SearchPage() {
   const wishlistMutation = useMutation({
     mutationFn: (productId: number) => toggleWishlist(productId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["wishlists"] });
+      invalidateWishlistRelated(queryClient);
     },
   });
 

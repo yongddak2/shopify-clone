@@ -10,6 +10,7 @@ import type {
   CreateCouponRequest,
   Category,
   Banner,
+  ReturnExchangeRequest,
 } from "@/types";
 
 // 이미지 업로드/삭제
@@ -180,4 +181,36 @@ export async function uploadBannerImage(file: File): Promise<string> {
 export async function getPublicBanners() {
   const res = await api.get<ApiResponse<Banner[]>>("/api/banners");
   return res.data;
+}
+
+// 반품/교환 관리
+export async function getAdminRequests(page = 0) {
+  const res = await api.get<ApiResponse<PageResponse<ReturnExchangeRequest>>>(
+    "/api/admin/requests",
+    { params: { page, size: 20, sort: "id,desc" } }
+  );
+  return res.data;
+}
+
+export async function approveRequest(id: number, adminMemo?: string) {
+  const res = await api.patch<ApiResponse<ReturnExchangeRequest>>(
+    `/api/admin/requests/${id}/approve`,
+    { adminMemo }
+  );
+  return res.data.data;
+}
+
+export async function rejectRequest(id: number, adminMemo: string) {
+  const res = await api.patch<ApiResponse<ReturnExchangeRequest>>(
+    `/api/admin/requests/${id}/reject`,
+    { adminMemo }
+  );
+  return res.data.data;
+}
+
+export async function completeRequest(id: number) {
+  const res = await api.patch<ApiResponse<ReturnExchangeRequest>>(
+    `/api/admin/requests/${id}/complete`
+  );
+  return res.data.data;
 }

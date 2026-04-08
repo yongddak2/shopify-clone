@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProducts, getCategories } from "@/lib/product";
 import { getWishlists, toggleWishlist } from "@/lib/wishlist";
+import { invalidateWishlistRelated } from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
 import { Heart } from "lucide-react";
 import type { Product } from "@/types";
@@ -41,6 +42,7 @@ export default function ProductsPage() {
   const { data: categoriesData } = useQuery({
     queryKey: ["categories"],
     queryFn: () => getCategories(),
+    staleTime: 5 * 60 * 1000, // 카테고리는 거의 안 바뀜
   });
 
   const { data, isLoading } = useQuery({
@@ -61,7 +63,7 @@ export default function ProductsPage() {
   const wishlistMutation = useMutation({
     mutationFn: (productId: number) => toggleWishlist(productId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["wishlists"] });
+      invalidateWishlistRelated(queryClient);
     },
   });
 

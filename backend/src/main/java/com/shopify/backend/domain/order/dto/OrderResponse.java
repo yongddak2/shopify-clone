@@ -30,8 +30,15 @@ public class OrderResponse {
     private final List<OrderItemResponse> orderItems;
     private final String couponName;
     private final BigDecimal couponDiscountAmount;
+    private final boolean returnRequested;
+    private final boolean exchangeRequested;
 
     public static OrderResponse from(Order order, List<OrderItem> orderItemList) {
+        return from(order, orderItemList, false, false);
+    }
+
+    public static OrderResponse from(Order order, List<OrderItem> orderItemList,
+                                     boolean returnRequested, boolean exchangeRequested) {
         List<OrderItemResponse> orderItems = orderItemList.stream()
                 .map(OrderItemResponse::from)
                 .toList();
@@ -60,6 +67,8 @@ public class OrderResponse {
                 .orderItems(orderItems)
                 .couponName(couponName)
                 .couponDiscountAmount(couponDiscountAmount)
+                .returnRequested(returnRequested)
+                .exchangeRequested(exchangeRequested)
                 .build();
     }
 }
