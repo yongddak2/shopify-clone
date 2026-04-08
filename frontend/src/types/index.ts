@@ -236,6 +236,16 @@ export interface AdminProduct {
   optionGroups: ProductOptionGroup[];
 }
 
+export interface InventoryItem {
+  productId: number;
+  productName: string;
+  basePrice: number;
+  optionValueId: number;
+  optionValue: string;
+  stockQuantity: number;
+  status: '정상' | '부족' | '품절';
+}
+
 export interface AdminProductOptionUpdate {
   id: number | null; // null이면 신규
   value: string;

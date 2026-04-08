@@ -4,6 +4,8 @@ import com.shopify.backend.domain.admin.dto.AdminProductCreateRequest;
 import com.shopify.backend.domain.admin.dto.AdminProductOptionUpdateRequest;
 import com.shopify.backend.domain.admin.dto.AdminProductResponse;
 import com.shopify.backend.domain.admin.dto.AdminProductUpdateRequest;
+import com.shopify.backend.domain.admin.dto.InventoryResponse;
+import java.util.Comparator;
 import com.shopify.backend.domain.order.repository.OrderItemRepository;
 import com.shopify.backend.domain.product.entity.*;
 import com.shopify.backend.domain.product.repository.*;
@@ -38,6 +40,44 @@ public class AdminProductService {
         Page<Product> products = productRepository.findAll(
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
         return products.map(AdminProductResponse::from);
+    }
+
+    public AdminProductResponse getProduct(Long productId) {
+        Product product = productRepository.findByIdAndDeletedAtIsNull(productId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
+        return AdminProductResponse.from(product);
+    }
+
+    public List<InventoryResponse> getInventory() {
+        List<Product> products = productRepository.findAll().stream()
+                .filter(p -> p.getDeletedAt() == null)
+                .sorted(Comparator.comparing(Product::getId))
+                .toList();
+
+        List<InventoryResponse> result = new ArrayList<>();
+        for (Product product : products) {
+            List<ProductOptionValue> values = new ArrayList<>();
+            for (ProductOptionGroup group : product.getOptionGroups()) {
+                values.addAll(group.getOptionValues());
+            }
+            values.sort(Comparator.comparing(ProductOptionValue::getId));
+            for (ProductOptionValue value : values) {
+                result.add(InventoryResponse.from(product, value));
+            }
+        }
+        return result;
+    }
+
+    @Transactional
+    public InventoryResponse updateStock(Long optionValueId, int stockQuantity) {
+        if (stockQuantity < 0) {
+            throw new BusinessException(ErrorCode.INVALID_STOCK_QUANTITY);
+        }
+        ProductOptionValue optionValue = productOptionValueRepository.findById(optionValueId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_OPTION_NOT_FOUND));
+        optionValue.updateStockQuantity(stockQuantity);
+        Product product = optionValue.getOptionGroup().getProduct();
+        return InventoryResponse.from(product, optionValue);
     }
 
     @Transactional
@@ -116,6 +156,51 @@ public class AdminProductService {
             Category category = categoryRepository.findById(request.getCategoryId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
             product.updateCategory(category);
+        }
+
+        // 이미지 동기화 (null = 미수정, 빈 배열 = 전체 삭제)
+        if (request.getImages() != null) {
+            Set<Long> requestedImageIds = request.getImages().stream()
+                    .map(AdminProductUpdateRequest.ProductImageDto::getId)
+                    .filter(id -> id != null)
+                    .collect(Collectors.toSet());
+
+            // 1) 요청에 없는 기존 이미지 삭제
+            List<ProductImage> existingSnapshot = new ArrayList<>(product.getImages());
+            for (ProductImage existing : existingSnapshot) {
+                if (!requestedImageIds.contains(existing.getId())) {
+                    product.getImages().remove(existing);
+                    productImageRepository.delete(existing);
+                }
+            }
+            // 동일 트랜잭션 내 후속 처리 전 DELETE SQL 즉시 반영
+            productImageRepository.flush();
+
+            // 2) 기존 이미지 sortOrder/isThumbnail 업데이트
+            for (AdminProductUpdateRequest.ProductImageDto imgReq : request.getImages()) {
+                if (imgReq.getId() != null) {
+                    for (ProductImage existing : product.getImages()) {
+                        if (existing.getId().equals(imgReq.getId())) {
+                            existing.update(imgReq.getSortOrder(), imgReq.isThumbnail());
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 3) 신규 이미지 추가
+            for (AdminProductUpdateRequest.ProductImageDto imgReq : request.getImages()) {
+                if (imgReq.getId() == null) {
+                    ProductImage newImage = ProductImage.builder()
+                            .product(product)
+                            .url(imgReq.getUrl())
+                            .sortOrder(imgReq.getSortOrder())
+                            .isThumbnail(imgReq.isThumbnail())
+                            .build();
+                    productImageRepository.save(newImage);
+                    product.getImages().add(newImage);
+                }
+            }
         }
 
         // 옵션 수정

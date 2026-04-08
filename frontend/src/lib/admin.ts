@@ -11,6 +11,7 @@ import type {
   Category,
   Banner,
   ReturnExchangeRequest,
+  InventoryItem,
 } from "@/types";
 
 // 이미지 업로드/삭제
@@ -42,6 +43,13 @@ export async function getAdminProducts(page = 0) {
   return res.data;
 }
 
+export async function getAdminProduct(id: number) {
+  const res = await api.get<ApiResponse<AdminProduct>>(
+    `/api/admin/products/${id}`
+  );
+  return res.data.data;
+}
+
 export async function createProduct(data: CreateProductRequest) {
   const res = await api.post<ApiResponse<AdminProduct>>(
     "/api/admin/products",
@@ -66,6 +74,23 @@ export async function deleteProduct(id: number) {
     `/api/admin/products/${id}`
   );
   return res.data;
+}
+
+// 재고 관리
+export async function getInventory(): Promise<InventoryItem[]> {
+  const res = await api.get<ApiResponse<InventoryItem[]>>("/api/admin/inventory");
+  return res.data.data;
+}
+
+export async function updateStock(
+  optionValueId: number,
+  stockQuantity: number
+): Promise<InventoryItem> {
+  const res = await api.patch<ApiResponse<InventoryItem>>(
+    `/api/admin/inventory/${optionValueId}`,
+    { stockQuantity }
+  );
+  return res.data.data;
 }
 
 // 주문 관리

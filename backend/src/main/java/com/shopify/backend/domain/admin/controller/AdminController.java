@@ -1,6 +1,7 @@
 package com.shopify.backend.domain.admin.controller;
 
 import com.shopify.backend.domain.admin.dto.*;
+import java.util.List;
 import com.shopify.backend.domain.admin.service.AdminMemberService;
 import com.shopify.backend.domain.admin.service.AdminOrderService;
 import com.shopify.backend.domain.admin.service.AdminProductService;
@@ -33,6 +34,12 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    @GetMapping("/products/{id}")
+    public ResponseEntity<ApiResponse<AdminProductResponse>> getProduct(@PathVariable Long id) {
+        AdminProductResponse response = adminProductService.getProduct(id);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
     @PostMapping("/products")
     public ResponseEntity<ApiResponse<AdminProductResponse>> createProduct(
             @Valid @RequestBody AdminProductCreateRequest request) {
@@ -53,6 +60,22 @@ public class AdminController {
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
         adminProductService.deleteProduct(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ── 재고 관리 ──
+
+    @GetMapping("/inventory")
+    public ResponseEntity<ApiResponse<List<InventoryResponse>>> getInventory() {
+        List<InventoryResponse> response = adminProductService.getInventory();
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PatchMapping("/inventory/{optionValueId}")
+    public ResponseEntity<ApiResponse<InventoryResponse>> updateStock(
+            @PathVariable Long optionValueId,
+            @RequestBody InventoryUpdateRequest request) {
+        InventoryResponse response = adminProductService.updateStock(optionValueId, request.getStockQuantity());
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     // ── 주문 관리 ──

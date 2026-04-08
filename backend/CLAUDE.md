@@ -24,7 +24,7 @@ docker compose -f ../docker-compose.yml up -d   # 인프라 시작
   - `auth/` — JWT 인증, 회원관리 (signup/login/logout/refresh, UserController, 비밀번호 변경, 비밀번호 찾기 PasswordResetController)
   - `product/` — 상품 CRUD, 카테고리 트리, 검색 (키워드/카테고리/가격/정렬)
   - `order/` — 장바구니, 주문 생성/취소/구매확정, 결제(토스페이먼츠 연동), 쿠폰 할인 적용, 반품/교환 요청(ReturnExchangeService)
-  - `admin/` — 상품 등록/수정/삭제, 주문 상태 변경, 회원 목록, 쿠폰 관리(CRUD), 이미지 업로드/삭제(AdminImageController), 배너 관리(AdminBannerController), 반품/교환 관리(AdminReturnExchangeController)
+  - `admin/` — 상품 CRUD(목록/단건/등록/수정/삭제), 재고 관리(getInventory/updateStock), 주문 상태 변경, 회원 목록, 쿠폰 관리(CRUD), 이미지 업로드/삭제(AdminImageController), 배너 관리(AdminBannerController), 반품/교환 관리(AdminReturnExchangeController)
   - `review/` — 리뷰 작성/삭제 (DELIVERED 상태에서만, 소프트 삭제), 좋아요 토글, 이미지 업로드, 정렬/페이지네이션
   - `wishlist/` — 찜 토글
   - `coupon/` — 쿠폰 발급/미리보기/주문 실적용/다운로드 가능 목록(GET /api/coupons)
@@ -57,8 +57,8 @@ docker compose -f ../docker-compose.yml up -d   # 인프라 시작
 - 썸네일 추출: isThumbnail=true 우선, 없으면 sortOrder 최소값 fallback (ProductSummaryResponse, CartItemResponse, WishlistResponse, OrderItemResponse)
 - 이미지 fetch join: ProductRepository, CartItemRepository, WishlistRepository, OrderItemRepository에 `@EntityGraph(attributePaths)` 적용
 - 주문 가격: priceSnapshot = basePrice × (100 - discountRate) / 100 + additionalPrice (할인가 반영)
-- 이미지 업로드: POST /api/admin/images (상품, products/ 경로), POST /api/reviews/images (리뷰, reviews/ 경로), MultipartFile 5MB 제한, jpg/jpeg/png/gif/webp
-- AWS S3: 버킷 yong-byeong-shop-images, 리전 ap-southeast-2, 저장 경로 products/, reviews/
+- 이미지 업로드: POST /api/admin/images (상품, products/ 경로), POST /api/reviews/images (리뷰, reviews/ 경로), POST /api/return-requests/images (반품/교환, return-requests/ 경로), 상품/리뷰 5MB / 반품 20MB, jpg/jpeg/png/gif/webp
+- AWS S3: 버킷 yong-byeong-shop-images, 리전 ap-southeast-2, 저장 경로 products/, reviews/, return-requests/
 - 리뷰 좋아요: ReviewLike 엔티티 (review_id + member_id unique), POST /api/reviews/{id}/like 토글
 - 리뷰 정렬: GET /api/products/{id}/reviews?sort=latest|rating_high|rating_low|likes
 - 상품 검색: GET /api/products/search?keyword=&category=&minPrice=&maxPrice=&sort=latest|price_low|price_high|sales&page=&size=
@@ -77,7 +77,7 @@ docker compose -f ../docker-compose.yml up -d   # 인프라 시작
 - AWS S3: 버킷 yong-byeong-shop-images, 리전 ap-southeast-2
 - Swagger UI: http://localhost:8080/swagger-ui.html
 - JPA: ddl-auto=update, open-in-view=false
-- Multipart: max-file-size=5MB, max-request-size=5MB
+- Multipart: max-file-size=20MB, max-request-size=20MB (반품/교환 이미지 한도; 상품/리뷰는 컨트롤러 단에서 5MB 검증)
 
 ## Tests (21개)
 
@@ -156,7 +156,6 @@ docker compose -f ../docker-compose.yml up -d   # 인프라 시작
 
 ## Next Up
 
-- **GET /api/admin/products/{id}** 단건 조회 엔드포인트 신규 (프론트 상품 수정 페이지 분리에 필요 — 현재는 목록 API만 존재)
 - 소셜 로그인 (사업자 정보 확정 후)
 - 3단계: Elasticsearch, Kafka, CI/CD, 배포
 
@@ -176,3 +175,22 @@ docker compose -f ../docker-compose.yml up -d   # 인프라 시작
 ### 장바구니 재고 표시 + 수량 검증 완화
 - **CartItemResponse**: `int stockQuantity` 필드 추가, `from()`에서 `cartItem.getOptionValue().getStockQuantity()` 세팅 (옵션 null이면 0). 프론트가 재고 부족 항목을 식별/UI 처리하기 위함
 - **CartService.updateCartItem()**: 재고 검증 조건을 **수량 증가 시에만** 적용 (`request.getQuantity() > cartItem.getQuantity()`). 감소는 재고 부족 상태에서도 항상 허용 → 사용자가 재고 초과 항목을 줄일 수 있음 (이전엔 4→3 감소도 stock=2이면 OUT_OF_STOCK으로 차단됐음)
+
+### 상품 단건 조회 + 이미지 동기화 (수정 페이지 분리 지원)
+- **GET /api/admin/products/{id}**: 단건 조회 엔드포인트 신규 (`AdminController.getProduct`, `AdminProductService.getProduct`). `AdminProductResponse.from()` 재활용 (옵션그룹/옵션값/이미지 모두 포함). 프론트 `/admin/products/[id]/edit` 페이지 진입 시 사용
+- **AdminProductUpdateRequest**: `images: List<ProductImageDto>` 필드 추가 (id nullable, url, sortOrder, isThumbnail). null이면 미수정, 빈 배열이면 전체 삭제
+- **AdminProductService.updateProduct() 이미지 동기화 로직**:
+  1. 요청에 없는 기존 이미지 → `productImageRepository.delete()` (cascade 없음 → 직접 호출), 직후 `flush()`로 동일 트랜잭션 내 후속 처리 전 DELETE SQL 즉시 반영
+  2. 요청 중 id 있는 항목 → `existing.update(sortOrder, isThumbnail)` 호출
+  3. id == null 항목 → 신규 `ProductImage` 생성·`save()` 후 product에 연결
+- **ProductImage 엔티티**: `update(int sortOrder, boolean isThumbnail)` 메서드 추가
+
+### 재고 관리 API
+- **GET /api/admin/inventory**: 전체 옵션 재고 평탄화 조회 — 소프트 삭제 제외 상품 → 옵션그룹 → 옵션값 펼침. Product ID 오름차순, 같은 상품 내 OptionValue ID 오름차순 정렬
+- **PATCH /api/admin/inventory/{optionValueId}**: 단일 옵션 재고 수정. body `{ "stockQuantity": int }`
+- **InventoryResponse DTO** (`domain/admin/dto`): productId, productName, basePrice, optionValueId, optionValue, stockQuantity, status. `from(Product, ProductOptionValue)` 정적 팩토리, `resolveStatus()` — 0=품절 / 1~10=부족 / 11+=정상
+- **InventoryUpdateRequest DTO**: `int stockQuantity` 단일 필드
+- **AdminProductService.getInventory()**: 위 평탄화 로직, `@Transactional(readOnly=true)`
+- **AdminProductService.updateStock(optionValueId, stockQuantity)**: 음수 검증 → 옵션 조회(`PRODUCT_OPTION_NOT_FOUND`) → `updateStockQuantity()` 호출 → `InventoryResponse` 반환. `@Transactional`
+- **ProductOptionValue 엔티티**: `updateStockQuantity(int)` 메서드 추가 (재고만 단독 갱신)
+- **ErrorCode**: `INVALID_STOCK_QUANTITY("재고 수량은 0 이상이어야 합니다.")` 추가

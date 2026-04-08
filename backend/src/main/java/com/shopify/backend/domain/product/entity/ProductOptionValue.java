@@ -60,4 +60,8 @@ public class ProductOptionValue {
     public void softDelete() {
         this.stockQuantity = 0;
     }
+
+    public void updateStockQuantity(int stockQuantity) {
+        this.stockQuantity = stockQuantity;
+    }
 }

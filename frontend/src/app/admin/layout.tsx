@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   LayoutDashboard,
   Package,
+  Boxes,
   ClipboardList,
   Users,
   Ticket,
@@ -21,6 +22,7 @@ import { getMyInfo } from "@/lib/user";
 const menuItems = [
   { href: "/admin", label: "대시보드", icon: LayoutDashboard, exact: true },
   { href: "/admin/products", label: "상품관리", icon: Package, exact: false },
+  { href: "/admin/inventory", label: "재고관리", icon: Boxes, exact: false },
   { href: "/admin/orders", label: "주문관리", icon: ClipboardList, exact: false },
   { href: "/admin/users", label: "회원관리", icon: Users, exact: false },
   { href: "/admin/coupons", label: "쿠폰관리", icon: Ticket, exact: false },

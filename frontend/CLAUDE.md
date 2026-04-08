@@ -48,7 +48,8 @@ src/
 │   └── admin/              # 관리자 페이지 (별도 레이아웃)
 │       ├── layout.tsx      # 사이드바 + 권한 체크 (ADMIN only)
 │       ├── page.tsx        # 대시보드
-│       ├── products/       # 상품 관리 (등록/수정/삭제, S3 이미지 업로드)
+│       ├── products/       # 상품 관리 (목록/등록, 수정은 [id]/edit 별도 페이지)
+│       ├── inventory/      # 재고 관리 (옵션별 재고 일괄 조회/검색/필터/인라인 수정)
 │       ├── orders/         # 주문 관리 (상태 변경, 한글 상태 뱃지)
 │       ├── users/          # 회원 관리 (읽기 전용)
 │       ├── coupons/        # 쿠폰 관리 (생성/수정 인라인 폼/삭제 확인 모달)
@@ -100,9 +101,11 @@ src/
   - 기존 stock은 value 매칭으로 보존, 신규 조합은 0으로 초기화
 - **조합형 옵션**: 등록 시 모든 조합을 하나의 optionGroup("옵션")으로 전송
   - 기존 분리형 옵션(사이즈/색상 별도 그룹)으로 등록된 레거시 상품도 하위 호환 유지
-- **상품 수정 모달** (`admin/products/page.tsx`): 옵션 편집 UI 지원 (백엔드 PATCH 옵션 수정 API 연동)
-  - 기존 옵션은 `optionGroups[0].values`로 초기화, 행 단위로 옵션값/재고 수정·삭제·추가 가능
-  - 저장 시 `optionGroupName: "옵션"` + `optionValues: [{id, value, additionalPrice, stockQuantity}]` 전송 (id가 null이면 신규)
+- **상품 수정 페이지** (`admin/products/[id]/edit`): 2컬럼 레이아웃 (좌: 기본정보 / 우: 옵션관리 + 이미지관리)
+  - 옵션: 기존 옵션은 `optionGroups[0].values`로 초기화, 행 단위 옵션값/재고 수정·삭제·추가
+  - 이미지: 삭제 마킹 방식(`markedForDelete`) — X 클릭 시 마킹만, 저장 시점에 일괄 S3 삭제 + DB 동기화. 취소 시 신규 업로드만 S3 정리
+  - 저장 페이로드: `optionGroupName: "옵션"` + `optionValues: [{id, value, additionalPrice, stockQuantity}]` + `images: [{id, url, sortOrder, isThumbnail}]` (id가 null이면 신규)
+  - GET `/api/admin/products/{id}` 단건 조회 API로 페이지 진입 시 데이터 로딩
 - **상품 상세 옵션 선택 UI** (`products/[id]/ProductDetailClient.tsx`): 드롭다운 방식
   - 파싱: `value === "FREE"` → 드롭다운 없이 자동 선택 / `-` 포함 → 사이즈×색상 조합 / 그 외 → 단일 옵션
   - 조합형: **색상 → 사이즈** 순서. 색상 선택 후 사이즈 활성화. 사이즈 dropdown은 항상 클릭 가능하지만 색상 미선택 상태에서 클릭 시 `alert("상위 옵션을 선택해주세요.")`
@@ -290,18 +293,36 @@ src/
 
 ## Next Up
 
-- **상품 수정 페이지 분리**: 현재 모달 방식 → `/admin/products/{id}/edit` 별도 페이지로 이동
-  - 2컬럼 레이아웃: 좌측(기본 정보), 우측(옵션 관리 + 이미지 관리)
-  - 이미지 추가/삭제/순서 변경 포함
-  - 관리자 목록 "수정" 버튼 클릭 시 모달 대신 페이지 라우팅
-  - 백엔드 `GET /api/admin/products/{id}` 단건 조회 API 신규 필요 (현재 미존재, 목록·상세 공개 API 재활용 여부 검토)
 - 소셜 로그인 (사업자 정보 확정 후)
 - 3단계: Elasticsearch, Kafka, CI/CD, 배포
 
 ## Recent Changes (2026-04-09)
 
-- **상품 옵션 수정 UI**: admin/products/page.tsx 수정 모달에 옵션 편집 섹션 추가 (백엔드 PATCH 옵션 수정 API 연동). `AdminProductOptionUpdate` 타입 신규
-- **상품 등록 옵션 UI 전면 개편**: admin/products/new/page.tsx — 사이즈/색상 라디오('없음'/'직접 설정') + 기본값 토글 버튼 + 직접 입력 + 자동 조합 생성
-- **상품 상세 옵션 드롭다운**: ProductDetailClient.tsx — 버튼 나열 → 색상/사이즈 드롭다운 전환, FREE/조합형/단일 옵션 자동 분기, 색상 → 사이즈 순서, 외부 클릭 닫기
-- **재고 초과 방지**: 상품 상세 수량 컨트롤 + "(N개 남음)" 인라인 표시, 장바구니 over-stock 항목 grayscale 처리 + 체크박스/주문 차단, 수량 감소 항상 허용
-- **편의성**: 관리자 옵션 재고 input `onFocus select()` 적용 (0이 안 지워지고 "10"이 되는 버그 해결)
+### 재고 관리
+- **/admin/inventory 페이지 신규**: 전체 옵션 재고를 한 화면에서 관리
+  - 요약 카드 4개 (전체/품절/부족/정상)
+  - 검색(상품명·옵션값) + 상태 필터, 인라인 재고 수정 + 즉시 저장
+  - GET `/api/admin/inventory`, PATCH `/api/admin/inventory/{optionValueId}`
+  - 사이드바 메뉴 "재고관리" (Boxes 아이콘)
+
+### 상품 수정 페이지 분리
+- **/admin/products/[id]/edit 별도 페이지** (기존 수정 모달 완전 제거)
+- 2컬럼 레이아웃 (기본정보 / 옵션관리 + 이미지관리)
+- 이미지 삭제 마킹 방식 (저장 시에만 S3 + DB 동기화, 취소 시 신규 업로드만 정리)
+- 백엔드: `GET /api/admin/products/{id}` 단건 조회 API 신규, `AdminProductUpdateRequest`에 `images` 필드 추가 (전체 동기화 지원, 빈 배열 = 전체 삭제)
+
+### 옵션 UI 개편
+- **상품 등록**: 사이즈/색상 라디오('없음'/'직접 설정') + 기본값 토글 + 직접 입력 + 자동 조합 생성
+- **상품 상세**: 버튼 나열 → 색상/사이즈 분리 드롭다운, FREE/조합형/단일 자동 분기
+- **편의성**: 관리자 재고 input `onFocus select()` (0 자동 선택)
+
+### 재고 초과 방지
+- 상품 상세 수량 컨트롤 + "(N개 남음)" 인라인 표시
+- 장바구니 over-stock 항목 grayscale + 체크박스/주문 차단, 수량 감소는 항상 허용
+- `CartItem.stockQuantity` 필드 추가 (백엔드 `CartItemResponse` 동기)
+
+### 캐시 전략
+- `invalidateProductRelated`에 `["admin", "inventory"]`, `["admin", "product"]` (prefix) 추가
+- **새 페이지/쿼리 추가 시 체크리스트**:
+  1. 쿼리 키가 도메인 헬퍼에 포함됐나?
+  2. 관련 mutation의 `onSuccess`에 헬퍼가 호출되나?

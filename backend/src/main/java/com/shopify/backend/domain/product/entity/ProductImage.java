@@ -35,4 +35,9 @@ public class ProductImage {
         this.sortOrder = sortOrder;
         this.isThumbnail = isThumbnail;
     }
+
+    public void update(int sortOrder, boolean isThumbnail) {
+        this.sortOrder = sortOrder;
+        this.isThumbnail = isThumbnail;
+    }
 }

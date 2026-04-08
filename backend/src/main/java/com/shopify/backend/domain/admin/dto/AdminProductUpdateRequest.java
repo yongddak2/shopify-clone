@@ -17,4 +17,13 @@ public class AdminProductUpdateRequest {
     private Long categoryId;
     private String optionGroupName;
     private List<AdminProductOptionUpdateRequest> optionValues;
+    private List<ProductImageDto> images;
+
+    @Getter
+    public static class ProductImageDto {
+        private Long id; // null이면 신규
+        private String url;
+        private int sortOrder;
+        private boolean isThumbnail;
+    }
 }

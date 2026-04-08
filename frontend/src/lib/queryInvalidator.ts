@@ -28,6 +28,8 @@ export const invalidateProductRelated = (qc: QueryClient) => {
   qc.invalidateQueries({ queryKey: ["products"] });
   qc.invalidateQueries({ queryKey: ["product"] });
   qc.invalidateQueries({ queryKey: ["admin", "products"] });
+  qc.invalidateQueries({ queryKey: ["admin", "product"] });
+  qc.invalidateQueries({ queryKey: ["admin", "inventory"] });
   qc.invalidateQueries({ queryKey: ["mainNewProducts"] });
   qc.invalidateQueries({ queryKey: ["mainBestProducts"] });
   qc.invalidateQueries({ queryKey: ["searchProducts"] });
