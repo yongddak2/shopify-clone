@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -17,7 +17,7 @@ interface PaymentResult {
   amount: number;
 }
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<"loading" | "success" | "error">(
@@ -158,5 +158,13 @@ export default function PaymentSuccessPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense fallback={<div className="max-w-md mx-auto px-6 py-24 text-center text-[var(--text-muted)]">로딩 중...</div>}>
+      <PaymentSuccessContent />
+    </Suspense>
   );
 }

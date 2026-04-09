@@ -10,7 +10,9 @@ import com.shopify.backend.domain.order.entity.*;
 import com.shopify.backend.domain.order.repository.CartItemRepository;
 import com.shopify.backend.domain.order.repository.OrderItemRepository;
 import com.shopify.backend.domain.order.repository.OrderRepository;
+import com.shopify.backend.domain.order.repository.ReturnExchangeRequestRepository;
 import com.shopify.backend.domain.product.entity.Product;
+import com.shopify.backend.domain.product.repository.ProductOptionValueRepository;
 import com.shopify.backend.domain.product.entity.ProductOptionValue;
 import com.shopify.backend.domain.product.entity.ProductStatus;
 import com.shopify.backend.global.exception.BusinessException;
@@ -53,6 +55,12 @@ class OrderServiceTest {
     @Mock
     private MemberCouponRepository memberCouponRepository;
 
+    @Mock
+    private ReturnExchangeRequestRepository returnExchangeRequestRepository;
+
+    @Mock
+    private ProductOptionValueRepository productOptionValueRepository;
+
     @InjectMocks
     private OrderService orderService;
 
@@ -75,6 +83,7 @@ class OrderServiceTest {
         product = Product.builder()
                 .name("테스트 상품")
                 .basePrice(new BigDecimal("10000"))
+                .discountRate(BigDecimal.ZERO)
                 .status(ProductStatus.ACTIVE)
                 .build();
         ReflectionTestUtils.setField(product, "id", 1L);
@@ -123,6 +132,7 @@ class OrderServiceTest {
             return order;
         });
         given(orderItemRepository.saveAll(anyList())).willAnswer(invocation -> invocation.getArgument(0));
+        given(productOptionValueRepository.findByIdWithLock(1L)).willReturn(Optional.of(optionValue));
 
         // when
         var response = orderService.createOrder(1L, request);
@@ -175,12 +185,7 @@ class OrderServiceTest {
 
         given(memberRepository.findById(1L)).willReturn(Optional.of(member));
         given(cartItemRepository.findById(1L)).willReturn(Optional.of(cartItem));
-        given(orderRepository.save(any(Order.class))).willAnswer(invocation -> {
-            Order order = invocation.getArgument(0);
-            ReflectionTestUtils.setField(order, "id", 1L);
-            return order;
-        });
-        given(orderItemRepository.saveAll(anyList())).willAnswer(invocation -> invocation.getArgument(0));
+        given(productOptionValueRepository.findByIdWithLock(2L)).willReturn(Optional.of(soldOutOption));
 
         // when & then
         assertThatThrownBy(() -> orderService.createOrder(1L, request))
@@ -196,6 +201,7 @@ class OrderServiceTest {
         Product expensiveProduct = Product.builder()
                 .name("고가 상품")
                 .basePrice(new BigDecimal("30000"))
+                .discountRate(BigDecimal.ZERO)
                 .status(ProductStatus.ACTIVE)
                 .build();
         ReflectionTestUtils.setField(expensiveProduct, "id", 2L);
@@ -218,6 +224,7 @@ class OrderServiceTest {
             return saved;
         });
         given(orderItemRepository.saveAll(anyList())).willAnswer(invocation -> invocation.getArgument(0));
+        given(productOptionValueRepository.findByIdWithLock(1L)).willReturn(Optional.of(optionValue));
 
         // when
         var response = orderService.createOrder(1L, request);
@@ -241,6 +248,7 @@ class OrderServiceTest {
             return saved;
         });
         given(orderItemRepository.saveAll(anyList())).willAnswer(invocation -> invocation.getArgument(0));
+        given(productOptionValueRepository.findByIdWithLock(1L)).willReturn(Optional.of(optionValue));
 
         // when
         var response = orderService.createOrder(1L, request);

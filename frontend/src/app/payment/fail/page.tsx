@@ -1,8 +1,9 @@
 "use client";
 
+import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function PaymentFailPage() {
+function PaymentFailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -38,5 +39,13 @@ export default function PaymentFailPage() {
         </button>
       </div>
     </div>
+  );
+}
+
+export default function PaymentFailPage() {
+  return (
+    <Suspense fallback={<div className="max-w-md mx-auto px-6 py-24 text-center text-[var(--text-muted)]">로딩 중...</div>}>
+      <PaymentFailContent />
+    </Suspense>
   );
 }

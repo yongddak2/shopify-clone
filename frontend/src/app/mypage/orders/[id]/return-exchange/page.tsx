@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use } from "react";
+import { Suspense, useState, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -37,7 +37,7 @@ function formatPrice(n: number) {
   return n.toLocaleString("ko-KR");
 }
 
-export default function ReturnExchangePage({
+function ReturnExchangeContent({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -360,5 +360,17 @@ export default function ReturnExchangePage({
         {submitting ? "신청 중..." : "신청하기"}
       </button>
     </div>
+  );
+}
+
+export default function ReturnExchangePage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-24 text-[var(--text-muted)]">로딩 중...</div>}>
+      <ReturnExchangeContent params={params} />
+    </Suspense>
   );
 }

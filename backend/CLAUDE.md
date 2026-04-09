@@ -79,11 +79,16 @@ docker compose -f ../docker-compose.yml up -d   # 인프라 시작
 - JPA: ddl-auto=update, open-in-view=false
 - Multipart: max-file-size=20MB, max-request-size=20MB (반품/교환 이미지 한도; 상품/리뷰는 컨트롤러 단에서 5MB 검증)
 
-## Tests (21개)
+## Tests (21개, 전체 통과)
 
 - AuthServiceTest (5): 회원가입/로그인 성공·실패
 - OrderServiceTest (9): 주문 생성/취소/배송비
 - PaymentServiceTest (7): 결제 승인/실패 시나리오
+
+### 테스트 수정 이력 (2026-04-09)
+- **PaymentServiceTest**: createRequest 파라미터 orderId(Long) → orderNumber(String), mock findById → findByOrderNumber, OrderItemRepository·MemberCouponRepository mock 추가 (NPE 해결), 결제_승인_성공에 orderItemRepository.findByOrderId mock 추가
+- **OrderServiceTest**: Product 빌더에 .discountRate(BigDecimal.ZERO) 추가 (null NPE 해결), ReturnExchangeRequestRepository·ProductOptionValueRepository mock 추가, createOrder 호출 테스트에 findByIdWithLock mock 추가, 품절 테스트에서 불필요한 orderRepository.save/orderItemRepository.saveAll mock 제거
+- **AuthServiceTest**: createSignupRequest 비밀번호 "password123" → "Password1!" (PASSWORD_PATTERN 정규식 충족)
 
 ## Recent Changes (2026-04-08) — 재고 비관적 락
 
@@ -150,7 +155,7 @@ docker compose -f ../docker-compose.yml up -d   # 인프라 시작
 ## Known Issues
 
 - 기존 주문 데이터: 할인가 반영 전에 생성된 주문의 priceSnapshot은 원가 기준 (소급 수정 불가)
-- 테스트 6개 실패 중 (Product.discountRate null 처리 미비, PaymentServiceTest OrderItemRepository mock 누락 등 기존 이슈)
+- 테스트 전체 통과 (2026-04-09 수정 완료)
 - 토스 환불 API: 미연동
 - 소셜 로그인: 쇼핑몰 사업자 정보 확정 후 진행 예정
 

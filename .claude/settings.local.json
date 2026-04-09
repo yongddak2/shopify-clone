@@ -4,7 +4,9 @@
       "Bash(./gradlew compileJava -q)",
       "Bash(./gradlew compileJava)",
       "Bash(./gradlew compileJava --rerun-tasks)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(./gradlew test:*)",
+      "Bash(npx next:*)"
     ]
   }
 }

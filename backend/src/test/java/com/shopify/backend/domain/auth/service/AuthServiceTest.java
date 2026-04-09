@@ -72,7 +72,7 @@ class AuthServiceTest {
     private SignupRequest createSignupRequest() {
         SignupRequest request = new SignupRequest();
         ReflectionTestUtils.setField(request, "email", "test@test.com");
-        ReflectionTestUtils.setField(request, "password", "password123");
+        ReflectionTestUtils.setField(request, "password", "Password1!");
         ReflectionTestUtils.setField(request, "name", "테스트");
         ReflectionTestUtils.setField(request, "phone", "010-1234-5678");
         return request;
@@ -92,7 +92,7 @@ class AuthServiceTest {
         SignupRequest request = createSignupRequest();
 
         given(memberRepository.existsByEmail("test@test.com")).willReturn(false);
-        given(passwordEncoder.encode("password123")).willReturn("encodedPassword");
+        given(passwordEncoder.encode("Password1!")).willReturn("encodedPassword");
         given(memberRepository.save(any(Member.class))).willAnswer(invocation -> {
             Member saved = invocation.getArgument(0);
             ReflectionTestUtils.setField(saved, "id", 1L);
@@ -107,7 +107,7 @@ class AuthServiceTest {
         assertThat(response.getEmail()).isEqualTo("test@test.com");
         assertThat(response.getName()).isEqualTo("테스트");
         verify(memberRepository).save(any(Member.class));
-        verify(passwordEncoder).encode("password123");
+        verify(passwordEncoder).encode("Password1!");
     }
 
     @Test

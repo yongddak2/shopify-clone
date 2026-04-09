@@ -5,6 +5,8 @@ import com.shopify.backend.domain.auth.entity.Provider;
 import com.shopify.backend.domain.auth.entity.Role;
 import com.shopify.backend.domain.order.dto.PaymentConfirmRequest;
 import com.shopify.backend.domain.order.entity.*;
+import com.shopify.backend.domain.coupon.repository.MemberCouponRepository;
+import com.shopify.backend.domain.order.repository.OrderItemRepository;
 import com.shopify.backend.domain.order.repository.OrderRepository;
 import com.shopify.backend.domain.order.repository.PaymentRepository;
 import com.shopify.backend.global.config.TossPaymentsProperties;
@@ -42,6 +44,12 @@ class PaymentServiceTest {
     private OrderRepository orderRepository;
 
     @Mock
+    private OrderItemRepository orderItemRepository;
+
+    @Mock
+    private MemberCouponRepository memberCouponRepository;
+
+    @Mock
     private RestTemplate tossRestTemplate;
 
     @Mock
@@ -76,10 +84,10 @@ class PaymentServiceTest {
         ReflectionTestUtils.setField(order, "id", 1L);
     }
 
-    private PaymentConfirmRequest createRequest(Long orderId, BigDecimal amount) {
+    private PaymentConfirmRequest createRequest(String orderNumber, BigDecimal amount) {
         PaymentConfirmRequest request = new PaymentConfirmRequest();
         ReflectionTestUtils.setField(request, "paymentKey", "toss_pay_key_123");
-        ReflectionTestUtils.setField(request, "orderId", orderId);
+        ReflectionTestUtils.setField(request, "orderNumber", orderNumber);
         ReflectionTestUtils.setField(request, "amount", amount);
         return request;
     }
@@ -95,9 +103,9 @@ class PaymentServiceTest {
     @DisplayName("결제_승인_성공")
     void 결제_승인_성공() {
         // given
-        PaymentConfirmRequest request = createRequest(1L, new BigDecimal("50000"));
+        PaymentConfirmRequest request = createRequest("ORD-123", new BigDecimal("50000"));
 
-        given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+        given(orderRepository.findByOrderNumber("ORD-123")).willReturn(Optional.of(order));
         given(paymentRepository.findByOrderId(1L)).willReturn(Optional.empty());
         mockTossApiSuccess();
         given(paymentRepository.save(any(Payment.class))).willAnswer(invocation -> {
@@ -105,6 +113,7 @@ class PaymentServiceTest {
             ReflectionTestUtils.setField(payment, "id", 1L);
             return payment;
         });
+        given(orderItemRepository.findByOrderId(1L)).willReturn(java.util.List.of());
 
         // when
         var response = paymentService.confirmPayment(1L, request);
@@ -119,8 +128,8 @@ class PaymentServiceTest {
     @DisplayName("존재하지_않는_주문_예외")
     void 존재하지_않는_주문_예외() {
         // given
-        PaymentConfirmRequest request = createRequest(999L, new BigDecimal("50000"));
-        given(orderRepository.findById(999L)).willReturn(Optional.empty());
+        PaymentConfirmRequest request = createRequest("ORD-999", new BigDecimal("50000"));
+        given(orderRepository.findByOrderNumber("ORD-999")).willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> paymentService.confirmPayment(1L, request))
@@ -133,8 +142,8 @@ class PaymentServiceTest {
     @DisplayName("다른_사용자_주문_결제_시_예외")
     void 다른_사용자_주문_결제_시_예외() {
         // given
-        PaymentConfirmRequest request = createRequest(1L, new BigDecimal("50000"));
-        given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+        PaymentConfirmRequest request = createRequest("ORD-123", new BigDecimal("50000"));
+        given(orderRepository.findByOrderNumber("ORD-123")).willReturn(Optional.of(order));
 
         // when & then: memberId 2L != order.member.id 1L
         assertThatThrownBy(() -> paymentService.confirmPayment(2L, request))
@@ -148,8 +157,8 @@ class PaymentServiceTest {
     void PENDING_아닌_상태_결제_시_예외() {
         // given
         order.updateStatus(OrderStatus.PAID);
-        PaymentConfirmRequest request = createRequest(1L, new BigDecimal("50000"));
-        given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+        PaymentConfirmRequest request = createRequest("ORD-123", new BigDecimal("50000"));
+        given(orderRepository.findByOrderNumber("ORD-123")).willReturn(Optional.of(order));
 
         // when & then
         assertThatThrownBy(() -> paymentService.confirmPayment(1L, request))
@@ -170,8 +179,8 @@ class PaymentServiceTest {
                 .status(PaymentStatus.DONE)
                 .build();
 
-        PaymentConfirmRequest request = createRequest(1L, new BigDecimal("50000"));
-        given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+        PaymentConfirmRequest request = createRequest("ORD-123", new BigDecimal("50000"));
+        given(orderRepository.findByOrderNumber("ORD-123")).willReturn(Optional.of(order));
         given(paymentRepository.findByOrderId(1L)).willReturn(Optional.of(existingPayment));
 
         // when & then
@@ -185,8 +194,8 @@ class PaymentServiceTest {
     @DisplayName("금액_불일치_예외")
     void 금액_불일치_예외() {
         // given
-        PaymentConfirmRequest request = createRequest(1L, new BigDecimal("99999"));
-        given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+        PaymentConfirmRequest request = createRequest("ORD-123", new BigDecimal("99999"));
+        given(orderRepository.findByOrderNumber("ORD-123")).willReturn(Optional.of(order));
         given(paymentRepository.findByOrderId(1L)).willReturn(Optional.empty());
 
         // when & then
@@ -200,8 +209,8 @@ class PaymentServiceTest {
     @DisplayName("토스_API_실패_시_예외")
     void 토스_API_실패_시_예외() {
         // given
-        PaymentConfirmRequest request = createRequest(1L, new BigDecimal("50000"));
-        given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+        PaymentConfirmRequest request = createRequest("ORD-123", new BigDecimal("50000"));
+        given(orderRepository.findByOrderNumber("ORD-123")).willReturn(Optional.of(order));
         given(paymentRepository.findByOrderId(1L)).willReturn(Optional.empty());
         given(tossProperties.getSecretKey()).willReturn("test_secret_key");
         given(tossProperties.getConfirmUrl()).willReturn("https://api.tosspayments.com/v1/payments/confirm");

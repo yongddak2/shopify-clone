@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -77,7 +77,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export default function MypageOrdersPage() {
+function MypageOrdersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -485,5 +485,13 @@ export default function MypageOrdersPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function MypageOrdersPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-24 text-[var(--text-muted)]">로딩 중...</div>}>
+      <MypageOrdersContent />
+    </Suspense>
   );
 }
