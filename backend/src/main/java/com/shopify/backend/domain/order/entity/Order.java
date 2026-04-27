@@ -56,6 +56,12 @@ public class Order {
 
     private String memo;
 
+    @Column(length = 50)
+    private String carrier;
+
+    @Column(length = 100)
+    private String trackingNumber;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_coupon_id")
     private MemberCoupon memberCoupon;
@@ -104,5 +110,10 @@ public class Order {
 
     public void confirm() {
         this.confirmedAt = LocalDateTime.now();
+    }
+
+    public void assignShipping(String carrier, String trackingNumber) {
+        this.carrier = carrier;
+        this.trackingNumber = trackingNumber;
     }
 }

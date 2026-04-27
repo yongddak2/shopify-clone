@@ -9,4 +9,8 @@ public class AdminOrderStatusUpdateRequest {
 
     @NotNull(message = "주문 상태는 필수입니다.")
     private OrderStatus status;
+
+    private String carrier;
+
+    private String trackingNumber;
 }

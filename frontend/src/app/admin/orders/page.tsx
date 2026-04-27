@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, Fragment } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getAdminOrders, updateOrderStatus } from "@/lib/admin";
 import { invalidateOrderRelated } from "@/lib/queryInvalidator";
 import type { AdminOrder } from "@/types";
+
+const CARRIERS = ["CJ대한통운", "롯데택배", "한진택배", "우체국택배", "로젠택배", "기타"];
 
 function formatPrice(n: number) {
   return n.toLocaleString("ko-KR");
@@ -56,6 +58,15 @@ export default function AdminOrdersPage() {
     order: AdminOrder;
     newStatus: string;
   } | null>(null);
+  const [carrier, setCarrier] = useState(CARRIERS[0]);
+  const [trackingNumber, setTrackingNumber] = useState("");
+
+  useEffect(() => {
+    if (statusChange?.newStatus === "SHIPPED") {
+      setCarrier(CARRIERS[0]);
+      setTrackingNumber("");
+    }
+  }, [statusChange?.order.id, statusChange?.newStatus]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "orders", page],
@@ -64,13 +75,36 @@ export default function AdminOrdersPage() {
   });
 
   const statusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: number; status: string }) =>
-      updateOrderStatus(id, status),
+    mutationFn: ({ id, status, shipping }: {
+      id: number;
+      status: string;
+      shipping?: { carrier: string; trackingNumber: string };
+    }) => updateOrderStatus(id, status, shipping),
     onSuccess: () => {
       invalidateOrderRelated(queryClient);
       setStatusChange(null);
     },
   });
+
+  const isShipped = statusChange?.newStatus === "SHIPPED";
+  const confirmDisabled =
+    statusMutation.isPending || (isShipped && trackingNumber.trim() === "");
+
+  const handleConfirm = () => {
+    if (!statusChange) return;
+    if (isShipped) {
+      statusMutation.mutate({
+        id: statusChange.order.id,
+        status: statusChange.newStatus,
+        shipping: { carrier, trackingNumber: trackingNumber.trim() },
+      });
+    } else {
+      statusMutation.mutate({
+        id: statusChange.order.id,
+        status: statusChange.newStatus,
+      });
+    }
+  };
 
   const orders = data?.data?.content ?? [];
   const totalPages = data?.data?.totalPages ?? 0;
@@ -204,21 +238,50 @@ export default function AdminOrdersPage() {
         </div>
       )}
 
-      {/* 상태 변경 확인 모달 */}
+      {/* 상태 변경 확인 모달 (SHIPPED는 운송장 입력 포함) */}
       {statusChange && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
           <div className="absolute inset-0 bg-[var(--overlay-bg)]" onClick={() => setStatusChange(null)} />
-          <div className="relative bg-[var(--card-bg)] border border-[var(--border-color)] px-8 py-8 max-w-sm w-full mx-6 text-center">
-            <p className="text-sm text-[var(--text-secondary)] mb-2">주문 상태를 변경하시겠습니까?</p>
-            <p className="text-xs text-[var(--text-muted)] mb-8">
+          <div className={`relative bg-[var(--card-bg)] border border-[var(--border-color)] px-8 py-8 w-full mx-6 ${isShipped ? "max-w-md" : "max-w-sm text-center"}`}>
+            <p className="text-sm text-[var(--text-secondary)] mb-2 text-center">주문 상태를 변경하시겠습니까?</p>
+            <p className="text-xs text-[var(--text-muted)] mb-8 text-center">
               {STATUS_LABELS[statusChange.order.status] ?? statusChange.order.status} → {STATUS_LABELS[statusChange.newStatus] ?? statusChange.newStatus}
             </p>
+
+            {isShipped && (
+              <div className="mb-8 space-y-4 text-left">
+                <div>
+                  <label className="block text-xs text-[var(--text-muted)] tracking-wider mb-2">배송사</label>
+                  <select
+                    value={carrier}
+                    onChange={(e) => setCarrier(e.target.value)}
+                    className="w-full bg-[var(--input-bg)] border border-[var(--border-color)] text-sm text-[var(--text-secondary)] px-3 py-2 focus:outline-none"
+                  >
+                    {CARRIERS.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-[var(--text-muted)] tracking-wider mb-2">운송장번호</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={trackingNumber}
+                    onChange={(e) => setTrackingNumber(e.target.value.replace(/\D/g, ""))}
+                    placeholder="운송장번호를 입력하세요"
+                    className="w-full bg-[var(--input-bg)] border border-[var(--border-color)] text-sm text-[var(--text-secondary)] px-3 py-2 focus:outline-none"
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button onClick={() => setStatusChange(null)} className="flex-1 py-3 text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">취소</button>
               <button
-                onClick={() => statusMutation.mutate({ id: statusChange.order.id, status: statusChange.newStatus })}
-                className="flex-1 py-3 text-sm bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] transition-colors"
-                disabled={statusMutation.isPending}
+                onClick={handleConfirm}
+                className="flex-1 py-3 text-sm bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled={confirmDisabled}
               >
                 {statusMutation.isPending ? "변경 중..." : "확인"}
               </button>

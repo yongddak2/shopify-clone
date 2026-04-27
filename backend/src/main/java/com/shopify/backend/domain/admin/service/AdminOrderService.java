@@ -9,6 +9,8 @@ import com.shopify.backend.domain.order.repository.OrderItemRepository;
 import com.shopify.backend.domain.order.repository.OrderRepository;
 import com.shopify.backend.global.exception.BusinessException;
 import com.shopify.backend.global.exception.ErrorCode;
+import com.shopify.backend.infra.email.EmailService;
+import com.shopify.backend.infra.email.OrderEmailContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -25,6 +27,7 @@ public class AdminOrderService {
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
+    private final EmailService emailService;
 
     public Page<AdminOrderResponse> getOrders(int page, int size) {
         Page<Order> orders = orderRepository.findAll(
@@ -63,6 +66,22 @@ public class AdminOrderService {
             }
         }
 
+        // SHIPPED 전이 시 운송장 정보 저장 (이메일 발송 전에 반영)
+        if (oldStatus != newStatus && newStatus == OrderStatus.SHIPPED) {
+            order.assignShipping(request.getCarrier(), request.getTrackingNumber());
+        }
+
         order.updateStatus(newStatus);
+
+        // 상태 변경 알림 이메일 (SHIPPED / CANCELLED, 동일 상태로의 재호출은 제외)
+        if (oldStatus != newStatus) {
+            if (newStatus == OrderStatus.SHIPPED) {
+                List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
+                emailService.sendShippedEmail(OrderEmailContext.from(order, items));
+            } else if (newStatus == OrderStatus.CANCELLED) {
+                List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
+                emailService.sendAdminCancelEmail(OrderEmailContext.from(order, items));
+            }
+        }
     }
 }

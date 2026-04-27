@@ -10,6 +10,8 @@ import com.shopify.backend.domain.order.repository.PaymentRepository;
 import com.shopify.backend.global.config.TossPaymentsProperties;
 import com.shopify.backend.global.exception.BusinessException;
 import com.shopify.backend.global.exception.ErrorCode;
+import com.shopify.backend.infra.email.EmailService;
+import com.shopify.backend.infra.email.OrderEmailContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -32,6 +34,7 @@ public class PaymentService {
     private final MemberCouponRepository memberCouponRepository;
     private final RestTemplate tossRestTemplate;
     private final TossPaymentsProperties tossProperties;
+    private final EmailService emailService;
 
     @Transactional
     public PaymentResponse confirmPayment(Long memberId, PaymentConfirmRequest request) {
@@ -90,6 +93,9 @@ public class PaymentService {
         for (OrderItem orderItem : orderItems) {
             orderItem.getProduct().increaseSalesCount(orderItem.getQuantity());
         }
+
+        // 10. 결제 완료 이메일 발송 (비동기, 실패해도 흐름 유지)
+        emailService.sendPaymentConfirmEmail(OrderEmailContext.from(order, orderItems));
 
         return PaymentResponse.from(payment);
     }

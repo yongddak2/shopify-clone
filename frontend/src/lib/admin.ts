@@ -102,10 +102,19 @@ export async function getAdminOrders(page = 0) {
   return res.data;
 }
 
-export async function updateOrderStatus(id: number, status: string) {
+export async function updateOrderStatus(
+  id: number,
+  status: string,
+  shipping?: { carrier: string; trackingNumber: string }
+) {
+  const body: Record<string, string> = { status };
+  if (shipping) {
+    body.carrier = shipping.carrier;
+    body.trackingNumber = shipping.trackingNumber;
+  }
   const res = await api.patch<ApiResponse<AdminOrder>>(
     `/api/admin/orders/${id}/status`,
-    { status }
+    body
   );
   return res.data;
 }

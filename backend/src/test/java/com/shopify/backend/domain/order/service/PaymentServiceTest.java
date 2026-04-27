@@ -12,6 +12,7 @@ import com.shopify.backend.domain.order.repository.PaymentRepository;
 import com.shopify.backend.global.config.TossPaymentsProperties;
 import com.shopify.backend.global.exception.BusinessException;
 import com.shopify.backend.global.exception.ErrorCode;
+import com.shopify.backend.infra.email.EmailService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -54,6 +55,9 @@ class PaymentServiceTest {
 
     @Mock
     private TossPaymentsProperties tossProperties;
+
+    @Mock
+    private EmailService emailService;
 
     @InjectMocks
     private PaymentService paymentService;
