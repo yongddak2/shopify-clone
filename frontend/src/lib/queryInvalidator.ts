@@ -19,6 +19,7 @@ export const invalidateOrderRelated = (qc: QueryClient) => {
   qc.invalidateQueries({ queryKey: ["order"] });
   qc.invalidateQueries({ queryKey: ["admin", "orders"] });
   qc.invalidateQueries({ queryKey: ["admin", "requests"] });
+  qc.invalidateQueries({ queryKey: ["admin", "dashboard"] });
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -30,6 +31,7 @@ export const invalidateProductRelated = (qc: QueryClient) => {
   qc.invalidateQueries({ queryKey: ["admin", "products"] });
   qc.invalidateQueries({ queryKey: ["admin", "product"] });
   qc.invalidateQueries({ queryKey: ["admin", "inventory"] });
+  qc.invalidateQueries({ queryKey: ["admin", "dashboard"] });
   qc.invalidateQueries({ queryKey: ["mainNewProducts"] });
   qc.invalidateQueries({ queryKey: ["mainBestProducts"] });
   qc.invalidateQueries({ queryKey: ["searchProducts"] });
@@ -86,6 +88,22 @@ export const invalidateAddressRelated = (qc: QueryClient) => {
 // ─────────────────────────────────────────────────────────────
 export const invalidateUserRelated = (qc: QueryClient) => {
   qc.invalidateQueries({ queryKey: ["myInfo"] });
+};
+
+// ─────────────────────────────────────────────────────────────
+// Admin Dashboard (관리자 대시보드 통계)
+// ─────────────────────────────────────────────────────────────
+export const invalidateDashboardRelated = (qc: QueryClient) => {
+  qc.invalidateQueries({ queryKey: ["admin", "dashboard"] });
+};
+
+// ─────────────────────────────────────────────────────────────
+// Admin Member (관리자 회원 관리)
+// ─────────────────────────────────────────────────────────────
+export const invalidateAdminMemberRelated = (qc: QueryClient) => {
+  qc.invalidateQueries({ queryKey: ["admin", "users"] });
+  qc.invalidateQueries({ queryKey: ["admin", "user"] });
+  qc.invalidateQueries({ queryKey: ["admin", "dashboard"] });
 };
 
 // ─────────────────────────────────────────────────────────────

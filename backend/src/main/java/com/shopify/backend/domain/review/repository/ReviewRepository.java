@@ -27,4 +27,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     Optional<Review> findByMemberIdAndOrderItemId(Long memberId, Long orderItemId);
 
     boolean existsByMemberIdAndOrderItemIdAndDeletedAtIsNull(Long memberId, Long orderItemId);
+
+    long countByMemberIdAndDeletedAtIsNull(Long memberId);
+
+    @Query("SELECT AVG(r.rating) FROM Review r WHERE r.member.id = :memberId AND r.deletedAt IS NULL")
+    Double findAverageRatingByMemberId(@Param("memberId") Long memberId);
 }

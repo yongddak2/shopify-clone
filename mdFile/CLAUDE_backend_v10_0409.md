@@ -134,7 +134,7 @@ docker compose -f ../docker-compose.yml up -d   # 인프라 시작
 ## Known Issues
 
 - 기존 주문 데이터: priceSnapshot 원가 기준 (소급 수정 불가)
-- 테스트 6개 실패 (Product.discountRate null, PaymentServiceTest mock 누락 등)
+- 테스트 21개 전부 통과 (0409 수정 완료)
 - 토스 환불 API: 미연동
 - 소셜 로그인: 사업자 정보 확정 후 진행 예정
 - 상품 옵션 수정: AdminProductService에서 cascade 없어 productOptionValueRepository.save()/delete() 직접 호출 필요

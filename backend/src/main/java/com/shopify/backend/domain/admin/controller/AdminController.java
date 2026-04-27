@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -101,9 +102,42 @@ public class AdminController {
     @GetMapping("/users")
     public ResponseEntity<ApiResponse<Page<AdminMemberResponse>>> getMembers(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Page<AdminMemberResponse> response = adminMemberService.getMembers(page, size);
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String filter) {
+        Page<AdminMemberResponse> response = adminMemberService.getMembers(page, size, filter);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/users/{id}")
+    public ResponseEntity<ApiResponse<AdminMemberDetailResponse>> getMember(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(adminMemberService.getMemberDetail(id)));
+    }
+
+    @PatchMapping("/users/{id}/role")
+    public ResponseEntity<ApiResponse<AdminMemberDetailResponse>> updateMemberRole(
+            @PathVariable Long id,
+            @Valid @RequestBody AdminMemberRoleUpdateRequest request,
+            Authentication authentication) {
+        Long actingMemberId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(ApiResponse.success(
+                adminMemberService.updateRole(id, actingMemberId, request.getRole())));
+    }
+
+    @PatchMapping("/users/{id}/memo")
+    public ResponseEntity<ApiResponse<AdminMemberDetailResponse>> updateMemberMemo(
+            @PathVariable Long id,
+            @Valid @RequestBody AdminMemberMemoUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                adminMemberService.updateAdminMemo(id, request.getAdminMemo())));
+    }
+
+    @DeleteMapping("/users/{id}")
+    public ResponseEntity<Void> withdrawMember(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long actingMemberId = (Long) authentication.getPrincipal();
+        adminMemberService.withdrawMember(id, actingMemberId);
+        return ResponseEntity.noContent().build();
     }
 
 }

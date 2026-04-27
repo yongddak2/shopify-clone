@@ -35,6 +35,10 @@ public class CouponService {
         Coupon coupon = couponRepository.findById(couponId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.COUPON_NOT_FOUND));
 
+        if (coupon.isWelcome()) {
+            throw new BusinessException(ErrorCode.WELCOME_COUPON_NOT_DOWNLOADABLE);
+        }
+
         if (!coupon.isValid()) {
             LocalDateTime now = LocalDateTime.now();
             if (now.isBefore(coupon.getStartDate()) || now.isAfter(coupon.getEndDate())) {
@@ -74,6 +78,7 @@ public class CouponService {
                 .map(mc -> mc.getCoupon().getId())
                 .collect(Collectors.toSet());
         return coupons.stream()
+                .filter(c -> !c.isWelcome())
                 .map(c -> CouponListResponse.from(c, issuedCouponIds.contains(c.getId())))
                 .toList();
     }

@@ -307,6 +307,57 @@ export interface AdminUser {
   deletedAt: string | null;
 }
 
+export interface AdminMemberAddress {
+  id: number;
+  label: string;
+  recipient: string;
+  phone: string;
+  zipcode: string;
+  address: string;
+  addressDetail: string;
+  defaultAddress: boolean;
+}
+
+export interface AdminMemberRecentOrder {
+  orderId: number;
+  orderNumber: string;
+  status: string;
+  finalAmount: number;
+  createdAt: string;
+}
+
+export interface AdminMemberDetail {
+  id: number;
+  email: string;
+  name: string;
+  phone: string;
+  role: string;
+  provider: string;
+  createdAt: string;
+  deletedAt: string | null;
+  passwordChangedAt: string | null;
+  adminMemo: string | null;
+
+  totalOrderCount: number;
+  paidOrderCount: number;
+  cancelledOrCancelRefundCount: number;
+  totalPaidAmount: number;
+  averageOrderValue: number;
+  lastOrderAt: string | null;
+
+  couponTotalCount: number;
+  couponUsableCount: number;
+  couponUsedCount: number;
+  couponExpiredCount: number;
+  reviewCount: number;
+  reviewAverageRating: number | null;
+  wishlistCount: number;
+  returnExchangeCount: number;
+
+  addresses: AdminMemberAddress[];
+  recentOrders: AdminMemberRecentOrder[];
+}
+
 // 관리자 - 쿠폰
 export interface AdminCoupon {
   id: number;
@@ -315,11 +366,13 @@ export interface AdminCoupon {
   discountValue: number;
   minOrderAmount: number;
   maxDiscountAmount: number | null;
-  totalQuantity: number;
+  totalQuantity: number | null;
   issuedQuantity: number;
   startDate: string;
   endDate: string;
   createdAt: string;
+  isWelcome: boolean;
+  validDays: number | null;
 }
 
 // 배너
@@ -359,13 +412,64 @@ export interface ReturnExchangeRequest {
   createdAt: string;
 }
 
+// 관리자 - 대시보드
+export interface AdminDashboardDailyRevenue {
+  date: string; // YYYY-MM-DD
+  amount: number;
+}
+
+export interface AdminDashboardLowStock {
+  productId: number;
+  productName: string;
+  optionValueId: number;
+  optionValue: string;
+  stockQuantity: number;
+}
+
+export interface AdminDashboardRecentOrder {
+  orderId: number;
+  orderNumber: string;
+  memberEmail: string;
+  finalAmount: number;
+  status: string;
+  createdAt: string;
+}
+
+export interface AdminDashboardTopProduct {
+  productId: number;
+  productName: string;
+  salesCount: number;
+  thumbnailUrl: string | null;
+}
+
+export interface AdminDashboardOrderStatusCount {
+  status: string;
+  count: number;
+}
+
+export interface AdminDashboard {
+  todayOrderCount: number;
+  monthlyRevenue: number;
+  totalMemberCount: number;
+  pendingRequestCount: number;
+  monthlyAverageOrderValue: number;
+  newMembersThisMonth: number;
+  dailyRevenue: AdminDashboardDailyRevenue[];
+  lowStockProducts: AdminDashboardLowStock[];
+  recentOrders: AdminDashboardRecentOrder[];
+  topProducts: AdminDashboardTopProduct[];
+  orderStatusCounts: AdminDashboardOrderStatusCount[];
+}
+
 export interface CreateCouponRequest {
   name: string;
   discountType: string;
   discountValue: number;
   minOrderAmount: number;
   maxDiscountAmount?: number;
-  totalQuantity: number;
+  totalQuantity?: number;
   startDate: string;
   endDate: string;
+  isWelcome?: boolean;
+  validDays?: number;
 }

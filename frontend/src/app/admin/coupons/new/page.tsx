@@ -3,8 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 import { createCoupon } from "@/lib/admin";
 import { invalidateCouponRelated } from "@/lib/queryInvalidator";
+
+type ErrorResponse = { success: boolean; message: string | null; data: unknown };
 
 export default function NewCouponPage() {
   const router = useRouter();
@@ -15,8 +18,10 @@ export default function NewCouponPage() {
   const [minOrderAmount, setMinOrderAmount] = useState("");
   const [maxDiscountAmount, setMaxDiscountAmount] = useState("");
   const [totalQuantity, setTotalQuantity] = useState("");
+  const [validDays, setValidDays] = useState("30");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [isWelcome, setIsWelcome] = useState(false);
   const [error, setError] = useState("");
 
   const mutation = useMutation({
@@ -25,7 +30,9 @@ export default function NewCouponPage() {
       invalidateCouponRelated(queryClient);
       router.push("/admin/coupons");
     },
-    onError: () => setError("쿠폰 생성에 실패했습니다"),
+    onError: (err: AxiosError<ErrorResponse>) => {
+      setError(err.response?.data?.message ?? "쿠폰 생성에 실패했습니다");
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -34,8 +41,19 @@ export default function NewCouponPage() {
     if (!name.trim()) { setError("쿠폰명을 입력하세요"); return; }
     if (!discountValue || Number(discountValue) <= 0) { setError("할인 값을 입력하세요"); return; }
     if (!minOrderAmount) { setError("최소 주문 금액을 입력하세요"); return; }
-    if (!totalQuantity) { setError("총 발급 수량을 입력하세요"); return; }
     if (!startDate || !endDate) { setError("기간을 입력하세요"); return; }
+
+    if (isWelcome) {
+      if (!validDays || Number(validDays) < 1) {
+        setError("회원별 유효 기간(일)을 1 이상으로 입력하세요");
+        return;
+      }
+    } else {
+      if (!totalQuantity || Number(totalQuantity) < 1) {
+        setError("총 발급 수량을 입력하세요");
+        return;
+      }
+    }
 
     mutation.mutate({
       name: name.trim(),
@@ -45,7 +63,9 @@ export default function NewCouponPage() {
       ...(discountType === "PERCENT" && maxDiscountAmount
         ? { maxDiscountAmount: Number(maxDiscountAmount) }
         : {}),
-      totalQuantity: Number(totalQuantity),
+      ...(isWelcome
+        ? { isWelcome: true, validDays: Number(validDays) }
+        : { isWelcome: false, totalQuantity: Number(totalQuantity) }),
       startDate: new Date(startDate).toISOString(),
       endDate: new Date(endDate).toISOString(),
     });
@@ -99,15 +119,64 @@ export default function NewCouponPage() {
               className={`${inputClass} disabled:opacity-40 disabled:cursor-not-allowed`}
             />
           </div>
-          <div>
-            <label className="block text-xs text-[var(--text-muted)] mb-1">총 발급 수량 *</label>
-            <input type="number" value={totalQuantity} onChange={(e) => setTotalQuantity(e.target.value)} className={inputClass} />
-          </div>
+        </div>
+
+        <div className="border border-[var(--border-color)] p-4">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isWelcome}
+              onChange={(e) => setIsWelcome(e.target.checked)}
+              className="mt-1 accent-[var(--btn-primary-bg)]"
+            />
+            <span className="flex-1">
+              <span className="block text-sm text-[var(--text-secondary)]">
+                🎁 신규가입 웰컴 쿠폰으로 지정
+              </span>
+              <span className="block text-xs text-[var(--text-muted)] mt-1">
+                회원가입 완료 시 자동 발급되며, 발급 수량 제한이 없고 기존 웰컴 쿠폰은 자동 해제됩니다.
+              </span>
+            </span>
+          </label>
+        </div>
+
+        <div>
+          {isWelcome ? (
+            <>
+              <label className="block text-xs text-[var(--text-muted)] mb-1">
+                회원별 유효 기간 (일) *
+              </label>
+              <input
+                type="number"
+                min={1}
+                value={validDays}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setValidDays(e.target.value)}
+                className={inputClass}
+              />
+              <p className="text-[11px] text-[var(--text-muted)] mt-1">
+                회원가입일로부터 {validDays || 0}일간 유효 (운영 종료일 초과 시 종료일로 단축)
+              </p>
+            </>
+          ) : (
+            <>
+              <label className="block text-xs text-[var(--text-muted)] mb-1">총 발급 수량 *</label>
+              <input
+                type="number"
+                min={1}
+                value={totalQuantity}
+                onChange={(e) => setTotalQuantity(e.target.value)}
+                className={inputClass}
+              />
+            </>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs text-[var(--text-muted)] mb-1">시작일 *</label>
+            <label className="block text-xs text-[var(--text-muted)] mb-1">
+              {isWelcome ? "운영 시작일 *" : "시작일 *"}
+            </label>
             <input
               type="datetime-local"
               value={startDate}
@@ -116,7 +185,9 @@ export default function NewCouponPage() {
             />
           </div>
           <div>
-            <label className="block text-xs text-[var(--text-muted)] mb-1">종료일 *</label>
+            <label className="block text-xs text-[var(--text-muted)] mb-1">
+              {isWelcome ? "운영 종료일 *" : "종료일 *"}
+            </label>
             <input
               type="datetime-local"
               value={endDate}

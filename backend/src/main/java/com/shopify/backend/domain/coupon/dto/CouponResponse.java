@@ -1,5 +1,6 @@
 package com.shopify.backend.domain.coupon.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.shopify.backend.domain.coupon.entity.Coupon;
 import com.shopify.backend.domain.coupon.entity.DiscountType;
 import lombok.Builder;
@@ -18,10 +19,15 @@ public class CouponResponse {
     private final BigDecimal discountValue;
     private final BigDecimal minOrderAmount;
     private final BigDecimal maxDiscountAmount;
-    private final int totalQuantity;
+    private final Integer totalQuantity;
     private final int issuedQuantity;
     private final LocalDateTime startDate;
     private final LocalDateTime endDate;
+
+    @JsonProperty("isWelcome")
+    private final boolean isWelcome;
+
+    private final Integer validDays;
 
     public static CouponResponse from(Coupon coupon) {
         return CouponResponse.builder()
@@ -35,6 +41,8 @@ public class CouponResponse {
                 .issuedQuantity(coupon.getIssuedQuantity())
                 .startDate(coupon.getStartDate())
                 .endDate(coupon.getEndDate())
+                .isWelcome(coupon.isWelcome())
+                .validDays(coupon.getValidDays())
                 .build();
     }
 }

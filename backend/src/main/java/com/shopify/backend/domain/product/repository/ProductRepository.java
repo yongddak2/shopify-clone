@@ -33,4 +33,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                  @Param("minPrice") BigDecimal minPrice,
                                  @Param("maxPrice") BigDecimal maxPrice,
                                  Pageable pageable);
+
+    @EntityGraph(attributePaths = {"images"})
+    @Query("SELECT p FROM Product p WHERE p.deletedAt IS NULL AND p.salesCount > 0 " +
+            "ORDER BY p.salesCount DESC, p.id ASC")
+    List<Product> findTopBySales(Pageable pageable);
 }

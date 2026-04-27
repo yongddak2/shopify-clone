@@ -12,6 +12,8 @@ public enum ErrorCode {
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."),
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
     INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "비밀번호가 올바르지 않습니다."),
+    CANNOT_MODIFY_SELF(HttpStatus.BAD_REQUEST, "본인 계정은 변경할 수 없습니다."),
+    MEMBER_ALREADY_WITHDRAWN(HttpStatus.BAD_REQUEST, "이미 탈퇴 처리된 회원입니다."),
 
     // Address
     ADDRESS_NOT_FOUND(HttpStatus.NOT_FOUND, "배송지를 찾을 수 없습니다."),
@@ -58,6 +60,8 @@ public enum ErrorCode {
     MEMBER_COUPON_NOT_FOUND(HttpStatus.NOT_FOUND, "보유한 쿠폰을 찾을 수 없습니다."),
     COUPON_HAS_ISSUED_MEMBERS(HttpStatus.BAD_REQUEST, "이미 발급된 쿠폰은 삭제할 수 없습니다."),
     COUPON_TOTAL_QUANTITY_INVALID(HttpStatus.BAD_REQUEST, "총 수량은 이미 발급된 수량보다 적을 수 없습니다."),
+    WELCOME_VALID_DAYS_REQUIRED(HttpStatus.BAD_REQUEST, "웰컴 쿠폰은 회원별 유효 기간(일)을 1 이상으로 지정해야 합니다."),
+    WELCOME_COUPON_NOT_DOWNLOADABLE(HttpStatus.BAD_REQUEST, "웰컴 쿠폰은 회원가입 시 자동 발급됩니다."),
 
     // Review
     REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "리뷰를 찾을 수 없습니다."),

@@ -26,7 +26,6 @@ public class CouponCreateRequest {
 
     private BigDecimal maxDiscountAmount;
 
-    @NotNull(message = "총 수량은 필수입니다.")
     private Integer totalQuantity;
 
     @NotNull(message = "시작일은 필수입니다.")
@@ -34,4 +33,8 @@ public class CouponCreateRequest {
 
     @NotNull(message = "종료일은 필수입니다.")
     private LocalDateTime endDate;
+
+    private Boolean isWelcome;
+
+    private Integer validDays;
 }

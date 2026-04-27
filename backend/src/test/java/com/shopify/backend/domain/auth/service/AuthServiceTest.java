@@ -6,6 +6,8 @@ import com.shopify.backend.domain.auth.entity.Member;
 import com.shopify.backend.domain.auth.entity.Provider;
 import com.shopify.backend.domain.auth.entity.Role;
 import com.shopify.backend.domain.auth.repository.MemberRepository;
+import com.shopify.backend.domain.coupon.repository.CouponRepository;
+import com.shopify.backend.domain.coupon.repository.MemberCouponRepository;
 import com.shopify.backend.global.config.JwtProperties;
 import com.shopify.backend.global.config.JwtProvider;
 import com.shopify.backend.global.exception.BusinessException;
@@ -50,6 +52,12 @@ class AuthServiceTest {
 
     @Mock
     private ValueOperations<String, String> valueOperations;
+
+    @Mock
+    private CouponRepository couponRepository;
+
+    @Mock
+    private MemberCouponRepository memberCouponRepository;
 
     @InjectMocks
     private AuthService authService;

@@ -5,18 +5,25 @@ import com.shopify.backend.domain.auth.entity.Member;
 import com.shopify.backend.domain.auth.entity.Provider;
 import com.shopify.backend.domain.auth.entity.Role;
 import com.shopify.backend.domain.auth.repository.MemberRepository;
+import com.shopify.backend.domain.coupon.entity.Coupon;
+import com.shopify.backend.domain.coupon.entity.MemberCoupon;
+import com.shopify.backend.domain.coupon.repository.CouponRepository;
+import com.shopify.backend.domain.coupon.repository.MemberCouponRepository;
 import com.shopify.backend.global.config.JwtProperties;
 import com.shopify.backend.global.config.JwtProvider;
 import com.shopify.backend.global.exception.BusinessException;
 import com.shopify.backend.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -27,6 +34,8 @@ public class AuthService {
     private final JwtProvider jwtProvider;
     private final JwtProperties jwtProperties;
     private final StringRedisTemplate redisTemplate;
+    private final CouponRepository couponRepository;
+    private final MemberCouponRepository memberCouponRepository;
 
     private static final String PASSWORD_PATTERN = "^(?=.*[a-zA-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?]).{8,}$";
 
@@ -50,7 +59,33 @@ public class AuthService {
                 .build();
 
         memberRepository.save(member);
+        issueWelcomeCouponSafely(member);
         return MemberResponse.from(member);
+    }
+
+    private void issueWelcomeCouponSafely(Member member) {
+        try {
+            LocalDateTime now = LocalDateTime.now();
+            couponRepository.findFirstByIsWelcomeTrueAndEndDateAfter(now)
+                    .ifPresent(coupon -> {
+                        if (coupon.getValidDays() == null || coupon.getValidDays() < 1) {
+                            log.warn("Welcome coupon id={} has invalid validDays, skipping issuance", coupon.getId());
+                            return;
+                        }
+                        if (memberCouponRepository.existsByMemberIdAndCouponId(member.getId(), coupon.getId())) {
+                            return;
+                        }
+                        coupon.issue();
+                        couponRepository.save(coupon);
+                        memberCouponRepository.save(MemberCoupon.builder()
+                                .member(member)
+                                .coupon(coupon)
+                                .expiredAt(coupon.computeWelcomeExpiredAt(now))
+                                .build());
+                    });
+        } catch (Exception e) {
+            log.warn("Welcome coupon issuance failed for memberId={}", member.getId(), e);
+        }
     }
 
     public TokenResponse login(LoginRequest request) {

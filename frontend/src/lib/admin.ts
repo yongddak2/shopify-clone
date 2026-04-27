@@ -12,7 +12,15 @@ import type {
   Banner,
   ReturnExchangeRequest,
   InventoryItem,
+  AdminDashboard,
+  AdminMemberDetail,
 } from "@/types";
+
+// 대시보드
+export async function getDashboard(): Promise<AdminDashboard> {
+  const res = await api.get<ApiResponse<AdminDashboard>>("/api/admin/dashboard");
+  return res.data.data;
+}
 
 // 이미지 업로드/삭제
 export async function uploadProductImage(file: File): Promise<string> {
@@ -120,12 +128,39 @@ export async function updateOrderStatus(
 }
 
 // 회원 관리
-export async function getAdminUsers(page = 0) {
+export async function getAdminUsers(page = 0, filter?: string) {
+  const params: Record<string, string | number> = { page, size: 20, sort: "id,desc" };
+  if (filter) params.filter = filter;
   const res = await api.get<ApiResponse<PageResponse<AdminUser>>>(
     "/api/admin/users",
-    { params: { page, size: 20, sort: "id,desc" } }
+    { params }
   );
   return res.data;
+}
+
+export async function getAdminUserDetail(id: number): Promise<AdminMemberDetail> {
+  const res = await api.get<ApiResponse<AdminMemberDetail>>(`/api/admin/users/${id}`);
+  return res.data.data;
+}
+
+export async function updateAdminUserRole(id: number, role: "USER" | "ADMIN"): Promise<AdminMemberDetail> {
+  const res = await api.patch<ApiResponse<AdminMemberDetail>>(
+    `/api/admin/users/${id}/role`,
+    { role }
+  );
+  return res.data.data;
+}
+
+export async function updateAdminUserMemo(id: number, adminMemo: string): Promise<AdminMemberDetail> {
+  const res = await api.patch<ApiResponse<AdminMemberDetail>>(
+    `/api/admin/users/${id}/memo`,
+    { adminMemo }
+  );
+  return res.data.data;
+}
+
+export async function withdrawAdminUser(id: number): Promise<void> {
+  await api.delete(`/api/admin/users/${id}`);
 }
 
 // 쿠폰 관리
@@ -147,9 +182,11 @@ export async function createCoupon(data: CreateCouponRequest) {
 
 export interface UpdateCouponRequest {
   name: string;
-  totalQuantity: number;
+  totalQuantity?: number;
   startDate: string;
   endDate: string;
+  isWelcome?: boolean;
+  validDays?: number;
 }
 
 export async function updateCoupon(id: number, data: UpdateCouponRequest) {

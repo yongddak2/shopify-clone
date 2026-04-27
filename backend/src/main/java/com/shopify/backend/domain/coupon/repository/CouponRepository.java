@@ -14,7 +14,11 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
 
     @Query("SELECT c FROM Coupon c " +
             "WHERE c.startDate <= :now AND c.endDate >= :now " +
-            "AND c.issuedQuantity < c.totalQuantity " +
+            "AND (c.totalQuantity IS NULL OR c.issuedQuantity < c.totalQuantity) " +
             "ORDER BY c.endDate ASC")
     List<Coupon> findAvailableCoupons(LocalDateTime now);
+
+    Optional<Coupon> findFirstByIsWelcomeTrueAndEndDateAfter(LocalDateTime now);
+
+    List<Coupon> findByIsWelcomeTrue();
 }

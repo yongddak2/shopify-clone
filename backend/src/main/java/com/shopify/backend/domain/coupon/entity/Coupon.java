@@ -34,8 +34,7 @@ public class Coupon {
 
     private BigDecimal maxDiscountAmount;
 
-    @Column(nullable = false)
-    private int totalQuantity;
+    private Integer totalQuantity;
 
     @Column(nullable = false)
     private int issuedQuantity;
@@ -46,10 +45,17 @@ public class Coupon {
     @Column(nullable = false)
     private LocalDateTime endDate;
 
+    @Column(name = "is_welcome", nullable = false)
+    private boolean isWelcome;
+
+    @Column(name = "valid_days")
+    private Integer validDays;
+
     @Builder
     public Coupon(String name, DiscountType discountType, BigDecimal discountValue,
                   BigDecimal minOrderAmount, BigDecimal maxDiscountAmount,
-                  int totalQuantity, LocalDateTime startDate, LocalDateTime endDate) {
+                  Integer totalQuantity, LocalDateTime startDate, LocalDateTime endDate,
+                  Boolean isWelcome, Integer validDays) {
         this.name = name;
         this.discountType = discountType;
         this.discountValue = discountValue;
@@ -59,22 +65,41 @@ public class Coupon {
         this.issuedQuantity = 0;
         this.startDate = startDate;
         this.endDate = endDate;
+        this.isWelcome = Boolean.TRUE.equals(isWelcome);
+        this.validDays = this.isWelcome ? validDays : null;
     }
 
     public boolean isValid() {
         LocalDateTime now = LocalDateTime.now();
-        return !now.isBefore(startDate) && !now.isAfter(endDate) && issuedQuantity < totalQuantity;
+        boolean inDateRange = !now.isBefore(startDate) && !now.isAfter(endDate);
+        boolean withinLimit = totalQuantity == null || issuedQuantity < totalQuantity;
+        return inDateRange && withinLimit;
     }
 
     public void issue() {
         this.issuedQuantity++;
     }
 
-    public void update(String name, int totalQuantity, LocalDateTime startDate, LocalDateTime endDate) {
+    public void update(String name, Integer totalQuantity, LocalDateTime startDate, LocalDateTime endDate) {
         this.name = name;
         this.totalQuantity = totalQuantity;
         this.startDate = startDate;
         this.endDate = endDate;
+    }
+
+    public void markAsWelcome(int validDays) {
+        this.isWelcome = true;
+        this.validDays = validDays;
+    }
+
+    public void unmarkAsWelcome() {
+        this.isWelcome = false;
+        this.validDays = null;
+    }
+
+    public LocalDateTime computeWelcomeExpiredAt(LocalDateTime now) {
+        LocalDateTime computed = now.plusDays(validDays);
+        return computed.isAfter(endDate) ? endDate : computed;
     }
 
     public BigDecimal calculateDiscount(BigDecimal orderAmount) {

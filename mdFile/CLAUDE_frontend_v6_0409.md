@@ -179,13 +179,40 @@ src/
 - 주문 응답: `couponName`, `couponDiscountAmount`, `returnRequested`, `exchangeRequested`, `confirmedAt` 포함
 - CartItemResponse: `stockQuantity` 포함
 
+## 추가 완료 (0409)
+
+### 이용약관 / 개인정보처리방침
+- app/terms/page.tsx — 이용약관 (제1조~제10조, 전자상거래법 기준)
+- app/privacy/page.tsx — 개인정보처리방침 (8개 항목)
+- 사업자 정보는 플레이스홀더 ([서비스명], [대표자명] 등), 확정 후 교체 필요
+- signup/page.tsx — 약관 모달 제거, /terms · /privacy 새 탭 링크로 교체
+- 마케팅 동의 "보기" 버튼은 별도 페이지 없이 미표시 (법적 필수 아님)
+
+### 빌드 에러 수정
+- payment/fail/page.tsx — useSearchParams()를 Suspense로 감싸 빌드 에러 해결
+
 ## Known Issues
 
 - 소셜 로그인: 사업자 정보 확정 후 진행 예정
 - 토스 환불 API: 미연동
-- 회원가입 약관: 플레이스홀더, 실제 내용 교체 예정
+- 약관 페이지: 사업자 정보 플레이스홀더 → 확정 후 실제 내용 교체 필요
 
 ## Next Up
 
+### 2순위 (공수 적고 효과 큰 것)
+- 신규 가입 쿠폰 자동 발급
+- 주문 상태 알림 이메일 (SMTP 이미 연동)
+- 공지사항 / FAQ 정적 페이지
+- 최근 본 상품 (localStorage)
+
+### 3순위 (완성도)
+- 관리자 대시보드 통계
+- 재입고 알림 (찜 연동)
+- 재고 부족 관리자 알림
+
+### 3단계 (기능 마무리 후)
 - 소셜 로그인 (사업자 정보 확정 후)
-- 3단계: Elasticsearch, Kafka, CI/CD, 배포
+- Rate Limiting, Redis 캐싱, DB 인덱싱
+- Spring Actuator, Sentry
+- EC2 + Nginx + HTTPS + GitHub Actions CI/CD
+- S3 리전 서울로 변경

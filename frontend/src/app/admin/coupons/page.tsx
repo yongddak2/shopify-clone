@@ -27,15 +27,19 @@ function toDateTimeLocal(iso: string) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+type EditForm = UpdateCouponRequest & { totalQuantity: number; validDays: number };
+
 export default function AdminCouponsPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState<UpdateCouponRequest>({
+  const [editForm, setEditForm] = useState<EditForm>({
     name: "",
     totalQuantity: 0,
+    validDays: 30,
     startDate: "",
     endDate: "",
+    isWelcome: false,
   });
   const [editError, setEditError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<AdminCoupon | null>(null);
@@ -78,9 +82,11 @@ export default function AdminCouponsPage() {
     setEditError("");
     setEditForm({
       name: c.name,
-      totalQuantity: c.totalQuantity,
+      totalQuantity: c.totalQuantity ?? 0,
+      validDays: c.validDays ?? 30,
       startDate: toDateTimeLocal(c.startDate),
       endDate: toDateTimeLocal(c.endDate),
+      isWelcome: c.isWelcome,
     });
   };
 
@@ -89,27 +95,44 @@ export default function AdminCouponsPage() {
     setEditError("");
   };
 
-  const submitEdit = (id: number) => {
+  const submitEdit = (id: number, original: AdminCoupon) => {
     setEditError("");
     if (!editForm.name.trim()) {
       setEditError("쿠폰명을 입력하세요");
-      return;
-    }
-    if (!editForm.totalQuantity || editForm.totalQuantity < 1) {
-      setEditError("총 수량을 입력하세요");
       return;
     }
     if (!editForm.startDate || !editForm.endDate) {
       setEditError("기간을 입력하세요");
       return;
     }
+
+    const welcome = editForm.isWelcome ?? false;
+    if (welcome) {
+      if (!editForm.validDays || editForm.validDays < 1) {
+        setEditError("회원별 유효 기간(일)을 1 이상으로 입력하세요");
+        return;
+      }
+    } else {
+      if (!editForm.totalQuantity || editForm.totalQuantity < 1) {
+        setEditError("총 수량을 입력하세요");
+        return;
+      }
+      if (editForm.totalQuantity < original.issuedQuantity) {
+        setEditError(`이미 ${original.issuedQuantity}개 발급되어 그보다 적게 설정할 수 없습니다`);
+        return;
+      }
+    }
+
     updateMutation.mutate({
       id,
       data: {
         name: editForm.name.trim(),
-        totalQuantity: Number(editForm.totalQuantity),
         startDate: new Date(editForm.startDate).toISOString(),
         endDate: new Date(editForm.endDate).toISOString(),
+        isWelcome: welcome,
+        ...(welcome
+          ? { validDays: Number(editForm.validDays) }
+          : { totalQuantity: Number(editForm.totalQuantity) }),
       },
     });
   };
@@ -139,7 +162,7 @@ export default function AdminCouponsPage() {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[1050px]">
+          <table className="w-full text-sm min-w-[1100px]">
             <thead>
               <tr className="border-b border-[var(--border-color)] text-[var(--text-muted)] text-xs tracking-wider">
                 <th className="py-3 px-3 text-left">ID</th>
@@ -147,7 +170,7 @@ export default function AdminCouponsPage() {
                 <th className="py-3 px-3 text-center">할인타입</th>
                 <th className="py-3 px-3 text-right">할인값</th>
                 <th className="py-3 px-3 text-right">최소주문</th>
-                <th className="py-3 px-3 text-center">발급/총수량</th>
+                <th className="py-3 px-3 text-center">발급/한도</th>
                 <th className="py-3 px-3 text-left">기간</th>
                 <th className="py-3 px-3 text-center">관리</th>
               </tr>
@@ -155,6 +178,7 @@ export default function AdminCouponsPage() {
             <tbody>
               {coupons.map((c: AdminCoupon) => {
                 const isEditing = editingId === c.id;
+                const editingWelcome = editForm.isWelcome ?? false;
                 return (
                   <tr
                     key={c.id}
@@ -163,15 +187,38 @@ export default function AdminCouponsPage() {
                     <td className="py-3 px-3 text-[var(--text-muted)]">{c.id}</td>
                     <td className="py-3 px-3 text-[var(--text-secondary)]">
                       {isEditing ? (
-                        <input
-                          value={editForm.name}
-                          onChange={(e) =>
-                            setEditForm({ ...editForm, name: e.target.value })
-                          }
-                          className={inputClass}
-                        />
+                        <div className="flex flex-col gap-1">
+                          <input
+                            value={editForm.name}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, name: e.target.value })
+                            }
+                            className={inputClass}
+                          />
+                          <label className="flex items-center gap-1 text-[10px] text-[var(--text-muted)] cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={editingWelcome}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, isWelcome: e.target.checked })
+                              }
+                              className="accent-[var(--btn-primary-bg)]"
+                            />
+                            🎁 웰컴 쿠폰
+                          </label>
+                        </div>
                       ) : (
-                        c.name
+                        <span className="inline-flex items-center gap-1">
+                          {c.isWelcome && (
+                            <span
+                              title="신규가입 웰컴 쿠폰"
+                              className="text-xs px-1.5 py-0.5 rounded bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]"
+                            >
+                              🎁
+                            </span>
+                          )}
+                          {c.name}
+                        </span>
                       )}
                     </td>
                     <td className="py-3 px-3 text-center">
@@ -189,25 +236,62 @@ export default function AdminCouponsPage() {
                     </td>
                     <td className="py-3 px-3 text-center text-[var(--text-secondary)]">
                       {isEditing ? (
-                        <div className="flex items-center justify-center gap-1">
-                          <span>{c.issuedQuantity}</span>
-                          <span>/</span>
-                          <input
-                            type="number"
-                            min={c.issuedQuantity}
-                            value={editForm.totalQuantity}
-                            onChange={(e) =>
-                              setEditForm({
-                                ...editForm,
-                                totalQuantity: Number(e.target.value),
-                              })
-                            }
-                            className={`${inputClass} w-20`}
-                          />
+                        editingWelcome ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <span className="text-[var(--text-muted)]">{c.issuedQuantity}건 ·</span>
+                            <input
+                              type="number"
+                              min={1}
+                              value={editForm.validDays}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  validDays: Number(e.target.value),
+                                })
+                              }
+                              className={`${inputClass} w-16`}
+                            />
+                            <span className="text-[var(--text-muted)]">일</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1">
+                            <span>{c.issuedQuantity}</span>
+                            <span>/</span>
+                            <input
+                              type="number"
+                              min={c.issuedQuantity}
+                              value={editForm.totalQuantity}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  totalQuantity: Number(e.target.value),
+                                })
+                              }
+                              className={`${inputClass} w-20`}
+                            />
+                          </div>
+                        )
+                      ) : c.isWelcome ? (
+                        <span className="text-[var(--text-muted)]">
+                          {c.issuedQuantity}건 · {c.validDays ?? "-"}일
+                        </span>
+                      ) : c.totalQuantity == null ? (
+                        <div
+                          className="inline-flex flex-col items-center gap-0.5"
+                          title="웰컴 쿠폰에서 일반으로 전환된 쿠폰입니다. 수정에서 발급 한도를 다시 입력해주세요."
+                        >
+                          <span className="text-[var(--text-secondary)]">
+                            발급 {c.issuedQuantity}건
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                            ⚠ 한도 미설정
+                          </span>
                         </div>
                       ) : (
                         <>
-                          {c.issuedQuantity} / {c.totalQuantity}
+                          {c.issuedQuantity} / {formatPrice(c.totalQuantity)}
                         </>
                       )}
                     </td>
@@ -242,7 +326,7 @@ export default function AdminCouponsPage() {
                         <div className="flex flex-col gap-1 items-center">
                           <div className="flex gap-1">
                             <button
-                              onClick={() => submitEdit(c.id)}
+                              onClick={() => submitEdit(c.id, c)}
                               disabled={updateMutation.isPending}
                               className="px-2 py-1 text-xs bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] transition-colors"
                             >
@@ -256,7 +340,9 @@ export default function AdminCouponsPage() {
                             </button>
                           </div>
                           {editError && (
-                            <p className="text-[10px] text-red-400">{editError}</p>
+                            <p className="text-[10px] text-red-400 max-w-[180px] text-center">
+                              {editError}
+                            </p>
                           )}
                         </div>
                       ) : (

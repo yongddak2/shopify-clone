@@ -52,6 +52,9 @@ public class Member {
 
     private LocalDateTime passwordChangedAt;
 
+    @Column(length = 500)
+    private String adminMemo;
+
     @Builder
     public Member(String email, String password, String name, String phone,
                   Role role, Provider provider, String providerId) {
@@ -80,5 +83,13 @@ public class Member {
 
     public void withdraw() {
         this.softDelete();
+    }
+
+    public void changeRole(Role role) {
+        this.role = role;
+    }
+
+    public void updateAdminMemo(String adminMemo) {
+        this.adminMemo = adminMemo;
     }
 }

@@ -25,4 +25,10 @@ public interface ReturnExchangeRequestRepository extends JpaRepository<ReturnExc
     @Override
     @EntityGraph(attributePaths = {"images", "order"})
     Page<ReturnExchangeRequest> findAll(Pageable pageable);
+
+    long countByStatus(RequestStatus status);
+
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT COUNT(r) FROM ReturnExchangeRequest r WHERE r.order.member.id = :memberId")
+    long countByMemberId(@org.springframework.data.repository.query.Param("memberId") Long memberId);
 }

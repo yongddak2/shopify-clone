@@ -39,3 +39,6 @@ logs/
 
 # ─── Secrets ───────────────────────────────────
 backend/src/main/resources/application.yml
+
+# ─── Project Context (Claude) ──────────────────
+PROJECT.md

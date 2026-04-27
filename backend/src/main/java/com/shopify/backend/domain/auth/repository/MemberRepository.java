@@ -18,4 +18,14 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     Optional<Member> findByIdAndDeletedAtIsNull(Long id);
 
     Page<Member> findAllByDeletedAtIsNull(Pageable pageable);
+
+    long countByDeletedAtIsNull();
+
+    long countByCreatedAtBetweenAndDeletedAtIsNull(java.time.LocalDateTime start,
+                                                   java.time.LocalDateTime end);
+
+    Page<Member> findAllByCreatedAtBetweenAndDeletedAtIsNull(
+            java.time.LocalDateTime start,
+            java.time.LocalDateTime end,
+            Pageable pageable);
 }
