@@ -73,7 +73,7 @@ public class AdminProductService {
         if (stockQuantity < 0) {
             throw new BusinessException(ErrorCode.INVALID_STOCK_QUANTITY);
         }
-        ProductOptionValue optionValue = productOptionValueRepository.findById(optionValueId)
+        ProductOptionValue optionValue = productOptionValueRepository.findByIdWithLock(optionValueId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_OPTION_NOT_FOUND));
         optionValue.updateStockQuantity(stockQuantity);
         Product product = optionValue.getOptionGroup().getProduct();

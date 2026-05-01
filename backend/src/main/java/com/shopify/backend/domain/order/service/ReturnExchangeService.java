@@ -16,6 +16,9 @@ import com.shopify.backend.domain.product.entity.ProductOptionValue;
 import com.shopify.backend.domain.product.repository.ProductOptionValueRepository;
 import com.shopify.backend.global.exception.BusinessException;
 import com.shopify.backend.global.exception.ErrorCode;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +36,9 @@ public class ReturnExchangeService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final ProductOptionValueRepository productOptionValueRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private static final List<RequestStatus> ACTIVE_STATUSES =
             List.of(RequestStatus.REQUESTED, RequestStatus.APPROVED);
@@ -157,13 +163,14 @@ public class ReturnExchangeService {
             throw new BusinessException(ErrorCode.INVALID_REQUEST_STATUS);
         }
 
-        // 재고 복구 (비관적 락으로 동시 변경 방지)
+        // 재고 복구 (비관적 락으로 동시 변경 방지, refresh로 1차 캐시 stale 방지)
         List<OrderItem> orderItems = orderItemRepository.findByOrderId(request.getOrder().getId());
         for (OrderItem item : orderItems) {
             if (item.getOptionValue() != null) {
                 ProductOptionValue lockedOption = productOptionValueRepository
                         .findByIdWithLock(item.getOptionValue().getId())
                         .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_OPTION_NOT_FOUND));
+                entityManager.refresh(lockedOption, LockModeType.PESSIMISTIC_WRITE);
                 lockedOption.increaseStock(item.getQuantity());
             }
         }

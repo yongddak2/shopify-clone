@@ -61,6 +61,9 @@ class OrderServiceTest {
     @Mock
     private ProductOptionValueRepository productOptionValueRepository;
 
+    @Mock
+    private jakarta.persistence.EntityManager entityManager;
+
     @InjectMocks
     private OrderService orderService;
 
@@ -70,6 +73,7 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
+        ReflectionTestUtils.setField(orderService, "entityManager", entityManager);
         member = Member.builder()
                 .email("test@test.com")
                 .password("encoded")
@@ -284,6 +288,7 @@ class OrderServiceTest {
 
         given(orderRepository.findByIdAndMemberId(1L, 1L)).willReturn(Optional.of(order));
         given(orderItemRepository.findByOrderId(1L)).willReturn(List.of(orderItem));
+        given(productOptionValueRepository.findByIdWithLock(1L)).willReturn(Optional.of(optionValue));
 
         int stockBefore = optionValue.getStockQuantity();
 

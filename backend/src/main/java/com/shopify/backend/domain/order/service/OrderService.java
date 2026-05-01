@@ -22,6 +22,8 @@ import com.shopify.backend.domain.product.entity.ProductOptionValue;
 import com.shopify.backend.domain.product.repository.ProductOptionValueRepository;
 import com.shopify.backend.global.exception.BusinessException;
 import com.shopify.backend.global.exception.ErrorCode;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -30,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -44,6 +47,9 @@ public class OrderService {
     private final MemberCouponRepository memberCouponRepository;
     private final ReturnExchangeRequestRepository returnExchangeRequestRepository;
     private final ProductOptionValueRepository productOptionValueRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private static final List<RequestStatus> ACTIVE_REQUEST_STATUSES =
             List.of(RequestStatus.REQUESTED, RequestStatus.APPROVED);
@@ -105,8 +111,8 @@ public class OrderService {
             cartItems.add(cartItem);
         }
 
-        // 주문번호 생성
-        String orderNumber = "ORD-" + System.currentTimeMillis();
+        // 주문번호 생성 (동시 호출에서도 UNIQUE 보장)
+        String orderNumber = "ORD-" + System.currentTimeMillis() + "-" + java.util.UUID.randomUUID().toString().substring(0, 8);
 
         // 금액 계산 (할인가 적용)
         BigDecimal totalAmount = BigDecimal.ZERO;
@@ -206,11 +212,14 @@ public class OrderService {
         orderItemRepository.saveAll(orderItems);
 
         // 재고 차감 (비관적 락으로 동시 차감 방지)
+        // findByIdWithLock 호출 전 lazy load로 1차 캐시에 stale 진입할 수 있어,
+        // 락 획득 후 refresh로 DB 최신값 동기화 (PESSIMISTIC_WRITE 유지)
         for (CartItem cartItem : cartItems) {
             if (cartItem.getOptionValue() != null) {
                 ProductOptionValue lockedOption = productOptionValueRepository
                         .findByIdWithLock(cartItem.getOptionValue().getId())
                         .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_OPTION_NOT_FOUND));
+                entityManager.refresh(lockedOption, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
                 lockedOption.decreaseStock(cartItem.getQuantity());
             }
         }
@@ -246,13 +255,23 @@ public class OrderService {
             throw new BusinessException(ErrorCode.ORDER_CANCEL_NOT_ALLOWED);
         }
 
-        // 재고 복구 + 판매량 감소
+        // 재고 복구 (비관적 락, 데드락 방지를 위해 optionValueId 오름차순 정렬)
+        // 락 획득 후 refresh로 1차 캐시 stale 방지
         List<OrderItem> orderItems = orderItemRepository.findByOrderId(orderId);
-        for (OrderItem orderItem : orderItems) {
-            if (orderItem.getOptionValue() != null) {
-                orderItem.getOptionValue().increaseStock(orderItem.getQuantity());
-            }
-            if (order.getStatus() == OrderStatus.PAID) {
+        orderItems.stream()
+                .filter(item -> item.getOptionValue() != null)
+                .sorted(Comparator.comparing(item -> item.getOptionValue().getId()))
+                .forEach(item -> {
+                    ProductOptionValue lockedOption = productOptionValueRepository
+                            .findByIdWithLock(item.getOptionValue().getId())
+                            .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_OPTION_NOT_FOUND));
+                    entityManager.refresh(lockedOption, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+                    lockedOption.increaseStock(item.getQuantity());
+                });
+
+        // 판매량 감소 (PAID였던 주문만)
+        if (order.getStatus() == OrderStatus.PAID) {
+            for (OrderItem orderItem : orderItems) {
                 orderItem.getProduct().decreaseSalesCount(orderItem.getQuantity());
             }
         }
