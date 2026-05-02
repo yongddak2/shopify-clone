@@ -1,5 +1,6 @@
 package com.shopify.backend.global.filter;
 
+import com.shopify.backend.global.config.CustomAuthenticationEntryPoint;
 import com.shopify.backend.global.config.JwtProvider;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -28,18 +29,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         String token = resolveToken(request);
 
-        if (StringUtils.hasText(token) && jwtProvider.validateToken(token)) {
-            Long memberId = jwtProvider.getMemberIdFromToken(token);
-            String role = jwtProvider.getRoleFromToken(token);
+        if (StringUtils.hasText(token)) {
+            if (jwtProvider.validateToken(token)) {
+                Long memberId = jwtProvider.getMemberIdFromToken(token);
+                String role = jwtProvider.getRoleFromToken(token);
 
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(
-                            memberId,
-                            null,
-                            List.of(new SimpleGrantedAuthority("ROLE_" + role))
-                    );
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(
+                                memberId,
+                                null,
+                                List.of(new SimpleGrantedAuthority("ROLE_" + role))
+                        );
 
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            } else {
+                // 토큰은 있으나 무효(만료/서명오류/형식오류) — SecurityContext 비운 채 통과시켜
+                // ExceptionTranslationFilter가 anonymous로 인식하고 EntryPoint를 호출하게 한다.
+                // 사유는 EntryPoint가 활용할 수 있도록 attribute로 전달.
+                request.setAttribute(
+                        CustomAuthenticationEntryPoint.AUTH_ERROR_MESSAGE_ATTR,
+                        "유효하지 않은 토큰입니다.");
+            }
         }
 
         filterChain.doFilter(request, response);

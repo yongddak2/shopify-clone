@@ -163,15 +163,18 @@ public class ReturnExchangeService {
             throw new BusinessException(ErrorCode.INVALID_REQUEST_STATUS);
         }
 
-        // 재고 복구 (비관적 락으로 동시 변경 방지, refresh로 1차 캐시 stale 방지)
-        List<OrderItem> orderItems = orderItemRepository.findByOrderId(request.getOrder().getId());
-        for (OrderItem item : orderItems) {
-            if (item.getOptionValue() != null) {
-                ProductOptionValue lockedOption = productOptionValueRepository
-                        .findByIdWithLock(item.getOptionValue().getId())
-                        .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_OPTION_NOT_FOUND));
-                entityManager.refresh(lockedOption, LockModeType.PESSIMISTIC_WRITE);
-                lockedOption.increaseStock(item.getQuantity());
+        // 교환(EXCHANGE)만 재고 복구. 반품(RETURN)은 환불 처리이므로 재고 변동 없음.
+        // 비관적 락으로 동시 변경 방지, refresh로 1차 캐시 stale 방지.
+        if (request.getType() == ReasonType.EXCHANGE) {
+            List<OrderItem> orderItems = orderItemRepository.findByOrderId(request.getOrder().getId());
+            for (OrderItem item : orderItems) {
+                if (item.getOptionValue() != null) {
+                    ProductOptionValue lockedOption = productOptionValueRepository
+                            .findByIdWithLock(item.getOptionValue().getId())
+                            .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_OPTION_NOT_FOUND));
+                    entityManager.refresh(lockedOption, LockModeType.PESSIMISTIC_WRITE);
+                    lockedOption.increaseStock(item.getQuantity());
+                }
             }
         }
 

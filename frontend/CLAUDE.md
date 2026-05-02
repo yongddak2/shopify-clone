@@ -38,12 +38,19 @@ src/
 │   │   └── profile/page.tsx
 │   └── admin/
 │       ├── layout.tsx                    ← 240px 사이드바, Header/Footer 미사용
-│       ├── products/new/page.tsx
-│       ├── products/[id]/edit/page.tsx   ← 2컬럼: 기본정보 / 옵션+이미지
+│       ├── page.tsx                      ← 대시보드 (카드 6개 + BarChart + PieChart + TOP5 + 재고부족 + 최근주문)
+│       ├── products/
+│       │   ├── page.tsx                  ← 상품 목록
+│       │   ├── new/page.tsx              ← 상품 등록
+│       │   └── [id]/edit/page.tsx        ← 2컬럼: 기본정보 / 옵션+이미지
 │       ├── inventory/page.tsx
-│       ├── orders/page.tsx
-│       ├── users/page.tsx
-│       ├── coupons/page.tsx
+│       ├── orders/page.tsx               ← SHIPPED 변경 시 운송장 입력 모달
+│       ├── users/
+│       │   ├── page.tsx                  ← 회원 목록 (필터 탭: 전체/이번달 신규)
+│       │   └── [id]/page.tsx             ← 회원 상세 (통계/메모/권한 변경/강제 탈퇴, 본인 차단)
+│       ├── coupons/
+│       │   ├── page.tsx                  ← CRUD + 🎁 웰컴 뱃지
+│       │   └── new/page.tsx              ← 웰컴 토글 체크박스
 │       ├── banners/page.tsx
 │       └── requests/page.tsx             ← 반품/교환 관리 5탭
 ├── lib/
@@ -54,7 +61,7 @@ src/
 │   ├── order.ts          ← getOrders/getOrderDetail/createOrder/cancelOrder/confirmOrder
 │   ├── user.ts           ← getMyInfo/주소 CRUD/changePassword
 │   ├── payment.ts        ← confirmPayment (orderNumber 기반)
-│   ├── admin.ts          ← 상품/주문/회원/쿠폰/배너/재고/반품교환 관리 전체
+│   ├── admin.ts          ← 상품/주문/회원/쿠폰/배너/재고/반품교환 + getDashboard + getAdminUserDetail/updateRole/updateMemo/withdraw
 │   ├── wishlist.ts       ← getWishlists/toggleWishlist
 │   ├── coupon.ts         ← getMyCoupons/getAvailableCoupons/issueCoupon
 │   ├── review.ts         ← getProductReviews/getMyReviews/createReview/deleteReview/toggleLike/uploadImage
@@ -68,8 +75,8 @@ src/
 ## React Query 캐시 전략
 
 ### queryInvalidator.ts 도메인별 함수
-- `invalidateOrderRelated` — orders, order, admin orders, admin requests
-- `invalidateProductRelated` — products, product, admin products, main, search, admin inventory
+- `invalidateOrderRelated` — orders, order, admin orders, admin requests, admin dashboard
+- `invalidateProductRelated` — products, product, admin products, main, search, admin inventory, admin dashboard
 - `invalidateCartRelated` — cart
 - `invalidateWishlistRelated` — wishlists
 - `invalidateCouponRelated` — coupons, myCoupons
@@ -77,6 +84,8 @@ src/
 - `invalidateReviewRelated` — reviews, myReviews
 - `invalidateAddressRelated` — addresses
 - `invalidateUserRelated` — user
+- `invalidateDashboardRelated` — admin dashboard
+- `invalidateAdminMemberRelated` — admin users, admin user, admin dashboard
 - `invalidateAfterPayment` — 결제 완료 시 4개 도메인 일괄
 
 ### 운영 원칙
@@ -86,6 +95,7 @@ src/
 ### staleTime
 - 실시간 (mypage/orders, admin/orders, admin/requests, admin/inventory): `0`
 - 일반 (전역 기본값): `60_000` (60초)
+- 대시보드 (admin/dashboard): `60_000`
 - 거의 안 바뀜 (categories): `300_000` (5분)
 
 ---

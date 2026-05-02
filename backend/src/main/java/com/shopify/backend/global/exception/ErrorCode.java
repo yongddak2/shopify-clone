@@ -40,6 +40,7 @@ public enum ErrorCode {
     INVALID_ORDER_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "허용되지 않는 주문 상태 전환입니다."),
     ORDER_NOT_DELIVERED(HttpStatus.BAD_REQUEST, "배송 완료 상태에서만 구매 확정이 가능합니다."),
     ORDER_ALREADY_CONFIRMED(HttpStatus.BAD_REQUEST, "이미 구매 확정된 주문입니다."),
+    MISSING_TRACKING_INFO(HttpStatus.BAD_REQUEST, "배송사와 운송장 번호는 필수입니다."),
 
     // Payment
     PAYMENT_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "결제에 실패했습니다."),

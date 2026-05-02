@@ -162,3 +162,33 @@ locked.decreaseStock(quantity); // 또는 increaseStock / updateStockQuantity
 - OrderApiConcurrencyTest (3): **HTTP API 레벨 통합 동시성** — 동일 옵션 동시 주문 / 관리자 재고 수정+사용자 주문 / 인증·권한 검증
   - 위치: `backend/src/test/java/com/shopify/backend/integration/OrderApiConcurrencyTest.java`
   - JDK `java.net.http.HttpClient` 사용 (Spring Boot 4.0.4의 `TestRestTemplate` 자동 설정 버그 — `TestRestTemplateTestAutoConfiguration` 의 `@ConditionalOnMissingBean` 타입 추론 실패 — 우회용)
+
+---
+
+## Spring Boot 4.0.4 자동 설정 누락 패턴
+
+새 빈을 주입하려는데 startup 에서 `No qualifying bean of type ...` 으로 실패하면 자동 설정 누락부터 의심. 새 사례 발견 시 이 섹션에 누적.
+
+### 알려진 사례
+
+- **TestRestTemplate**: 패키지 이동(`org.springframework.boot.resttestclient`) + `@ConditionalOnMissingBean` 타입 추론 실패. 통합 테스트는 JDK `java.net.http.HttpClient` 로 우회. 참고: `OrderApiConcurrencyTest`
+- **ObjectMapper**: `spring-boot-starter-webmvc` 만 있는 환경에서 `JacksonAutoConfiguration` 의 `ObjectMapper` 빈 자동 등록 안 됨. 주입 시 startup fail. 핸들러 등에서는 직접 인스턴스화:
+```java
+private static final ObjectMapper MAPPER = new ObjectMapper();
+```
+  참고: `CustomAuthenticationEntryPoint`, `CustomAccessDeniedHandler`
+
+### 가이드
+
+- 새 컴포넌트가 자동 설정 빈을 주입할 때 → starter 의존성 + 자동 설정 활성화 여부부터 확인
+- 깨지면 직접 인스턴스화 또는 명시적 `@Bean` 등록으로 우회
+
+---
+
+## 검증 스크립트 작성 시 주의
+
+`backend/scripts/{도메인}-test/` 는 **Windows native `curl.exe`** 로 실행됨. Git Bash single-quote 안 한글 UTF-8 바이트가 인자 변환에서 **CP949 로 변환**되어 백엔드 도달 → Jackson UTF-8 파싱 실패 → `HttpMessageNotReadableException` → catch-all 500.
+
+**회피**: JSON 페이로드는 **ASCII 만** 사용. 한글 `name`/`reason`/`address` 등은 `"TEST"`/`"X"` 로 치환. DB 에서 한글 컬럼을 읽어 페이로드에 끼우는 것도 금지(예: `SELECT name FROM coupon` → PATCH body) — 필요하면 PG 로 직접 UPDATE.
+
+검증 결과 / 이슈 / 리팩토링 백로그는 `docs/VERIFICATION_LOG.md` 참고 (RETURN-001 · COUPON-002 가 이 패턴).

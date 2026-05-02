@@ -107,3 +107,4 @@ npx tsc --noEmit     # 타입 체크
 - 토스 환불 API 미연동: 취소/반품 시 DB만 변경, 실제 환불 미처리
 - 테스트 계정: ADMIN — test2@test.com / rladyddn00! | USER — test@test.com / Test1234!
 - Swagger: http://localhost:8080/swagger-ui.html
+- 검증 트랙(권한·반품교환·주문결제·쿠폰…) 결과/이슈/리팩토링 백로그는 `docs/VERIFICATION_LOG.md` 참고. 검증 스크립트는 `backend/scripts/{도메인}-test/`
