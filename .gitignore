@@ -42,7 +42,9 @@ backend/src/main/resources/application.yml
 
 # ─── Project Context (Claude) ──────────────────
 PROJECT.md
-.claude/
+.claude/*
+!.claude/skills/
+!.claude/skills/**
 
 # ─── Verification Scripts (tokens) ─────────────
 backend/scripts/**/tokens.env
