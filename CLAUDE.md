@@ -5,6 +5,18 @@ shopify-clone — 의류 쇼핑몰. 모노레포 (backend/ + frontend/).
 
 ---
 
+## 프로젝트 개요
+
+- **GitHub**: https://github.com/yongddak2/shopify-clone (Public)
+- **Backend**: Spring Boot 4.0.4 / Java 17 → localhost:8080
+- **Frontend**: Next.js 16.2.1 / React 19 / TypeScript / Tailwind CSS v4 → localhost:3000
+- **인프라**: PostgreSQL 16, Redis 7, AWS S3 (`yong-byeong-shop-images`, `ap-southeast-2`)
+- **결제**: 토스페이먼츠 API (테스트 키)
+- **이메일**: Gmail SMTP (happywe2931@gmail.com)
+- **디자인 참고**: coolsis.kr, kaposhka.com, hieta.co.kr (미니멀 의류몰)
+
+---
+
 ## 명령어
 
 ```powershell
@@ -108,3 +120,4 @@ npx tsc --noEmit     # 타입 체크
 - 테스트 계정: ADMIN — test2@test.com / rladyddn00! | USER — test@test.com / Test1234!
 - Swagger: http://localhost:8080/swagger-ui.html
 - 검증 트랙(권한·반품교환·주문결제·쿠폰…) 결과/이슈/리팩토링 백로그는 `docs/VERIFICATION_LOG.md` 참고. 검증 스크립트는 `backend/scripts/{도메인}-test/`
+- 전체 API 목록은 `docs/API_REFERENCE.md` 참고
