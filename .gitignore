@@ -41,7 +41,7 @@ logs/
 backend/src/main/resources/application.yml
 
 # ─── Project Context (Claude) ──────────────────
-PROJECT.md
+# (PROJECT.md 폐기 완료 — vault/99_Archive/shopify-clone-old-context/ 에 사본 보존)
 .claude/*
 !.claude/skills/
 !.claude/skills/**
