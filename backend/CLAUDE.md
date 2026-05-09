@@ -98,6 +98,7 @@ MEMBER_COUPON: id, member_id(FK), coupon_id(FK),
                used_at, expired_at, created_at
 
 BANNER: id, image_url, sort_order, is_active, link_url(nullable),
+        title(VARCHAR 100 nullable — 메인 슬라이드 큰 글씨),
         created_at, updated_at
 
 RETURN_EXCHANGE_REQUEST: id, order_item_id(FK), member_id(FK),

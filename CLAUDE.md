@@ -79,7 +79,7 @@ npx tsc --noEmit     # 타입 체크
 - **회원 강제 탈퇴**: `DELETE /api/admin/users/{id}` = 소프트 삭제(`deletedAt` 세팅). 본인 변경/탈퇴 차단. 주문/리뷰 등 데이터 보존 + 로그인은 자동 차단(`findByEmailAndDeletedAtIsNull`)
 - **비밀번호**: 8자+영문+숫자+특수문자 / 변경 30일 제한(`passwordChangedAt`) / 소셜 로그인 차단
 - **비밀번호 찾기**: Redis 코드 3분 → verified 키 10분 → 재발송 30초 이중 방어
-- **배너**: 최대 5개, sortOrder, isActive
+- **배너**: 최대 5개, sortOrder, isActive, title (필수, VARCHAR 100)
 - **썸네일**: `isThumbnail=true` 우선, sortOrder 최소값 fallback
   - 적용 대상: ProductSummaryResponse, CartItemResponse, WishlistResponse, OrderItemResponse
 - **이미지 S3 경로**: products/(5MB) / reviews/(5MB) / return-requests/(20MB) / banners/
