@@ -1,64 +1,64 @@
 @import "tailwindcss";
 
 :root {
-  /* 다크 테마 기본 색상 */
-  --background: #2a2a2a;
-  --foreground: #e0e0e0;
+  /* 화이트 테마 기본 색상 (#f5f5f5 원톤) */
+  --background: #f5f5f5;
+  --foreground: #141414;
 
   /* 헤더/푸터 배경 */
-  --header-bg: #1e1e1e;
-  --footer-bg: #1e1e1e;
+  --header-bg: #f5f5f5;
+  --footer-bg: #f5f5f5;
 
   /* 텍스트 */
-  --text-primary: #ffffff;
-  --text-secondary: #e0e0e0;
-  --text-muted: #999999;
-  --text-dim: #666666;
+  --text-primary: #141414;
+  --text-secondary: #2a2a2a;
+  --text-muted: #6b6b6b;
+  --text-dim: #999999;
 
   /* 액센트/호버 */
-  --accent: #ffffff;
-  --accent-hover: #cccccc;
+  --accent: #141414;
+  --accent-hover: #404040;
 
   /* 구분선/보더 */
-  --border-color: #3a3a3a;
-  --border-light: #333333;
+  --border-color: #d4d4d4;
+  --border-light: #e5e5e5;
 
-  /* 카드/섹션 배경 */
-  --card-bg: #2f2f2f;
-  --section-bg: #262626;
-  --input-bg: #333333;
+  /* 카드/섹션 배경 (원톤) */
+  --card-bg: #f5f5f5;
+  --section-bg: #f5f5f5;
+  --input-bg: #f5f5f5;
 
   /* 버튼 */
-  --btn-primary-bg: #ffffff;
-  --btn-primary-text: #141414;
-  --btn-primary-hover: #e0e0e0;
-  --btn-outline-border: #555555;
-  --btn-outline-text: #e0e0e0;
-  --btn-outline-hover-bg: #ffffff;
-  --btn-outline-hover-text: #141414;
+  --btn-primary-bg: #141414;
+  --btn-primary-text: #ffffff;
+  --btn-primary-hover: #404040;
+  --btn-outline-border: #d4d4d4;
+  --btn-outline-text: #141414;
+  --btn-outline-hover-bg: #141414;
+  --btn-outline-hover-text: #ffffff;
 
   /* 오버레이 */
-  --overlay-bg: rgba(0, 0, 0, 0.6);
-  --overlay-bg-light: rgba(0, 0, 0, 0.25);
+  --overlay-bg: rgba(0, 0, 0, 0.5);
+  --overlay-bg-light: rgba(0, 0, 0, 0.15);
 
-  /* 상태 뱃지 (다크 테마) */
-  --badge-gray-bg: #333333;
-  --badge-gray-text: #999999;
-  --badge-blue-bg: #1a2332;
-  --badge-blue-text: #5b9bd5;
-  --badge-yellow-bg: #2d2a1a;
-  --badge-yellow-text: #d4a84b;
-  --badge-orange-bg: #2d221a;
-  --badge-orange-text: #d48b4b;
-  --badge-green-bg: #1a2d1a;
-  --badge-green-text: #5bbd5b;
-  --badge-red-bg: #2d1a1a;
-  --badge-red-text: #d45b5b;
-  --badge-purple-bg: #251a2d;
-  --badge-purple-text: #a85bd4;
+  /* 상태 뱃지 (화이트 테마) */
+  --badge-gray-bg: #e5e5e5;
+  --badge-gray-text: #6b6b6b;
+  --badge-blue-bg: #dbeafe;
+  --badge-blue-text: #1e40af;
+  --badge-yellow-bg: #fef3c7;
+  --badge-yellow-text: #92400e;
+  --badge-orange-bg: #fed7aa;
+  --badge-orange-text: #9a3412;
+  --badge-green-bg: #dcfce7;
+  --badge-green-text: #166534;
+  --badge-red-bg: #fee2e2;
+  --badge-red-text: #991b1b;
+  --badge-purple-bg: #f3e8ff;
+  --badge-purple-text: #6b21a8;
 
   /* 스켈레톤/로딩 */
-  --skeleton: #353535;
+  --skeleton: #e5e5e5;
 }
 
 @theme inline {
@@ -72,6 +72,16 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* 메인 페이지 상단(스크롤 전) 헤더 투명 모드 — CSS 변수만 오버라이드해서 자식 자동 반영 */
+header[data-transparent="true"] {
+  --header-bg: transparent;
+  --border-color: transparent;
+  --text-primary: #ffffff;
+  --text-secondary: #ffffff;
+  --text-muted: rgba(255, 255, 255, 0.85);
+  --text-dim: rgba(255, 255, 255, 0.65);
 }
 
 /* number input 스피너 제거 */

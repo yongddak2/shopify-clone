@@ -382,6 +382,7 @@ export interface Banner {
   sortOrder: number;
   active: boolean;
   linkUrl: string | null;
+  title: string | null;
   createdAt: string;
 }
 

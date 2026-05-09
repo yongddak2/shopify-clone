@@ -3,6 +3,7 @@ package com.shopify.backend.domain.admin.service;
 import com.shopify.backend.domain.admin.dto.BannerCreateRequest;
 import com.shopify.backend.domain.admin.dto.BannerOrderRequest;
 import com.shopify.backend.domain.admin.dto.BannerResponse;
+import com.shopify.backend.domain.admin.dto.BannerUpdateRequest;
 import com.shopify.backend.domain.admin.entity.Banner;
 import com.shopify.backend.domain.admin.repository.BannerRepository;
 import com.shopify.backend.global.exception.BusinessException;
@@ -45,9 +46,18 @@ public class AdminBannerService {
         Banner banner = Banner.builder()
                 .imageUrl(request.getImageUrl())
                 .sortOrder(request.getSortOrder())
+                .title(request.getTitle())
                 .build();
 
         return BannerResponse.from(bannerRepository.save(banner));
+    }
+
+    @Transactional
+    public BannerResponse updateBanner(Long id, BannerUpdateRequest request) {
+        Banner banner = bannerRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BANNER_NOT_FOUND));
+        banner.updateTitle(request.getTitle());
+        return BannerResponse.from(banner);
     }
 
     @Transactional

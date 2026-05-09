@@ -210,10 +210,18 @@ export async function getBanners() {
   return res.data;
 }
 
-export async function createBanner(imageUrl: string, sortOrder: number) {
+export async function createBanner(imageUrl: string, sortOrder: number, title: string) {
   const res = await api.post<ApiResponse<Banner>>("/api/admin/banners", {
     imageUrl,
     sortOrder,
+    title,
+  });
+  return res.data;
+}
+
+export async function updateBanner(id: number, title: string) {
+  const res = await api.put<ApiResponse<Banner>>(`/api/admin/banners/${id}`, {
+    title,
   });
   return res.data;
 }

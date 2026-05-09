@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Search, ShoppingBag, User, Menu, X } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { logout } from "@/lib/auth";
@@ -11,9 +11,9 @@ function Logo() {
   return (
     <Link
       href="/"
-      className="text-xl font-bold tracking-widest text-[var(--text-primary)] hover:opacity-80 transition-opacity"
+      className="block hover:opacity-80 transition-opacity"
     >
-      SHOPIFY
+      <img src="/logo.png" alt="PanTrKa" className="h-10" />
     </Link>
   );
 }
@@ -24,19 +24,47 @@ const sideMenuLinks = [
 
 export default function Header() {
   const router = useRouter();
+  const pathname = usePathname();
   const [sideOpen, setSideOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { isLoggedIn, user } = useAuthStore();
   const loggedIn = mounted && isLoggedIn();
   const isAdmin = mounted && loggedIn && user?.role === "ADMIN";
 
+  // 메인(/) + 스크롤 50px 이하 + 검색 닫힘 + 사이드 닫힘 → 투명
+  const isMain = pathname === "/";
+  const isTransparent = isMain && !scrolled && !searchOpen && !sideOpen;
+
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isMain) {
+      setScrolled(false);
+      return;
+    }
+    const handleScroll = () => {
+      // 배너 높이: 데스크톱(md+) 80vh max 800px, 모바일 50vh — page.tsx와 동기화
+      const isDesktop = window.innerWidth >= 768;
+      const bannerHeight = isDesktop
+        ? Math.min(window.innerHeight * 0.8, 800)
+        : window.innerHeight * 0.5;
+      setScrolled(window.scrollY >= bannerHeight);
+    };
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, [isMain]);
 
   useEffect(() => {
     if (searchOpen && searchInputRef.current) {
@@ -78,7 +106,10 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-[var(--header-bg)] border-b border-[var(--border-color)]">
+      <header
+        data-transparent={isTransparent ? "true" : undefined}
+        className="fixed top-0 left-0 right-0 z-50 bg-[var(--header-bg)] border-b border-[var(--border-color)] transition-colors duration-300"
+      >
         <div className="max-w-7xl mx-auto px-6 lg:px-10">
           <div className="flex items-center justify-between h-16">
             {/* 왼쪽: 햄버거 (데스크톱 + 모바일 공통) */}
@@ -191,10 +222,10 @@ export default function Header() {
         </div>
       </div>
 
-      {/* 검색 오버레이 (은은하게) */}
+      {/* 검색 오버레이 (블러 처리) */}
       {searchOpen && (
         <div
-          className="fixed inset-0 z-40 bg-[var(--overlay-bg-light)]"
+          className="fixed inset-0 z-40 bg-[var(--overlay-bg-light)] backdrop-blur-md"
           style={{ top: "calc(4rem + 3.5rem)" }}
           onClick={closeSearch}
         />

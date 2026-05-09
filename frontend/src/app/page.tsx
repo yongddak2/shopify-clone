@@ -118,32 +118,26 @@ function ProductGrid({
   );
 }
 
-function BannerOverlay() {
+function BannerOverlay({ title }: { title: string | null }) {
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none">
-      {/* 하단 그라데이션 오버레이 */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
-      <div className="relative text-center">
+    <div className="absolute inset-0 z-10 pointer-events-none">
+      {/* 좌측 하단 가독성 위한 그라데이션 */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-black/60 via-black/10 to-transparent" />
+      {/* 좌측 하단 컨텐츠 */}
+      <div className="absolute bottom-16 left-6 md:bottom-24 md:left-20">
         <h1
-          className="text-5xl md:text-7xl font-bold tracking-[0.3em] mb-3 text-white"
+          className="text-3xl md:text-5xl font-light tracking-wider text-white mb-6"
           style={{ textShadow: "0 2px 12px rgba(0,0,0,0.5)" }}
         >
-          SHOPIFY
+          {title ?? "Find Your Style"}
         </h1>
-        <p
-          className="text-sm md:text-base tracking-widest text-white/80 mb-10"
-          style={{ textShadow: "0 1px 6px rgba(0,0,0,0.4)" }}
+        <Link
+          href="/products"
+          className="inline-block pointer-events-auto rounded-full bg-white text-black text-xs md:text-sm tracking-[0.1em] px-8 py-3 hover:bg-white/85 transition-colors"
         >
-          Find Your Style
-        </p>
+          shop now
+        </Link>
       </div>
-      <Link
-        href="/products"
-        className="relative pointer-events-auto rounded-full bg-white text-black text-xs md:text-sm tracking-[0.15em] px-8 py-3 hover:bg-white/85 transition-colors"
-        style={{ textShadow: "none" }}
-      >
-        SHOP NOW
-      </Link>
     </div>
   );
 }
@@ -217,10 +211,12 @@ function BannerSlider({ banners }: { banners: Banner[] }) {
   if (count === 0) {
     return (
       <section className="relative h-[50vh] md:h-[80vh] max-h-[800px] bg-gradient-to-b from-[#1a1a1a] to-[#2a2a2a] flex items-center justify-center overflow-hidden">
-        <BannerOverlay />
+        <BannerOverlay title={null} />
       </section>
     );
   }
+
+  const currentTitle = banners[currentIndex]?.title ?? null;
 
   return (
     <section
@@ -243,8 +239,8 @@ function BannerSlider({ banners }: { banners: Banner[] }) {
         </div>
       ))}
 
-      {/* 오버레이: 브랜드명 + Shop Now */}
-      <BannerOverlay />
+      {/* 오버레이: 현재 슬라이드 title + Shop Now */}
+      <BannerOverlay title={currentTitle} />
 
       {/* 좌우 화살표 (2개 이상일 때만) */}
       {count > 1 && (
@@ -264,14 +260,14 @@ function BannerSlider({ banners }: { banners: Banner[] }) {
         </>
       )}
 
-      {/* 인디케이터 (2개 이상일 때만) */}
+      {/* 인디케이터 (2개 이상일 때만) — 우측 하단, 큰 글씨와 같은 라인 */}
       {count > 1 && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+        <div className="absolute bottom-12 right-10 md:bottom-20 md:right-16 z-20 flex gap-2.5">
           {banners.map((_, idx) => (
             <button
               key={idx}
               onClick={() => goTo(idx)}
-              className={`w-2.5 h-2.5 rounded-full transition-colors ${
+              className={`w-3 h-3 rounded-full transition-colors ${
                 idx === currentIndex ? "bg-white" : "bg-white/40"
               }`}
             />
@@ -339,8 +335,10 @@ export default function Home() {
 
   return (
     <>
-      {/* 배너 슬라이더 (배너 0개 시 기존 히어로 폴백) */}
-      <BannerSlider banners={activeBanners} />
+      {/* 배너 슬라이더 (헤더 뒤로 깔림 — 헤더 투명 모드와 결합) */}
+      <div className="-mt-16">
+        <BannerSlider banners={activeBanners} />
+      </div>
 
       {/* 신상품 섹션 */}
       <section className="max-w-7xl mx-auto px-6 lg:px-10 py-16">

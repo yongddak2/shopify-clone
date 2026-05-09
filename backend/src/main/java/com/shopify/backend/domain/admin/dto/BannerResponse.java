@@ -15,6 +15,7 @@ public class BannerResponse {
     private int sortOrder;
     private boolean isActive;
     private String linkUrl;
+    private String title;
     private LocalDateTime createdAt;
 
     public static BannerResponse from(Banner banner) {
@@ -24,6 +25,7 @@ public class BannerResponse {
                 .sortOrder(banner.getSortOrder())
                 .isActive(banner.isActive())
                 .linkUrl(banner.getLinkUrl())
+                .title(banner.getTitle())
                 .createdAt(banner.getCreatedAt())
                 .build();
     }

@@ -31,6 +31,9 @@ public class Banner {
 
     private String linkUrl;
 
+    @Column(length = 100)
+    private String title;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 
@@ -38,10 +41,11 @@ public class Banner {
     private LocalDateTime updatedAt;
 
     @Builder
-    public Banner(String imageUrl, int sortOrder, String linkUrl) {
+    public Banner(String imageUrl, int sortOrder, String linkUrl, String title) {
         this.imageUrl = imageUrl;
         this.sortOrder = sortOrder;
         this.linkUrl = linkUrl;
+        this.title = title;
         this.isActive = true;
     }
 
@@ -51,5 +55,9 @@ public class Banner {
 
     public void toggleActive() {
         this.isActive = !this.isActive;
+    }
+
+    public void updateTitle(String title) {
+        this.title = title;
     }
 }

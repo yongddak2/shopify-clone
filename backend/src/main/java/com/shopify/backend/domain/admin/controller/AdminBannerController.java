@@ -3,6 +3,7 @@ package com.shopify.backend.domain.admin.controller;
 import com.shopify.backend.domain.admin.dto.BannerCreateRequest;
 import com.shopify.backend.domain.admin.dto.BannerOrderRequest;
 import com.shopify.backend.domain.admin.dto.BannerResponse;
+import com.shopify.backend.domain.admin.dto.BannerUpdateRequest;
 import com.shopify.backend.domain.admin.service.AdminBannerService;
 import com.shopify.backend.global.common.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -41,6 +42,14 @@ public class AdminBannerController {
             @Valid @RequestBody List<BannerOrderRequest> requests) {
         adminBannerService.updateBannerOrder(requests);
         return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<BannerResponse>> updateBanner(
+            @PathVariable Long id,
+            @Valid @RequestBody BannerUpdateRequest request) {
+        BannerResponse response = adminBannerService.updateBanner(id, request);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PatchMapping("/{id}/toggle")

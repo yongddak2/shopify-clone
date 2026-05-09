@@ -285,7 +285,7 @@ export default function AdminCouponsPage() {
                           <span className="text-[var(--text-secondary)]">
                             발급 {c.issuedQuantity}건
                           </span>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
                             ⚠ 한도 미설정
                           </span>
                         </div>
@@ -340,7 +340,7 @@ export default function AdminCouponsPage() {
                             </button>
                           </div>
                           {editError && (
-                            <p className="text-[10px] text-red-400 max-w-[180px] text-center">
+                            <p className="text-[10px] text-red-600 max-w-[180px] text-center">
                               {editError}
                             </p>
                           )}
@@ -355,7 +355,7 @@ export default function AdminCouponsPage() {
                           </button>
                           <button
                             onClick={() => setDeleteTarget(c)}
-                            className="px-2 py-1 text-xs border border-[var(--border-color)] text-red-400 hover:text-red-300 transition-colors"
+                            className="px-2 py-1 text-xs border border-[var(--border-color)] text-red-600 hover:text-red-700 transition-colors"
                           >
                             삭제
                           </button>
@@ -389,7 +389,7 @@ export default function AdminCouponsPage() {
       )}
 
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay-bg)]">
           <div className="bg-[var(--card-bg)] border border-[var(--border-color)] p-6 max-w-sm w-full mx-4">
             <h2 className="text-sm tracking-wider text-[var(--text-primary)] mb-4">
               쿠폰 삭제
@@ -408,7 +408,7 @@ export default function AdminCouponsPage() {
               <button
                 onClick={() => deleteMutation.mutate(deleteTarget.id)}
                 disabled={deleteMutation.isPending}
-                className="flex-1 py-2 text-xs bg-red-500/80 text-white hover:bg-red-500 transition-colors"
+                className="flex-1 py-2 text-xs bg-red-600 text-white hover:bg-red-700 transition-colors"
               >
                 {deleteMutation.isPending ? "삭제 중..." : "삭제"}
               </button>
