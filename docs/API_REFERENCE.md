@@ -102,6 +102,12 @@ PanTrKa 전체 REST API 목록. 공통 응답은 `ApiResponse` (`{success, messa
 |--------|------|------|
 | GET | /api/banners | 활성 배너 목록 (공개) |
 
+## Main Page Config (메인 페이지 설정)
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | /api/main-page-config | 메인 텍스트 조회 (공개) |
+
 ## Return/Exchange Images
 
 | 메서드 | 경로 | 설명 |
@@ -152,6 +158,8 @@ PanTrKa 전체 REST API 목록. 공통 응답은 `ApiResponse` (`{success, messa
 | PUT | /api/admin/banners/{id} | 배너 수정 |
 | PATCH | /api/admin/banners/{id} | 배너 순서/활성화 토글 |
 | DELETE | /api/admin/banners/{id} | 배너 삭제 (S3 연동) |
+| GET | /api/admin/main-page-config | 메인 페이지 텍스트 조회 |
+| PUT | /api/admin/main-page-config | 메인 페이지 텍스트 갱신 |
 | GET | /api/admin/requests | 반품/교환 목록 (5탭) |
 | PATCH | /api/admin/requests/{id}/approve | 반품/교환 승인 |
 | PATCH | /api/admin/requests/{id}/reject | 반품/교환 거절 |

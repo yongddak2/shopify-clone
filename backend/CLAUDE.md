@@ -19,7 +19,7 @@ src/main/java/com/pantrka/backend/
 │   ├── order/        ← controller, service, repository, entity, dto
 │   │                    (PaymentService, ReturnExchangeService 포함)
 │   ├── admin/        ← controller, service
-│   │                    AdminDashboardService / AdminMemberService 포함
+│   │                    AdminDashboardService / AdminMemberService / MainPageConfigService 포함
 │   │                    (대시보드/상품/주문/회원/쿠폰/배너/재고/반품교환 관리)
 │   ├── review/       ← controller, service, repository, entity, dto
 │   ├── wishlist/     ← controller, service, repository, entity, dto

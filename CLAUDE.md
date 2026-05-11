@@ -63,6 +63,7 @@ npx tsc --noEmit     # 타입 체크
 
 - **배송비**: 50,000원 이상 무료 / 미만 3,000원
 - **주문 취소**: PENDING, PAID 상태에서만 가능. 취소 시 쿠폰 복원 + 재고 복구 + 판매량 감소
+- **관리자 강제 상태 변경**: 어드민 ORDERS 페이지는 모든 상태 전환 허용 (매트릭스 없음, 관리자 신뢰 모델). 사용자 직접 취소는 위 정책 유지.
 - **구매 확정**: DELIVERED + 중복 불가 → `confirmedAt` 저장
 - **반품/교환 신청**: DELIVERED + `confirmedAt == null` 에서만
   - RETURN → RETURN_REQUESTED / EXCHANGE → EXCHANGE_REQUESTED

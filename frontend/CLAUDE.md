@@ -81,6 +81,7 @@ src/
 - `invalidateWishlistRelated` — wishlists
 - `invalidateCouponRelated` — coupons, myCoupons
 - `invalidateBannerRelated` — banners
+- `invalidateMainPageConfigRelated` — mainPageConfig, admin mainPageConfig
 - `invalidateReviewRelated` — reviews, myReviews
 - `invalidateAddressRelated` — addresses
 - `invalidateUserRelated` — user
