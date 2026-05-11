@@ -20,8 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -31,15 +29,6 @@ public class AdminOrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final EmailService emailService;
-
-    private static final Map<OrderStatus, Set<OrderStatus>> ALLOWED_TRANSITIONS = Map.of(
-            OrderStatus.PENDING, Set.of(OrderStatus.CANCELLED),
-            OrderStatus.PAID, Set.of(OrderStatus.PREPARING, OrderStatus.CANCELLED),
-            OrderStatus.PREPARING, Set.of(OrderStatus.SHIPPED),
-            OrderStatus.SHIPPED, Set.of(OrderStatus.DELIVERED),
-            OrderStatus.RETURN_REQUESTED, Set.of(OrderStatus.DELIVERED, OrderStatus.REFUNDED),
-            OrderStatus.EXCHANGE_REQUESTED, Set.of(OrderStatus.DELIVERED)
-    );
 
     public Page<AdminOrderResponse> getOrders(int page, int size) {
         Page<Order> orders = orderRepository.findAll(
@@ -57,13 +46,6 @@ public class AdminOrderService {
 
         OrderStatus oldStatus = order.getStatus();
         OrderStatus newStatus = request.getStatus();
-
-        if (oldStatus != newStatus) {
-            Set<OrderStatus> allowed = ALLOWED_TRANSITIONS.getOrDefault(oldStatus, Set.of());
-            if (!allowed.contains(newStatus)) {
-                throw new BusinessException(ErrorCode.INVALID_ORDER_STATUS_TRANSITION);
-            }
-        }
 
         // PAID 이상 상태에서 CANCELLED/REFUNDED로 변경 시 판매량 감소
         boolean wasPaid = oldStatus != OrderStatus.PENDING

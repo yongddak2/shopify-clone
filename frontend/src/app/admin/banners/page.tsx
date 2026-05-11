@@ -10,15 +10,21 @@ import {
   toggleBannerActive,
   deleteBanner,
   uploadBannerImage,
+  getAdminMainPageConfig,
+  updateMainPageConfig,
 } from "@/lib/admin";
 import { ChevronUp, ChevronDown, Trash2, Pencil } from "lucide-react";
-import { invalidateBannerRelated } from "@/lib/queryInvalidator";
+import {
+  invalidateBannerRelated,
+  invalidateMainPageConfigRelated,
+} from "@/lib/queryInvalidator";
 import type { Banner } from "@/types";
 
 const MAX_BANNERS = 5;
 const ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const TITLE_MAX = 100;
+const MAIN_TEXT_MAX = 500;
 
 export default function AdminBannersPage() {
   const queryClient = useQueryClient();
@@ -46,6 +52,40 @@ export default function AdminBannersPage() {
 
   const banners = data?.data ?? [];
   const sorted = [...banners].sort((a, b) => a.sortOrder - b.sortOrder);
+
+  // 메인 페이지 텍스트 설정
+  const { data: configData } = useQuery({
+    queryKey: ["admin", "mainPageConfig"],
+    queryFn: getAdminMainPageConfig,
+  });
+  const [mainTextInput, setMainTextInput] = useState("");
+  const [mainTextError, setMainTextError] = useState("");
+  const [mainTextSaved, setMainTextSaved] = useState(false);
+
+  useEffect(() => {
+    if (configData?.data) {
+      setMainTextInput(configData.data.subText ?? "");
+    }
+  }, [configData]);
+
+  const mainTextMutation = useMutation({
+    mutationFn: (subText: string | null) => updateMainPageConfig(subText),
+    onSuccess: () => {
+      invalidateMainPageConfigRelated(queryClient);
+      setMainTextError("");
+      setMainTextSaved(true);
+      setTimeout(() => setMainTextSaved(false), 2000);
+    },
+    onError: () => setMainTextError("저장에 실패했습니다."),
+  });
+
+  const handleMainTextSave = () => {
+    const trimmed = mainTextInput.trim();
+    mainTextMutation.mutate(trimmed === "" ? null : trimmed);
+  };
+
+  const savedSubText = configData?.data?.subText ?? "";
+  const mainTextChanged = mainTextInput.trim() !== savedSubText.trim();
 
   // 미리보기 URL revoke (메모리 누수 방지)
   useEffect(() => {
@@ -180,6 +220,42 @@ export default function AdminBannersPage() {
 
   return (
     <div className="p-8 max-w-4xl">
+      {/* 메인 페이지 텍스트 카드 */}
+      <div className="mb-12 bg-[var(--card-bg)] border border-[var(--border-color)] p-6">
+        <h2 className="text-base font-light tracking-[0.15em] text-[var(--text-primary)] mb-2">
+          메인 페이지 텍스트
+        </h2>
+        <p className="text-xs text-[var(--text-muted)] mb-4">
+          메인 페이지 신상품과 BEST 섹션 사이에 큰 글씨로 표시됩니다. 비워두면 섹션 자체가 숨겨집니다.
+        </p>
+        <input
+          type="text"
+          value={mainTextInput}
+          onChange={(e) => setMainTextInput(e.target.value)}
+          maxLength={MAIN_TEXT_MAX}
+          placeholder="예: Cool, Sensual, Effortlessly yours"
+          className="w-full px-3 py-2.5 mb-2 bg-[var(--input-bg)] border border-[var(--border-color)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-secondary)]"
+        />
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[10px] text-[var(--text-dim)]">
+            {mainTextInput.length} / {MAIN_TEXT_MAX}
+          </p>
+          {mainTextSaved && (
+            <p className="text-[11px] text-green-600">저장되었습니다.</p>
+          )}
+          {mainTextError && (
+            <p className="text-[11px] text-red-600">{mainTextError}</p>
+          )}
+        </div>
+        <button
+          onClick={handleMainTextSave}
+          disabled={!mainTextChanged || mainTextMutation.isPending}
+          className="px-5 py-2 text-xs bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {mainTextMutation.isPending ? "저장 중..." : "저장"}
+        </button>
+      </div>
+
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-xl font-light tracking-[0.15em] text-[var(--text-primary)]">
           배너 관리

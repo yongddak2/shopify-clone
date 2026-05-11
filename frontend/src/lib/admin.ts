@@ -10,6 +10,7 @@ import type {
   CreateCouponRequest,
   Category,
   Banner,
+  MainPageConfig,
   ReturnExchangeRequest,
   InventoryItem,
   AdminDashboard,
@@ -259,6 +260,25 @@ export async function uploadBannerImage(file: File): Promise<string> {
 // 공개 배너 조회
 export async function getPublicBanners() {
   const res = await api.get<ApiResponse<Banner[]>>("/api/banners");
+  return res.data;
+}
+
+// 메인 페이지 설정 (관리자)
+export async function getAdminMainPageConfig() {
+  const res = await api.get<ApiResponse<MainPageConfig>>("/api/admin/main-page-config");
+  return res.data;
+}
+
+export async function updateMainPageConfig(subText: string | null) {
+  const res = await api.put<ApiResponse<MainPageConfig>>("/api/admin/main-page-config", {
+    subText,
+  });
+  return res.data;
+}
+
+// 메인 페이지 설정 (공개)
+export async function getPublicMainPageConfig() {
+  const res = await api.get<ApiResponse<MainPageConfig>>("/api/main-page-config");
   return res.data;
 }
 

@@ -39,7 +39,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
                         // Public - Products, Categories & Banners
-                        .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**", "/api/categories", "/api/banners").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**", "/api/categories", "/api/banners", "/api/main-page-config").permitAll()
 
                         // Public - Auth
                         .requestMatchers(HttpMethod.POST,

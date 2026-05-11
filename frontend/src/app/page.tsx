@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProducts } from "@/lib/product";
 import { getWishlists, toggleWishlist } from "@/lib/wishlist";
-import { getPublicBanners } from "@/lib/admin";
+import { getPublicBanners, getPublicMainPageConfig } from "@/lib/admin";
 import { invalidateWishlistRelated } from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
 import { Heart, ChevronLeft, ChevronRight } from "lucide-react";
@@ -33,8 +33,8 @@ function ProductGrid({
 }) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-10">
-        {Array.from({ length: 8 }).map((_, i) => (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-10">
+        {Array.from({ length: 4 }).map((_, i) => (
           <div key={i}>
             <div className="aspect-[3/4] bg-[var(--skeleton)] animate-pulse mb-4" />
             <div className="h-4 bg-[var(--skeleton)] animate-pulse mb-2 w-3/4" />
@@ -48,7 +48,7 @@ function ProductGrid({
   if (products.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-10">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-10">
       {products.map((product) => {
         const isSoldOut = product.status === "SOLDOUT";
         const hasDiscount = product.discountRate > 0;
@@ -288,18 +288,25 @@ export default function Home() {
     queryFn: getPublicBanners,
   });
 
+  const { data: configData } = useQuery({
+    queryKey: ["mainPageConfig"],
+    queryFn: getPublicMainPageConfig,
+  });
+
   const activeBanners = (bannerData?.data ?? [])
     .filter((b) => b.active)
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
+  const mainSubText = configData?.data?.subText ?? null;
+
   const { data: newData, isLoading: newLoading } = useQuery({
-    queryKey: ["mainNewProducts"],
-    queryFn: () => getProducts({ page: 0, size: 8, sort: "createdAt,desc" }),
+    queryKey: ["mainNewProducts", 4],
+    queryFn: () => getProducts({ page: 0, size: 4, sort: "createdAt,desc" }),
   });
 
   const { data: bestData, isLoading: bestLoading } = useQuery({
-    queryKey: ["mainBestProducts"],
-    queryFn: () => getProducts({ page: 0, size: 8, sort: "sales" }),
+    queryKey: ["mainBestProducts", 4],
+    queryFn: () => getProducts({ page: 0, size: 4, sort: "sales" }),
   });
 
   const { data: wishlistData } = useQuery({
@@ -341,7 +348,7 @@ export default function Home() {
       </div>
 
       {/* 신상품 섹션 */}
-      <section className="max-w-7xl mx-auto px-6 lg:px-10 py-16">
+      <section className="w-full px-[3vw] pt-32 pb-16">
         <div className="flex items-center justify-between mb-10">
           <h2 className="text-2xl tracking-[0.2em] font-light text-[var(--text-primary)]">
             NEW ARRIVALS
@@ -350,7 +357,7 @@ export default function Home() {
             href="/products?sort=createdAt,desc"
             className="text-xs tracking-wider text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
           >
-            더보기 &rsaquo;
+            MORE VIEW &rsaquo;
           </Link>
         </div>
         <ProductGrid
@@ -361,8 +368,17 @@ export default function Home() {
         />
       </section>
 
+      {/* 메인 텍스트 섹션 (신상품 ↔ BEST 사이) */}
+      {mainSubText && (
+        <section className="w-full px-[3vw] py-8 md:py-12 lg:py-16">
+          <p className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-light tracking-tight text-[var(--text-primary)] leading-tight">
+            {mainSubText}
+          </p>
+        </section>
+      )}
+
       {/* BEST 섹션 */}
-      <section className="max-w-7xl mx-auto px-6 lg:px-10 py-16">
+      <section className="w-full px-[3vw] py-16">
         <div className="flex items-center justify-between mb-10">
           <h2 className="text-2xl tracking-[0.2em] font-light text-[var(--text-primary)]">
             BEST
@@ -371,7 +387,7 @@ export default function Home() {
             href="/products?sort=sales"
             className="text-xs tracking-wider text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
           >
-            더보기 &rsaquo;
+            MORE VIEW &rsaquo;
           </Link>
         </div>
         <ProductGrid

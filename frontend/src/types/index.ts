@@ -386,6 +386,11 @@ export interface Banner {
   createdAt: string;
 }
 
+// 메인 페이지 설정
+export interface MainPageConfig {
+  subText: string | null;
+}
+
 // 반품/교환
 export type ReasonType = 'RETURN' | 'EXCHANGE';
 export type ReasonCategory = 'CHANGE_OF_MIND' | 'SELLER_FAULT';

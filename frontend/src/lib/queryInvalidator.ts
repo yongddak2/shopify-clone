@@ -69,6 +69,14 @@ export const invalidateBannerRelated = (qc: QueryClient) => {
 };
 
 // ─────────────────────────────────────────────────────────────
+// Main Page Config (메인 페이지 텍스트 설정)
+// ─────────────────────────────────────────────────────────────
+export const invalidateMainPageConfigRelated = (qc: QueryClient) => {
+  qc.invalidateQueries({ queryKey: ["mainPageConfig"] });
+  qc.invalidateQueries({ queryKey: ["admin", "mainPageConfig"] });
+};
+
+// ─────────────────────────────────────────────────────────────
 // Review (리뷰)
 // ─────────────────────────────────────────────────────────────
 export const invalidateReviewRelated = (qc: QueryClient) => {

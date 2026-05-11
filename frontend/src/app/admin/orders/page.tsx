@@ -4,6 +4,7 @@ import { useState, useEffect, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getAdminOrders, updateOrderStatus } from "@/lib/admin";
 import { invalidateOrderRelated } from "@/lib/queryInvalidator";
+import { Info, X } from "lucide-react";
 import type { AdminOrder } from "@/types";
 
 const CARRIERS = ["CJ대한통운", "롯데택배", "한진택배", "우체국택배", "로젠택배", "기타"];
@@ -27,7 +28,7 @@ const STATUS_LABELS: Record<string, string> = {
   EXCHANGE_REQUESTED: "교환신청",
 };
 
-// 관리자가 직접 변경 가능한 상태 (반품/교환 신청 상태는 제외)
+// 관리자가 직접 변경 가능한 상태 (반품/교환 신청 상태는 admin/requests에서 관리)
 const ORDER_STATUSES = [
   "PENDING",
   "PAID",
@@ -46,8 +47,8 @@ const STATUS_BADGE: Record<string, string> = {
   DELIVERED: "bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]",
   CANCELLED: "bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]",
   REFUNDED: "bg-[var(--badge-gray-bg)] text-[var(--badge-gray-text)]",
-  RETURN_REQUESTED: "bg-orange-500/20 text-orange-300",
-  EXCHANGE_REQUESTED: "bg-orange-500/20 text-orange-300",
+  RETURN_REQUESTED: "bg-pink-100 text-pink-800",
+  EXCHANGE_REQUESTED: "bg-pink-100 text-pink-800",
 };
 
 export default function AdminOrdersPage() {
@@ -60,6 +61,8 @@ export default function AdminOrdersPage() {
   } | null>(null);
   const [carrier, setCarrier] = useState(CARRIERS[0]);
   const [trackingNumber, setTrackingNumber] = useState("");
+  const [statusError, setStatusError] = useState("");
+  const [guideOpen, setGuideOpen] = useState(false);
 
   useEffect(() => {
     if (statusChange?.newStatus === "SHIPPED") {
@@ -83,6 +86,13 @@ export default function AdminOrdersPage() {
     onSuccess: () => {
       invalidateOrderRelated(queryClient);
       setStatusChange(null);
+      setStatusError("");
+    },
+    onError: (err: unknown) => {
+      const message =
+        (err as { response?: { data?: { error?: { message?: string } } } })
+          ?.response?.data?.error?.message ?? "상태 변경에 실패했습니다.";
+      setStatusError(message);
     },
   });
 
@@ -111,9 +121,19 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="p-8">
-      <h1 className="text-xl font-light tracking-[0.15em] text-[var(--text-primary)] mb-8">
-        ORDERS
-      </h1>
+      <div className="flex items-center gap-3 mb-8">
+        <h1 className="text-xl font-light tracking-[0.15em] text-[var(--text-primary)]">
+          ORDERS
+        </h1>
+        <button
+          onClick={() => setGuideOpen(true)}
+          className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+          aria-label="사용 가이드 열기"
+          title="사용 가이드"
+        >
+          <Info className="w-5 h-5" strokeWidth={1.5} />
+        </button>
+      </div>
 
       {isLoading ? (
         <div className="space-y-3">
@@ -174,6 +194,7 @@ export default function AdminOrdersPage() {
                           onChange={(e) => {
                             if (e.target.value) {
                               setStatusChange({ order: o, newStatus: e.target.value });
+                              setStatusError("");
                             }
                           }}
                           className="bg-[var(--input-bg)] border border-[var(--border-color)] text-xs text-[var(--text-secondary)] px-2 py-1 focus:outline-none"
@@ -244,9 +265,12 @@ export default function AdminOrdersPage() {
           <div className="absolute inset-0 bg-[var(--overlay-bg)]" onClick={() => setStatusChange(null)} />
           <div className={`relative bg-[var(--card-bg)] border border-[var(--border-color)] px-8 py-8 w-full mx-6 ${isShipped ? "max-w-md" : "max-w-sm text-center"}`}>
             <p className="text-sm text-[var(--text-secondary)] mb-2 text-center">주문 상태를 변경하시겠습니까?</p>
-            <p className="text-xs text-[var(--text-muted)] mb-8 text-center">
+            <p className="text-xs text-[var(--text-muted)] mb-4 text-center">
               {STATUS_LABELS[statusChange.order.status] ?? statusChange.order.status} → {STATUS_LABELS[statusChange.newStatus] ?? statusChange.newStatus}
             </p>
+            {statusError && (
+              <p className="text-xs text-red-600 mb-4 text-center">{statusError}</p>
+            )}
 
             {isShipped && (
               <div className="mb-8 space-y-4 text-left">
@@ -277,13 +301,184 @@ export default function AdminOrdersPage() {
             )}
 
             <div className="flex gap-3">
-              <button onClick={() => setStatusChange(null)} className="flex-1 py-3 text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">취소</button>
+              <button
+                onClick={() => {
+                  setStatusChange(null);
+                  setStatusError("");
+                }}
+                className="flex-1 py-3 text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+              >취소</button>
               <button
                 onClick={handleConfirm}
                 className="flex-1 py-3 text-sm bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 disabled={confirmDisabled}
               >
                 {statusMutation.isPending ? "변경 중..." : "확인"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 사용 가이드 모달 */}
+      {guideOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-[var(--overlay-bg)]"
+            onClick={() => setGuideOpen(false)}
+          />
+          <div className="relative bg-[var(--card-bg)] border border-[var(--border-color)] w-full max-w-2xl mx-6 max-h-[85vh] flex flex-col">
+            {/* 헤더 */}
+            <div className="flex items-center justify-between px-8 py-5 border-b border-[var(--border-color)] flex-shrink-0">
+              <h2 className="text-base font-medium tracking-[0.1em] text-[var(--text-primary)]">
+                주문관리 사용 가이드
+              </h2>
+              <button
+                onClick={() => setGuideOpen(false)}
+                className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                aria-label="닫기"
+              >
+                <X className="w-5 h-5" strokeWidth={1.5} />
+              </button>
+            </div>
+
+            {/* 본문 (스크롤) */}
+            <div className="px-8 py-6 overflow-y-auto space-y-7 text-sm text-[var(--text-secondary)] leading-relaxed">
+              {/* 1) 상태 설명 */}
+              <section>
+                <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3">
+                  📋 각 상태의 의미
+                </h3>
+                <ul className="space-y-2 text-[13px]">
+                  <li>
+                    <span className="inline-block px-2 py-0.5 text-xs rounded bg-[var(--badge-yellow-bg)] text-[var(--badge-yellow-text)] mr-2">주문대기</span>
+                    고객이 주문은 했으나 아직 결제 전 상태입니다.
+                  </li>
+                  <li>
+                    <span className="inline-block px-2 py-0.5 text-xs rounded bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)] mr-2">결제완료</span>
+                    결제가 정상 완료된 상태입니다. 보통 이 단계에서 상품 발송 준비를 시작합니다.
+                  </li>
+                  <li>
+                    <span className="inline-block px-2 py-0.5 text-xs rounded bg-[var(--badge-orange-bg)] text-[var(--badge-orange-text)] mr-2">배송준비중</span>
+                    상품을 포장하고 택배 발송 직전 단계입니다.
+                  </li>
+                  <li>
+                    <span className="inline-block px-2 py-0.5 text-xs rounded bg-[var(--badge-purple-bg)] text-[var(--badge-purple-text)] mr-2">배송중</span>
+                    택배사에 상품을 전달했고 운송장이 등록된 상태입니다.
+                  </li>
+                  <li>
+                    <span className="inline-block px-2 py-0.5 text-xs rounded bg-[var(--badge-green-bg)] text-[var(--badge-green-text)] mr-2">배송완료</span>
+                    고객이 상품을 수령한 상태입니다.
+                  </li>
+                  <li>
+                    <span className="inline-block px-2 py-0.5 text-xs rounded bg-[var(--badge-red-bg)] text-[var(--badge-red-text)] mr-2">주문취소</span>
+                    주문이 취소된 상태입니다 (결제 전 취소 또는 결제 후 취소).
+                  </li>
+                  <li>
+                    <span className="inline-block px-2 py-0.5 text-xs rounded bg-[var(--badge-gray-bg)] text-[var(--badge-gray-text)] mr-2">환불완료</span>
+                    결제 금액을 고객에게 돌려준 상태입니다.
+                  </li>
+                  <li>
+                    <span className="inline-block px-2 py-0.5 text-xs rounded bg-pink-100 text-pink-800 mr-2">반품신청</span>
+                    <span className="inline-block px-2 py-0.5 text-xs rounded bg-pink-100 text-pink-800 mr-2">교환신청</span>
+                    고객이 신청한 상태입니다. 좌측 메뉴 <b>반품/교환 관리</b>에서 처리하세요.
+                  </li>
+                </ul>
+              </section>
+
+              {/* 2) 일반 흐름 */}
+              <section>
+                <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3">
+                  🔄 일반적인 주문 흐름
+                </h3>
+                <p className="text-[13px] mb-3">
+                  정상 주문은 보통 아래 순서로 진행됩니다:
+                </p>
+                <div className="text-[13px] text-[var(--text-muted)] bg-[var(--section-bg)] px-4 py-3 rounded">
+                  주문대기 → <b className="text-[var(--text-primary)]">결제완료</b> (자동) → 배송준비중 → 배송중 → 배송완료
+                </div>
+                <ul className="mt-3 space-y-1.5 text-[13px] list-disc list-inside text-[var(--text-secondary)]">
+                  <li>고객이 결제하면 <b>주문대기 → 결제완료</b>는 시스템이 자동 처리합니다.</li>
+                  <li>발송 준비가 되면 관리자가 <b>배송준비중</b>으로 변경합니다.</li>
+                  <li>택배사에 전달했으면 <b>배송중</b>으로 변경 (운송장번호 입력 필수).</li>
+                  <li>고객이 수령했으면 <b>배송완료</b>로 변경합니다.</li>
+                </ul>
+              </section>
+
+              {/* 3) 이메일 자동 발송 */}
+              <section>
+                <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3">
+                  ✉️ 자동 발송되는 안내 이메일
+                </h3>
+                <p className="text-[13px] mb-3 text-[var(--text-muted)]">
+                  아래 상태로 변경되면 고객에게 이메일이 자동 발송됩니다. 관리자가 따로 안 보내도 됩니다.
+                </p>
+                <ul className="space-y-2 text-[13px]">
+                  <li>
+                    <b className="text-[var(--text-primary)]">결제완료</b> 시 — 주문 확인 메일 (시스템 자동)
+                  </li>
+                  <li>
+                    <b className="text-[var(--text-primary)]">배송중</b>으로 변경 시 — 발송 안내 메일 (배송사 + 운송장번호 포함)
+                  </li>
+                  <li>
+                    <b className="text-[var(--text-primary)]">주문취소</b>로 변경 시 — 취소 안내 메일 (단, 관리자가 직접 취소한 경우만. 고객이 마이페이지에서 직접 취소한 경우는 발송 안 됨)
+                  </li>
+                </ul>
+              </section>
+
+              {/* 4) 운송장 입력 */}
+              <section>
+                <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3">
+                  📦 운송장 정보
+                </h3>
+                <ul className="space-y-1.5 text-[13px] list-disc list-inside">
+                  <li><b>배송중</b>으로 변경할 때 배송사와 운송장번호를 입력하는 창이 뜹니다.</li>
+                  <li>입력한 정보는 고객 이메일과 마이페이지에서 그대로 보입니다.</li>
+                  <li>운송장번호 없이는 배송중으로 변경할 수 없습니다.</li>
+                </ul>
+              </section>
+
+              {/* 5) 자주 묻는 상황 */}
+              <section>
+                <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3">
+                  ❓ 자주 묻는 상황
+                </h3>
+                <div className="space-y-3 text-[13px]">
+                  <div>
+                    <p className="font-medium text-[var(--text-primary)] mb-1">실수로 상태를 잘못 변경했어요</p>
+                    <p className="text-[var(--text-muted)]">
+                      어떤 상태로든 다시 되돌릴 수 있습니다. 단, 이메일이 이미 발송됐다면 고객에게 별도로 안내가 필요할 수 있습니다.
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-[var(--text-primary)] mb-1">반품/교환 신청이 들어왔어요</p>
+                    <p className="text-[var(--text-muted)]">
+                      이 페이지가 아니라 좌측 메뉴의 <b>반품/교환 관리</b>에서 승인/거절/완료 처리를 합니다.
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-[var(--text-primary)] mb-1">고객이 결제했는데 결제완료 표시가 안 떠요</p>
+                    <p className="text-[var(--text-muted)]">
+                      결제 처리 중일 수 있습니다. 잠시 후 페이지를 새로고침해 보세요.
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-[var(--text-primary)] mb-1">취소된 주문의 환불은 어떻게 하나요?</p>
+                    <p className="text-[var(--text-muted)]">
+                      결제 시스템에서 환불 처리 후, 이 페이지에서 상태를 <b>환불완료</b>로 변경해 주세요. (현재 시스템에선 결제사 환불은 별도 절차로 진행됩니다.)
+                    </p>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            {/* 푸터 */}
+            <div className="px-8 py-4 border-t border-[var(--border-color)] flex-shrink-0">
+              <button
+                onClick={() => setGuideOpen(false)}
+                className="w-full py-2.5 text-sm bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] transition-colors"
+              >
+                확인했습니다
               </button>
             </div>
           </div>
