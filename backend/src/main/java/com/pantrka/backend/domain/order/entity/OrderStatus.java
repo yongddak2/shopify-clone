@@ -1,0 +1,6 @@
+package com.pantrka.backend.domain.order.entity;
+
+public enum OrderStatus {
+    PENDING, PAID, PREPARING, SHIPPED, DELIVERED, CANCELLED, REFUNDED,
+    RETURN_REQUESTED, EXCHANGE_REQUESTED
+}

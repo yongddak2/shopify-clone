@@ -5,7 +5,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 
 export const metadata: Metadata = {
-  title: "SHOPIFY | 의류 쇼핑몰",
+  title: "PanTrKa | 의류 쇼핑몰",
   description: "미니멀 의류 쇼핑몰",
 };
 

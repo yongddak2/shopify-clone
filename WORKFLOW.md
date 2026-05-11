@@ -1,4 +1,4 @@
-# shopify-clone 개발 워크플로우 (v2)
+# PanTrKa 개발 워크플로우 (v2)
 
 > 2026-05-05 개편. 구버전(Web chat + PROJECT.md 동기화 기반)은
 > `Obsidian Vault/99_Archive/shopify-clone-old-context/WORKFLOW_v1_2024style.md` 참고.

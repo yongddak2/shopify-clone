@@ -1,6 +1,6 @@
 # API Reference
 
-shopify-clone 전체 REST API 목록. 공통 응답은 `ApiResponse` (`{success, message, data}`).
+PanTrKa 전체 REST API 목록. 공통 응답은 `ApiResponse` (`{success, message, data}`).
 
 > 인증 실패 401 / 권한 부족 403 / 비즈니스 예외 / 검증 실패 모두 동일 포맷.
 

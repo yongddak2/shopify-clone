@@ -7,7 +7,7 @@
 ## 패키지 구조
 
 ```
-src/main/java/com/shopify/backend/
+src/main/java/com/pantrka/backend/
 ├── global/
 │   ├── config/       ← SecurityConfig, JwtProvider, TossPaymentsConfig
 │   ├── filter/       ← JwtAuthenticationFilter
@@ -159,9 +159,9 @@ locked.decreaseStock(quantity); // 또는 increaseStock / updateStockQuantity
 - OrderServiceTest (8): 주문 생성/취소/배송비/구매확정
 - PaymentServiceTest (7): 결제 승인/실패 시나리오
 - OrderConcurrencyTest (3): **Service 레벨 동시성** — 동시 주문(재고 정합성) / 취소+신규 주문 동시(lost update 방어) / 관리자 재고 수정+사용자 주문 동시
-  - 위치: `backend/src/test/java/com/shopify/backend/domain/order/service/OrderConcurrencyTest.java`
+  - 위치: `backend/src/test/java/com/pantrka/backend/domain/order/service/OrderConcurrencyTest.java`
 - OrderApiConcurrencyTest (3): **HTTP API 레벨 통합 동시성** — 동일 옵션 동시 주문 / 관리자 재고 수정+사용자 주문 / 인증·권한 검증
-  - 위치: `backend/src/test/java/com/shopify/backend/integration/OrderApiConcurrencyTest.java`
+  - 위치: `backend/src/test/java/com/pantrka/backend/integration/OrderApiConcurrencyTest.java`
   - JDK `java.net.http.HttpClient` 사용 (Spring Boot 4.0.4의 `TestRestTemplate` 자동 설정 버그 — `TestRestTemplateTestAutoConfiguration` 의 `@ConditionalOnMissingBean` 타입 추론 실패 — 우회용)
 
 ---

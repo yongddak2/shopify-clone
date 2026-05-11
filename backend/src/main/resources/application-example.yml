@@ -3,7 +3,7 @@
 
 spring:
   application:
-    name: shopify-backend
+    name: pantrka-backend
 
   # ─── PostgreSQL ──────────────────────────────────
   datasource:
@@ -93,5 +93,5 @@ cloud:
 logging:
   level:
     root: INFO
-    com.shopify.backend: DEBUG
+    com.pantrka.backend: DEBUG
     org.hibernate.SQL: DEBUG

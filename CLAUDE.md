@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-shopify-clone — 의류 쇼핑몰. 모노레포 (backend/ + frontend/).
+PanTrKa — 의류 쇼핑몰. 모노레포 (backend/ + frontend/). 코드 디렉토리는 `shopify-clone/` 로컬 폴더명 유지.
 루트에서 실행. 백엔드 작업 시 backend/CLAUDE.md, 프론트 작업 시 frontend/CLAUDE.md 자동 로드.
 
 ---

@@ -120,7 +120,7 @@ export default function AdminLayout({
         {/* 로고 */}
         <div className="h-16 flex items-center px-6 border-b border-[var(--border-color)]">
           <span className="text-lg font-bold tracking-widest text-[var(--text-primary)]">
-            SHOPIFY
+            PanTrKa
           </span>
           <span className="text-xs text-[var(--text-muted)] ml-2 tracking-wider">
             ADMIN

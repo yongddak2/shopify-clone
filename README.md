@@ -1,4 +1,4 @@
-# Shopify Clone - E-Commerce Platform
+# PanTrKa - E-Commerce Platform
 
 포트폴리오용 실서비스급 쇼핑몰 프로젝트
 
@@ -43,7 +43,7 @@ npm run dev
 ```
 shopify-clone/
 ├── backend/                 # Spring Boot
-│   └── src/main/java/com/shopify/backend/
+│   └── src/main/java/com/pantrka/backend/
 │       ├── domain/
 │       │   ├── auth/        # 인증, 회원
 │       │   ├── product/     # 상품, 카테고리

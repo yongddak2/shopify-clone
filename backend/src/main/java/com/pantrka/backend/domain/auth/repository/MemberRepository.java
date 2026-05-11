@@ -1,0 +1,31 @@
+package com.pantrka.backend.domain.auth.repository;
+
+import com.pantrka.backend.domain.auth.entity.Member;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface MemberRepository extends JpaRepository<Member, Long> {
+
+    Optional<Member> findByEmail(String email);
+
+    boolean existsByEmail(String email);
+
+    Optional<Member> findByEmailAndDeletedAtIsNull(String email);
+
+    Optional<Member> findByIdAndDeletedAtIsNull(Long id);
+
+    Page<Member> findAllByDeletedAtIsNull(Pageable pageable);
+
+    long countByDeletedAtIsNull();
+
+    long countByCreatedAtBetweenAndDeletedAtIsNull(java.time.LocalDateTime start,
+                                                   java.time.LocalDateTime end);
+
+    Page<Member> findAllByCreatedAtBetweenAndDeletedAtIsNull(
+            java.time.LocalDateTime start,
+            java.time.LocalDateTime end,
+            Pageable pageable);
+}

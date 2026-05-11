@@ -42,15 +42,15 @@
 - 보안 핵심(권한·소유권·서명 검증)은 의도대로 동작.
 - 그러나 인증 실패 응답이 Spring Security 기본값으로 떨어져 `ApiResponse` 표준 미준수, 401/403 의미 어긋남.
 - `/api/auth/refresh` 가 프론트(body 전송)와 계약 어긋남 → **자동 재발급 흐름 미작동**.
-- S3에서 리뷰 DELETE 는 환경상 B 의 리뷰 생성이 어려워(DELIVERED + confirmedAt 필요) HTTP 검증 미수행. [ReviewService.java:152-158](backend/src/main/java/com/shopify/backend/domain/review/service/ReviewService.java#L152-L158) 의 `REVIEW_NOT_OWNER` 분기로 같은 패턴 차단됨을 코드 확인.
+- S3에서 리뷰 DELETE 는 환경상 B 의 리뷰 생성이 어려워(DELIVERED + confirmedAt 필요) HTTP 검증 미수행. [ReviewService.java:152-158](backend/src/main/java/com/pantrka/backend/domain/review/service/ReviewService.java#L152-L158) 의 `REVIEW_NOT_OWNER` 분기로 같은 패턴 차단됨을 코드 확인.
 
 ### 이슈 목록
 
 | 번호 | 심각도 | 증상 | 원인 | 처리 |
 |---|---|---|---|---|
-| **AUTH-001** | 경미 | 토큰 부재/형식오류/서명불일치/만료 모두 **403 + 빈 바디** | [SecurityConfig.java](backend/src/main/java/com/shopify/backend/global/config/SecurityConfig.java) 에 `AuthenticationEntryPoint`/`AccessDeniedHandler` 미등록. [JwtAuthenticationFilter:31-43](backend/src/main/java/com/shopify/backend/global/filter/JwtAuthenticationFilter.java#L31-L43) 가 무효 토큰을 SecurityContext 비운 채 통과시켜 익명 접근으로 도달 → Spring Security 기본 핸들러가 403 반환 | **이월** (백로그) |
-| **AUTH-002** | 경미 (UX 관점 치명) | `/api/auth/refresh` body 전송 시 500. 프론트 자동 재발급 흐름 미작동 | [AuthController.java:40-43](backend/src/main/java/com/shopify/backend/domain/auth/controller/AuthController.java#L40-L43) 가 `@RequestHeader("Authorization")` 로 받음. 프론트 [api.ts:36-40](frontend/src/lib/api.ts#L36-L40)·[auth.ts:77-82](frontend/src/lib/auth.ts#L77-L82) 는 body 로 전송. `MissingRequestHeaderException` → catch-all 500 | **이월** |
-| **AUTH-003** | 경미 | 같은 "남의 자원" 케이스에서 도메인마다 404 vs 403 분리: 주문 GET/cancel/confirm=404, return-exchange/배송지/장바구니=403 | 주문은 [OrderService:235,251](backend/src/main/java/com/shopify/backend/domain/order/service/OrderService.java#L235) 가 `findByIdAndMemberId` 로 조회하여 `ORDER_NOT_FOUND`. 그 외는 `findById` 후 owner 체크 → `FORBIDDEN`. 보안 유출은 없음 | **이월** (정책 결정 필요) |
+| **AUTH-001** | 경미 | 토큰 부재/형식오류/서명불일치/만료 모두 **403 + 빈 바디** | [SecurityConfig.java](backend/src/main/java/com/pantrka/backend/global/config/SecurityConfig.java) 에 `AuthenticationEntryPoint`/`AccessDeniedHandler` 미등록. [JwtAuthenticationFilter:31-43](backend/src/main/java/com/pantrka/backend/global/filter/JwtAuthenticationFilter.java#L31-L43) 가 무효 토큰을 SecurityContext 비운 채 통과시켜 익명 접근으로 도달 → Spring Security 기본 핸들러가 403 반환 | **이월** (백로그) |
+| **AUTH-002** | 경미 (UX 관점 치명) | `/api/auth/refresh` body 전송 시 500. 프론트 자동 재발급 흐름 미작동 | [AuthController.java:40-43](backend/src/main/java/com/pantrka/backend/domain/auth/controller/AuthController.java#L40-L43) 가 `@RequestHeader("Authorization")` 로 받음. 프론트 [api.ts:36-40](frontend/src/lib/api.ts#L36-L40)·[auth.ts:77-82](frontend/src/lib/auth.ts#L77-L82) 는 body 로 전송. `MissingRequestHeaderException` → catch-all 500 | **이월** |
+| **AUTH-003** | 경미 | 같은 "남의 자원" 케이스에서 도메인마다 404 vs 403 분리: 주문 GET/cancel/confirm=404, return-exchange/배송지/장바구니=403 | 주문은 [OrderService:235,251](backend/src/main/java/com/pantrka/backend/domain/order/service/OrderService.java#L235) 가 `findByIdAndMemberId` 로 조회하여 `ORDER_NOT_FOUND`. 그 외는 `findById` 후 owner 체크 → `FORBIDDEN`. 보안 유출은 없음 | **이월** (정책 결정 필요) |
 | **AUTH-004** | 개선 제안 | ADMIN 본인 role 변경/탈퇴 시 응답 400 | 의미상 "잘못된 입력" 보다 "현재 자원 상태와 충돌" → 409 가 더 적절 | **이월** |
 | **AUTH-005** | 개선 제안 | USER→ADMIN API 호출 시 403 차단되지만 응답 바디 빈 상태 → "권한 부족"인지 "토큰 만료"인지 구분 불가 | AUTH-001 과 동일 원인. `AccessDeniedHandler` 등록 시 함께 해결 | **이월** (AUTH-001 와 묶음) |
 
@@ -159,7 +159,7 @@
 | 번호 | 심각도 | 증상 | 원인 | 처리 |
 |---|---|---|---|---|
 | **RETURN-001** | 경미 | `POST /api/orders/{id}/return-exchange` 첫 호출 시 일관 500. 한글 reasonText 만 깨지고 영어 reasonText 는 정상 | Git Bash 의 single-quote 안 한글 UTF-8 바이트가 Windows native `curl.exe` 인자 변환 단계에서 **CP949 로 변환**되어 도착. 백엔드 Jackson 은 UTF-8 가정 파싱 → `Invalid UTF-8 middle byte 0xCE`. `GlobalExceptionHandler` 에 `HttpMessageNotReadableException` 전용 핸들러 없음 → fallback `Exception` 핸들러로 잡혀 500 | **RESOLVED** — scenario1/2/4/5/6/7 의 한글 reasonText → ASCII 변경. 백엔드 측 보완은 리팩토링 백로그로 이월 |
-| **RETURN-002** | 확정 버그 | RETURN COMPLETE 시에도 재고가 +qty 복구되어 명세("RETURN→재고복구X") 위배. S9 에서 옵션 57 재고 123→125 | [ReturnExchangeService.completeRequest](backend/src/main/java/com/shopify/backend/domain/order/service/ReturnExchangeService.java#L157-L191) 가 `request.getType()` 분기 없이 모든 OrderItem 에 `lockedOption.increaseStock(item.getQuantity())` 호출 | **RESOLVED** — 재고 복구 블록을 `if (request.getType() == ReasonType.EXCHANGE) { … }` 로 감쌈 ([ReturnExchangeService.java:166-179](backend/src/main/java/com/shopify/backend/domain/order/service/ReturnExchangeService.java#L166-L179)). 2차 실행 S9 delta=0 확인 |
+| **RETURN-002** | 확정 버그 | RETURN COMPLETE 시에도 재고가 +qty 복구되어 명세("RETURN→재고복구X") 위배. S9 에서 옵션 57 재고 123→125 | [ReturnExchangeService.completeRequest](backend/src/main/java/com/pantrka/backend/domain/order/service/ReturnExchangeService.java#L157-L191) 가 `request.getType()` 분기 없이 모든 OrderItem 에 `lockedOption.increaseStock(item.getQuantity())` 호출 | **RESOLVED** — 재고 복구 블록을 `if (request.getType() == ReasonType.EXCHANGE) { … }` 로 감쌈 ([ReturnExchangeService.java:166-179](backend/src/main/java/com/pantrka/backend/domain/order/service/ReturnExchangeService.java#L166-L179)). 2차 실행 S9 delta=0 확인 |
 | **RETURN-003** | 저위험 | `POST /api/return-requests/images` 가 단일 `MultipartFile` 만 받음. 같은 요청에 file 4개 첨부해도 첫 파일만 처리하고 나머지 무시. 4장 초과 검증이 업로드 단에 없음 | 컨트롤러 시그니처가 단건 핸들러. 4장 검증은 신청 본체(`createRequest`)의 `imageUrls.size() > 3` 분기에서만 이루어짐 | **이월** — 데이터 무결성은 신청 본체 검증으로 방어됨. S3 비용/스팸 측면에서만 노출 |
 
 ### 리팩토링 백로그
@@ -223,8 +223,8 @@
 
 | 번호 | 심각도 | 증상 | 원인 | 처리 |
 |---|---|---|---|---|
-| **ORDER-001** | 확정 버그 | 관리자 상태 변경에 전환 룰이 없어 임의 전환 모두 200 (테스트: `PENDING→PAID` 200, `CANCELLED→PAID` 200). 사이드이펙트가 분기 조건과 어긋남: `PENDING→PAID` 강제 시 결제 레코드/쿠폰 사용/판매량 증가 모두 누락 → DB 정합성 깨짐. `CANCELLED→PAID` 의 경우 [AdminOrderService:50-60](../backend/src/main/java/com/shopify/backend/domain/admin/service/AdminOrderService.java#L50-L60) 의 `wasPaid` 가 `oldStatus=CANCELLED` 라 false 로 판정되어 추가 판매량/쿠폰 처리는 트리거되지 않으나, **상태만 PAID** 로 되돌아 환불 흐름이 꼬임 | [AdminOrderService.updateOrderStatus](../backend/src/main/java/com/shopify/backend/domain/admin/service/AdminOrderService.java#L42-L86) 가 `OrderStatus` 전환 가능 여부를 검증하지 않음 (`order.updateStatus(newStatus)` 직호출). `ErrorCode.INVALID_ORDER_STATUS_TRANSITION` 정의는 있으나 사용처 0건 | **이월** |
-| **ORDER-002** | 경미 (UX·운영 영향) | `PENDING → SHIPPED` 를 carrier/trackingNumber 없이 호출해도 200, DB 에 carrier/tracking_number 모두 NULL 로 저장. 운송장 발송 이메일은 "준비 중" fallback 으로 나가 고객 컨택 시 혼선 | [AdminOrderStatusUpdateRequest](../backend/src/main/java/com/shopify/backend/domain/admin/dto/AdminOrderStatusUpdateRequest.java) 가 `status` 만 `@NotNull`. SHIPPED 전환 시 carrier/trackingNumber 검증 없음. [AdminOrderService:70-72](../backend/src/main/java/com/shopify/backend/domain/admin/service/AdminOrderService.java#L70-L72) 의 `order.assignShipping(...)` 도 null 통과 | **이월** |
+| **ORDER-001** | 확정 버그 | 관리자 상태 변경에 전환 룰이 없어 임의 전환 모두 200 (테스트: `PENDING→PAID` 200, `CANCELLED→PAID` 200). 사이드이펙트가 분기 조건과 어긋남: `PENDING→PAID` 강제 시 결제 레코드/쿠폰 사용/판매량 증가 모두 누락 → DB 정합성 깨짐. `CANCELLED→PAID` 의 경우 [AdminOrderService:50-60](../backend/src/main/java/com/pantrka/backend/domain/admin/service/AdminOrderService.java#L50-L60) 의 `wasPaid` 가 `oldStatus=CANCELLED` 라 false 로 판정되어 추가 판매량/쿠폰 처리는 트리거되지 않으나, **상태만 PAID** 로 되돌아 환불 흐름이 꼬임 | [AdminOrderService.updateOrderStatus](../backend/src/main/java/com/pantrka/backend/domain/admin/service/AdminOrderService.java#L42-L86) 가 `OrderStatus` 전환 가능 여부를 검증하지 않음 (`order.updateStatus(newStatus)` 직호출). `ErrorCode.INVALID_ORDER_STATUS_TRANSITION` 정의는 있으나 사용처 0건 | **이월** |
+| **ORDER-002** | 경미 (UX·운영 영향) | `PENDING → SHIPPED` 를 carrier/trackingNumber 없이 호출해도 200, DB 에 carrier/tracking_number 모두 NULL 로 저장. 운송장 발송 이메일은 "준비 중" fallback 으로 나가 고객 컨택 시 혼선 | [AdminOrderStatusUpdateRequest](../backend/src/main/java/com/pantrka/backend/domain/admin/dto/AdminOrderStatusUpdateRequest.java) 가 `status` 만 `@NotNull`. SHIPPED 전환 시 carrier/trackingNumber 검증 없음. [AdminOrderService:70-72](../backend/src/main/java/com/pantrka/backend/domain/admin/service/AdminOrderService.java#L70-L72) 의 `order.assignShipping(...)` 도 null 통과 | **이월** |
 | **ORDER-003** | 경미 (AUTH-003 재확인) | 같은 "타인 주문" 호출인데 OrderService 계열은 404, PaymentService 는 403 으로 분기. 자원 존재 여부 노출/숨김 정책이 도메인마다 다름 | OrderService 는 `findByIdAndMemberId` (조회 자체에서 owner 결합), PaymentService 는 `findByOrderNumber` 후 `ORDER_FORBIDDEN` | **이월** (AUTH-003 백로그와 묶음) |
 
 ### 리팩토링 백로그
@@ -233,15 +233,15 @@
 
 **주문 상태 전환 머신 도입** (ORDER-001)
 
-1. `OrderStatus` 전환 가능 매트릭스를 단일 위치에 정의하고 [Order.updateStatus](../backend/src/main/java/com/shopify/backend/domain/order/entity/Order.java) 또는 신설 `OrderStatusTransition` 유틸에서 강제.
+1. `OrderStatus` 전환 가능 매트릭스를 단일 위치에 정의하고 [Order.updateStatus](../backend/src/main/java/com/pantrka/backend/domain/order/entity/Order.java) 또는 신설 `OrderStatusTransition` 유틸에서 강제.
    - 합법 전환 예: `PENDING → PAID/CANCELLED`, `PAID → PREPARING/CANCELLED/REFUNDED`, `PREPARING → SHIPPED/CANCELLED`, `SHIPPED → DELIVERED`, `DELIVERED → REFUNDED`(반품 완료), `RETURN_REQUESTED → REFUNDED/DELIVERED` 등.
    - 그 외는 `BusinessException(ErrorCode.INVALID_ORDER_STATUS_TRANSITION)` (이미 정의됨, 사용처 추가).
-   - [AdminOrderService.updateOrderStatus](../backend/src/main/java/com/shopify/backend/domain/admin/service/AdminOrderService.java#L42-L86), `Order.cancel()`, `Order.confirm()`, `ReturnExchangeService.completeRequest` 등 모든 상태 변경 진입점에서 위 검증을 거치도록 통일.
+   - [AdminOrderService.updateOrderStatus](../backend/src/main/java/com/pantrka/backend/domain/admin/service/AdminOrderService.java#L42-L86), `Order.cancel()`, `Order.confirm()`, `ReturnExchangeService.completeRequest` 등 모든 상태 변경 진입점에서 위 검증을 거치도록 통일.
    - 이 검증을 켜면 `wasPaid` 등 분기 헬퍼도 단순화 가능.
 
 **SHIPPED 전환 시 운송장 정보 필수화** (ORDER-002)
 
-2. [AdminOrderStatusUpdateRequest](../backend/src/main/java/com/shopify/backend/domain/admin/dto/AdminOrderStatusUpdateRequest.java) 에 `@AssertTrue` 또는 service-level 검증 추가:
+2. [AdminOrderStatusUpdateRequest](../backend/src/main/java/com/pantrka/backend/domain/admin/dto/AdminOrderStatusUpdateRequest.java) 에 `@AssertTrue` 또는 service-level 검증 추가:
    ```java
    if (newStatus == OrderStatus.SHIPPED) {
        if (!StringUtils.hasText(request.getCarrier()) || !StringUtils.hasText(request.getTrackingNumber())) {
@@ -307,7 +307,7 @@
 
 | 번호 | 심각도 | 증상 | 원인 | 처리 |
 |---|---|---|---|---|
-| **COUPON-001** | 개선 제안 | `PATCH /api/admin/coupons/{id}` 에 명세상 "변경 불가 필드"인 `discountType` / `discountValue` 를 포함해 보내도 200 응답. DB는 불변하지만 클라이언트는 자기 변경이 무시된 사실을 알 수 없음 | [CouponUpdateRequest.java](../backend/src/main/java/com/shopify/backend/domain/coupon/dto/CouponUpdateRequest.java) 에 두 필드 자체가 없어 Jackson 이 unknown property 로 조용히 무시 | **이월** (선택적 — 명시적 거절을 위해서는 `@JsonInclude` 또는 컨트롤러 입력 검증 추가 필요) |
+| **COUPON-001** | 개선 제안 | `PATCH /api/admin/coupons/{id}` 에 명세상 "변경 불가 필드"인 `discountType` / `discountValue` 를 포함해 보내도 200 응답. DB는 불변하지만 클라이언트는 자기 변경이 무시된 사실을 알 수 없음 | [CouponUpdateRequest.java](../backend/src/main/java/com/pantrka/backend/domain/coupon/dto/CouponUpdateRequest.java) 에 두 필드 자체가 없어 Jackson 이 unknown property 로 조용히 무시 | **이월** (선택적 — 명시적 거절을 위해서는 `@JsonInclude` 또는 컨트롤러 입력 검증 추가 필요) |
 | **COUPON-002** | 경미 (RETURN-001 재발견) | 관리자 PATCH 페이로드에 한글 쿠폰 이름 포함 시 500 + `JSON parse error: Invalid UTF-8 middle byte`. Git Bash + Windows curl 조합에서만 재현 | RETURN-001 와 동일 원인. `GlobalExceptionHandler` 에 `HttpMessageNotReadableException` 전용 핸들러가 없어 catch-all 500 으로 매핑 | **이월** (RETURN 트랙 백로그 1번과 묶음) |
 
 ### 리팩토링 백로그

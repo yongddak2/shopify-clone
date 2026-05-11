@@ -6,7 +6,7 @@ export default function Footer() {
           {/* 브랜드 */}
           <div>
             <h3 className="text-sm font-bold tracking-widest mb-4 text-[var(--text-primary)]">
-              SHOPIFY
+              PanTrKa
             </h3>
             <p className="text-xs text-[var(--text-dim)] leading-relaxed">
               미니멀 의류 쇼핑몰
@@ -31,10 +31,10 @@ export default function Footer() {
               COMPANY INFO
             </h4>
             <ul className="space-y-2 text-xs text-[var(--text-dim)]">
-              <li>상호명: SHOPIFY</li>
+              <li>상호명: PanTrKa</li>
               <li>대표: 홍길동</li>
               <li>사업자등록번호: 123-45-67890</li>
-              <li>이메일: contact@shopify-clone.com</li>
+              <li>이메일: contact@pantrka.com</li>
               <li>전화: 02-1234-5678</li>
             </ul>
           </div>
@@ -42,7 +42,7 @@ export default function Footer() {
 
         <div className="mt-10 pt-6 border-t border-[var(--border-color)]">
           <p className="text-xs text-[var(--text-dim)] text-center">
-            &copy; 2025 SHOPIFY. All rights reserved.
+            &copy; 2025 PanTrKa. All rights reserved.
           </p>
         </div>
       </div>

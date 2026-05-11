@@ -251,7 +251,7 @@ export default function Header() {
         {/* 패널 상단 */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-[var(--border-color)]">
           <span className="text-lg font-bold tracking-widest text-[var(--text-primary)]">
-            SHOPIFY
+            PanTrKa
           </span>
           <button
             onClick={() => setSideOpen(false)}
