@@ -166,7 +166,7 @@ locked.decreaseStock(quantity); // 또는 increaseStock / updateStockQuantity
 
 ---
 
-## Spring Boot 4.0.4 자동 설정 누락 패턴
+## Spring Boot 4.0.4 / Hibernate 환경 함정
 
 새 빈을 주입하려는데 startup 에서 `No qualifying bean of type ...` 으로 실패하면 자동 설정 누락부터 의심. 새 사례 발견 시 이 섹션에 누적.
 
@@ -178,11 +178,13 @@ locked.decreaseStock(quantity); // 또는 increaseStock / updateStockQuantity
 private static final ObjectMapper MAPPER = new ObjectMapper();
 ```
   참고: `CustomAuthenticationEntryPoint`, `CustomAccessDeniedHandler`
+- **PostgreSQL `IS NULL` 파라미터 타입 추론 실패** (SQLState 42P18): `@Query` 의 `(:param IS NULL OR col = :param)` 패턴 시 Hibernate가 타입 못 잡음. `col = COALESCE(:param, col)` 로 우회 (컬럼 타입에서 자동 추론). 참고: `OrderRepository.searchForAdmin`
 
 ### 가이드
 
 - 새 컴포넌트가 자동 설정 빈을 주입할 때 → starter 의존성 + 자동 설정 활성화 여부부터 확인
 - 깨지면 직접 인스턴스화 또는 명시적 `@Bean` 등록으로 우회
+- 동적 쿼리 nullable 파라미터는 `IS NULL` 분기 대신 `COALESCE` 사용 (PostgreSQL 한정 이슈)
 
 ---
 

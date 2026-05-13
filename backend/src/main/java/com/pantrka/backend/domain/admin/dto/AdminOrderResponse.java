@@ -4,6 +4,8 @@ import com.pantrka.backend.domain.order.dto.OrderItemResponse;
 import com.pantrka.backend.domain.order.entity.Order;
 import com.pantrka.backend.domain.order.entity.OrderItem;
 import com.pantrka.backend.domain.order.entity.OrderStatus;
+import com.pantrka.backend.domain.order.entity.Payment;
+import com.pantrka.backend.domain.order.entity.PaymentMethod;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -18,11 +20,13 @@ public class AdminOrderResponse {
     private final Long id;
     private final String orderNumber;
     private final Long memberId;
+    private final String memberName;
     private final OrderStatus status;
     private final BigDecimal totalAmount;
     private final BigDecimal discountAmount;
     private final BigDecimal deliveryFee;
     private final BigDecimal finalAmount;
+    private final PaymentMethod paymentMethod;
     private final String recipient;
     private final String phone;
     private final String address;
@@ -30,7 +34,7 @@ public class AdminOrderResponse {
     private final LocalDateTime createdAt;
     private final List<OrderItemResponse> items;
 
-    public static AdminOrderResponse from(Order order, List<OrderItem> orderItems) {
+    public static AdminOrderResponse from(Order order, List<OrderItem> orderItems, Payment payment) {
         List<OrderItemResponse> items = orderItems.stream()
                 .map(OrderItemResponse::from)
                 .toList();
@@ -39,11 +43,13 @@ public class AdminOrderResponse {
                 .id(order.getId())
                 .orderNumber(order.getOrderNumber())
                 .memberId(order.getMember().getId())
+                .memberName(order.getMember().getName())
                 .status(order.getStatus())
                 .totalAmount(order.getTotalAmount())
                 .discountAmount(order.getDiscountAmount())
                 .deliveryFee(order.getDeliveryFee())
                 .finalAmount(order.getFinalAmount())
+                .paymentMethod(payment != null ? payment.getMethod() : null)
                 .recipient(order.getRecipient())
                 .phone(order.getPhone())
                 .address(order.getAddress())

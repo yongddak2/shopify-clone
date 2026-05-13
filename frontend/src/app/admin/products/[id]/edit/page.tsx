@@ -315,7 +315,7 @@ export default function AdminProductEditPage() {
       <form onSubmit={handleSubmit} noValidate>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* 좌측: 기본 정보 */}
-          <div className="bg-[#2a2a2a] border border-[var(--border-color)] rounded p-6">
+          <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded p-6">
             <h2 className="text-sm font-light tracking-wider text-[var(--text-primary)] mb-4">
               기본 정보
             </h2>
@@ -430,7 +430,7 @@ export default function AdminProductEditPage() {
           {/* 우측: 옵션 + 이미지 */}
           <div className="space-y-6">
             {/* 옵션 관리 */}
-            <div className="bg-[#2a2a2a] border border-[var(--border-color)] rounded p-6">
+            <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded p-6">
               <h2 className="text-sm font-light tracking-wider text-[var(--text-primary)] mb-4">
                 옵션 관리
               </h2>
@@ -465,8 +465,8 @@ export default function AdminProductEditPage() {
                           placeholder="예: M-블랙"
                           style={{
                             flex: 1,
-                            backgroundColor: "#3a3a3a",
-                            border: "1px solid #555",
+                            backgroundColor: "var(--input-bg)",
+                            border: "1px solid var(--border-color)",
                             padding: "8px 12px",
                             fontSize: "13px",
                             color: "var(--text-secondary)",
@@ -485,8 +485,8 @@ export default function AdminProductEditPage() {
                           onFocus={(e) => e.target.select()}
                           style={{
                             width: "80px",
-                            backgroundColor: "#3a3a3a",
-                            border: "1px solid #555",
+                            backgroundColor: "var(--input-bg)",
+                            border: "1px solid var(--border-color)",
                             padding: "8px 12px",
                             fontSize: "13px",
                             color: "var(--text-secondary)",
@@ -533,7 +533,7 @@ export default function AdminProductEditPage() {
                 (img) => !img.uploading && !img.markedForDelete
               );
               return (
-                <div className="bg-[#2a2a2a] border border-[var(--border-color)] rounded p-6">
+                <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded p-6">
                   <h2 className="text-sm font-light tracking-wider text-[var(--text-primary)] mb-4">
                     이미지 관리 ({activeCount}/{MAX_IMAGES})
                   </h2>

@@ -268,10 +268,13 @@ export interface CreateProductRequest {
 }
 
 // 관리자 - 주문
+export type PaymentMethod = "CARD" | "TRANSFER" | "VIRTUAL";
+
 export interface AdminOrder {
   id: number;
   orderNumber: string;
   memberId: number;
+  memberName: string;
   recipient: string;
   phone: string;
   address: string;
@@ -280,6 +283,7 @@ export interface AdminOrder {
   discountAmount: number;
   deliveryFee: number;
   finalAmount: number;
+  paymentMethod: PaymentMethod | null;
   status: string;
   createdAt: string;
   items: AdminOrderItem[];

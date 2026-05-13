@@ -142,7 +142,7 @@ PanTrKa 전체 REST API 목록. 공통 응답은 `ApiResponse` (`{success, messa
 
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
-| GET | /api/admin/orders | 전체 주문 조회 |
+| GET | /api/admin/orders | 주문 조회 (status·startDate·endDate·searchType·keyword 필터 지원) |
 | PATCH | /api/admin/orders/{id}/status | 주문 상태 변경 (SHIPPED 시 carrier/trackingNumber 필수) |
 | GET | /api/admin/users | 회원 목록 (filter=newThisMonth 지원) |
 | GET | /api/admin/users/{id} | 회원 상세 (통계 + 최근주문 + 배송지) |

@@ -254,7 +254,7 @@ function SummaryCard({
   valueClass?: string;
 }) {
   return (
-    <div className="bg-[#2a2a2a] border border-[var(--border-color)] rounded p-5">
+    <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded p-5">
       <div className="text-xs text-[var(--text-muted)] tracking-wider mb-2">{label}</div>
       <div className={`text-2xl font-light ${valueClass}`}>{value.toLocaleString("ko-KR")}</div>
     </div>

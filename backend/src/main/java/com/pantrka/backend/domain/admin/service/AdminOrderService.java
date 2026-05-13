@@ -5,8 +5,10 @@ import com.pantrka.backend.domain.admin.dto.AdminOrderStatusUpdateRequest;
 import com.pantrka.backend.domain.order.entity.Order;
 import com.pantrka.backend.domain.order.entity.OrderItem;
 import com.pantrka.backend.domain.order.entity.OrderStatus;
+import com.pantrka.backend.domain.order.entity.Payment;
 import com.pantrka.backend.domain.order.repository.OrderItemRepository;
 import com.pantrka.backend.domain.order.repository.OrderRepository;
+import com.pantrka.backend.domain.order.repository.PaymentRepository;
 import com.pantrka.backend.global.exception.BusinessException;
 import com.pantrka.backend.global.exception.ErrorCode;
 import com.pantrka.backend.infra.email.EmailService;
@@ -19,7 +21,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,14 +36,29 @@ public class AdminOrderService {
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
+    private final PaymentRepository paymentRepository;
     private final EmailService emailService;
 
-    public Page<AdminOrderResponse> getOrders(int page, int size) {
-        Page<Order> orders = orderRepository.findAll(
+    public Page<AdminOrderResponse> getOrders(int page, int size, OrderStatus status,
+                                              LocalDate startDate, LocalDate endDate,
+                                              String searchType, String keyword) {
+        LocalDateTime start = startDate != null ? startDate.atStartOfDay() : null;
+        LocalDateTime end = endDate != null ? endDate.atTime(LocalTime.MAX) : null;
+
+        String normalizedKeyword = (keyword != null && !keyword.isBlank()) ? keyword.trim() : null;
+        String normalizedType = normalizedKeyword != null ? searchType : null;
+
+        Page<Order> orders = orderRepository.searchForAdmin(
+                status, start, end, normalizedType, normalizedKeyword,
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+
+        List<Long> orderIds = orders.getContent().stream().map(Order::getId).toList();
+        Map<Long, Payment> paymentByOrderId = paymentRepository.findAllByOrderIdIn(orderIds).stream()
+                .collect(Collectors.toMap(p -> p.getOrder().getId(), Function.identity(), (a, b) -> a));
+
         return orders.map(order -> {
             List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
-            return AdminOrderResponse.from(order, orderItems);
+            return AdminOrderResponse.from(order, orderItems, paymentByOrderId.get(order.getId()));
         });
     }
 

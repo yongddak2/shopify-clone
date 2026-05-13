@@ -39,6 +39,44 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end);
 
+    @Query(value =
+            "SELECT DISTINCT o FROM Order o " +
+            "LEFT JOIN o.member m " +
+            "LEFT JOIN o.orderItems oi " +
+            "WHERE o.status = COALESCE(:status, o.status) " +
+            "AND o.createdAt >= COALESCE(:start, o.createdAt) " +
+            "AND o.createdAt <= COALESCE(:end, o.createdAt) " +
+            "AND (COALESCE(:keyword, '') = '' OR (" +
+            "  (:searchType = 'ORDER_NUMBER' AND LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+            "  (:searchType = 'MEMBER_NAME' AND LOWER(m.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+            "  (:searchType = 'RECIPIENT' AND LOWER(o.recipient) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+            "  (:searchType = 'MEMBER_EMAIL' AND LOWER(m.email) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+            "  (:searchType = 'TRACKING' AND LOWER(COALESCE(o.trackingNumber, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+            "  (:searchType = 'PRODUCT_NAME' AND LOWER(oi.productNameSnapshot) LIKE LOWER(CONCAT('%', :keyword, '%')))" +
+            "))",
+            countQuery =
+            "SELECT COUNT(DISTINCT o) FROM Order o " +
+            "LEFT JOIN o.member m " +
+            "LEFT JOIN o.orderItems oi " +
+            "WHERE o.status = COALESCE(:status, o.status) " +
+            "AND o.createdAt >= COALESCE(:start, o.createdAt) " +
+            "AND o.createdAt <= COALESCE(:end, o.createdAt) " +
+            "AND (COALESCE(:keyword, '') = '' OR (" +
+            "  (:searchType = 'ORDER_NUMBER' AND LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+            "  (:searchType = 'MEMBER_NAME' AND LOWER(m.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+            "  (:searchType = 'RECIPIENT' AND LOWER(o.recipient) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+            "  (:searchType = 'MEMBER_EMAIL' AND LOWER(m.email) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+            "  (:searchType = 'TRACKING' AND LOWER(COALESCE(o.trackingNumber, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+            "  (:searchType = 'PRODUCT_NAME' AND LOWER(oi.productNameSnapshot) LIKE LOWER(CONCAT('%', :keyword, '%')))" +
+            "))")
+    Page<Order> searchForAdmin(
+            @Param("status") OrderStatus status,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
+            @Param("searchType") String searchType,
+            @Param("keyword") String keyword,
+            Pageable pageable);
+
     @EntityGraph(attributePaths = {"member"})
     List<Order> findTop5ByOrderByCreatedAtDesc();
 

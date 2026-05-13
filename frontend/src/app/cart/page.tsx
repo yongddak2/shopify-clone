@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -31,7 +31,7 @@ interface CartGroup {
   items: CartItem[];
 }
 
-function groupByProduct(items: CartItem[]): CartGroup[] {
+function groupByProduct(items: CartItem[], sortKeys: Map<number, number>): CartGroup[] {
   const map = new Map<number, CartGroup>();
   for (const item of items) {
     const existing = map.get(item.productId);
@@ -51,9 +51,10 @@ function groupByProduct(items: CartItem[]): CartGroup[] {
   }
   const groups = Array.from(map.values());
   groups.sort((a, b) => {
-    const maxA = Math.max(...a.items.map((i) => i.id));
-    const maxB = Math.max(...b.items.map((i) => i.id));
-    return maxB - maxA;
+    // sortKeys: 세션 내에서 본 적 있는 max cart_item.id (옵션 삭제로도 줄어들지 않음)
+    const keyA = sortKeys.get(a.productId) ?? Math.max(...a.items.map((i) => i.id));
+    const keyB = sortKeys.get(b.productId) ?? Math.max(...b.items.map((i) => i.id));
+    return keyB - keyA;
   });
   for (const group of groups) {
     group.items.sort((a, b) => a.id - b.id);
@@ -98,7 +99,15 @@ export default function CartPage() {
   });
 
   const items = data?.data ?? [];
-  const groups = useMemo(() => groupByProduct(items), [items]);
+
+  // productId → 본 적 있는 max cart_item.id. 옵션 삭제로 줄어들지 않게 ref에 누적 보관.
+  const sortKeyRef = useRef<Map<number, number>>(new Map());
+  for (const item of items) {
+    const current = sortKeyRef.current.get(item.productId) ?? 0;
+    if (item.id > current) sortKeyRef.current.set(item.productId, item.id);
+  }
+
+  const groups = useMemo(() => groupByProduct(items, sortKeyRef.current), [items]);
 
   // 초기 체크 상태: 빈 배열 (아무것도 체크 안 됨)
   useEffect(() => {

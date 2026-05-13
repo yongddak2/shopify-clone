@@ -278,7 +278,7 @@ export default function PrivacyPage() {
               처리와 관련한 정보주체의 불만처리 및 피해구제 등을 위하여 아래와
               같이 개인정보 보호책임자를 지정하고 있습니다.
             </p>
-            <div className="bg-[#1e1e1e] border border-[var(--border-color)] p-4 text-xs space-y-1">
+            <div className="bg-[var(--card-bg)] border border-[var(--border-color)] p-4 text-xs space-y-1">
               <p>
                 <span className="text-[var(--text-muted)]">성명:</span>{" "}
                 [대표자명]

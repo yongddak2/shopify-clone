@@ -103,10 +103,29 @@ export async function updateStock(
 }
 
 // 주문 관리
-export async function getAdminOrders(page = 0) {
+export interface AdminOrderFilters {
+  page?: number;
+  size?: number;
+  status?: string;
+  startDate?: string;  // YYYY-MM-DD
+  endDate?: string;    // YYYY-MM-DD
+  searchType?: string;
+  keyword?: string;
+}
+
+export async function getAdminOrders(filters: AdminOrderFilters = {}) {
+  const { page = 0, size = 20, status, startDate, endDate, searchType, keyword } = filters;
+  const params: Record<string, string | number> = { page, size, sort: "id,desc" };
+  if (status) params.status = status;
+  if (startDate) params.startDate = startDate;
+  if (endDate) params.endDate = endDate;
+  if (searchType && keyword) {
+    params.searchType = searchType;
+    params.keyword = keyword;
+  }
   const res = await api.get<ApiResponse<PageResponse<AdminOrder>>>(
     "/api/admin/orders",
-    { params: { page, size: 20, sort: "id,desc" } }
+    { params }
   );
   return res.data;
 }

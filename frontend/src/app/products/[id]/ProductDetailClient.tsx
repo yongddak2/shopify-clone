@@ -298,7 +298,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
                 <button
                   type="button"
                   onClick={() => setColorDropdownOpen((v) => !v)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-sm bg-[#2a2a2a] border border-[#555] text-left hover:border-[var(--text-muted)] transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-3 text-sm bg-[var(--input-bg)] border border-[var(--border-color)] text-left hover:border-[var(--text-muted)] transition-colors"
                 >
                   <span className={selectedColor ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}>
                     {selectedColor || "색상을 선택해주세요"}
@@ -310,7 +310,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
                   )}
                 </button>
                 {colorDropdownOpen && (
-                  <div className="absolute left-0 right-0 top-full mt-1 bg-[#2a2a2a] border border-[#555] z-50 max-h-64 overflow-y-auto">
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-[var(--input-bg)] border border-[var(--border-color)] z-50 max-h-64 overflow-y-auto shadow-md">
                     {colors.map((color) => {
                       const matching = optionValues.filter((v) => v.value.split('-').slice(1).join('-') === color);
                       const allOut = matching.every((v) => v.stockQuantity === 0);
@@ -328,10 +328,10 @@ export default function ProductDetailClient({ id }: { id: string }) {
                           }}
                           className={`w-full text-left px-4 py-3 text-sm transition-colors ${
                             allOut
-                              ? "text-[#666] cursor-not-allowed"
+                              ? "text-[var(--text-dim)] cursor-not-allowed"
                               : selectedColor === color
-                                ? "text-white bg-[#3a3a3a]"
-                                : "text-[var(--text-secondary)] hover:bg-[#3a3a3a]"
+                                ? "bg-[var(--text-primary)] text-[var(--btn-primary-text)]"
+                                : "text-[var(--text-secondary)] hover:bg-[var(--border-light)]"
                           }`}
                         >
                           {color}{allOut && " (품절)"}
@@ -353,7 +353,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
                     }
                     setSizeDropdownOpen((v) => !v);
                   }}
-                  className="w-full flex items-center justify-between px-4 py-3 text-sm bg-[#2a2a2a] border border-[#555] text-left hover:border-[var(--text-muted)] transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-3 text-sm bg-[var(--input-bg)] border border-[var(--border-color)] text-left hover:border-[var(--text-muted)] transition-colors"
                 >
                   <span className={selectedSize ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}>
                     {selectedSize || "사이즈"}
@@ -365,7 +365,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
                   )}
                 </button>
                 {sizeDropdownOpen && selectedColor && (
-                  <div className="absolute left-0 right-0 top-full mt-1 bg-[#2a2a2a] border border-[#555] z-50 max-h-64 overflow-y-auto">
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-[var(--input-bg)] border border-[var(--border-color)] z-50 max-h-64 overflow-y-auto shadow-md">
                     {sizesForColor.map((size) => {
                       const target = `${size}-${selectedColor}`;
                       const opt = optionValues.find((v) => v.value === target);
@@ -383,10 +383,10 @@ export default function ProductDetailClient({ id }: { id: string }) {
                           }}
                           className={`w-full text-left px-4 py-3 text-sm transition-colors ${
                             outOfStock
-                              ? "text-[#666] cursor-not-allowed"
+                              ? "text-[var(--text-dim)] cursor-not-allowed"
                               : selectedSize === size
-                                ? "text-white bg-[#3a3a3a]"
-                                : "text-[var(--text-secondary)] hover:bg-[#3a3a3a]"
+                                ? "bg-[var(--text-primary)] text-[var(--btn-primary-text)]"
+                                : "text-[var(--text-secondary)] hover:bg-[var(--border-light)]"
                           }`}
                         >
                           {size}{outOfStock && " (품절)"}
@@ -405,7 +405,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
                 <button
                   type="button"
                   onClick={() => setSingleDropdownOpen((v) => !v)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-sm bg-[#2a2a2a] border border-[#555] text-left hover:border-[var(--text-muted)] transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-3 text-sm bg-[var(--input-bg)] border border-[var(--border-color)] text-left hover:border-[var(--text-muted)] transition-colors"
                 >
                   <span className={selectedOption ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}>
                     {selectedOption ? selectedOption.value : "옵션을 선택해주세요"}
@@ -417,7 +417,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
                   )}
                 </button>
                 {singleDropdownOpen && (
-                  <div className="absolute left-0 right-0 top-full mt-1 bg-[#2a2a2a] border border-[#555] z-50 max-h-64 overflow-y-auto">
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-[var(--input-bg)] border border-[var(--border-color)] z-50 max-h-64 overflow-y-auto shadow-md">
                     {optionValues.map((opt) => {
                       const outOfStock = opt.stockQuantity === 0;
                       return (
@@ -433,10 +433,10 @@ export default function ProductDetailClient({ id }: { id: string }) {
                           }}
                           className={`w-full text-left px-4 py-3 text-sm transition-colors ${
                             outOfStock
-                              ? "text-[#666] cursor-not-allowed"
+                              ? "text-[var(--text-dim)] cursor-not-allowed"
                               : selectedOptionValueId === opt.id
-                                ? "text-white bg-[#3a3a3a]"
-                                : "text-[var(--text-secondary)] hover:bg-[#3a3a3a]"
+                                ? "bg-[var(--text-primary)] text-[var(--btn-primary-text)]"
+                                : "text-[var(--text-secondary)] hover:bg-[var(--border-light)]"
                           }`}
                         >
                           {opt.value}{outOfStock && " (품절)"}

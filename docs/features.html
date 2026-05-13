@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PanTrKa | 기능 정리</title>
+<style>
+  :root {
+    --bg: #0f0f10;
+    --panel: #18181a;
+    --panel-2: #1f1f22;
+    --border: #2a2a2e;
+    --text: #ececec;
+    --text-dim: #a9a9b1;
+    --text-muted: #6f6f78;
+    --accent: #ffb3c1;
+    --accent-2: #c084fc;
+    --ok: #6ee7b7;
+    --warn: #fcd34d;
+    --danger: #f87171;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--text); margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo",
+                 "Pretendard", "Noto Sans KR", sans-serif;
+    font-size: 14px; line-height: 1.65; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-2); }
+
+  .wrap { display: grid; grid-template-columns: 240px minmax(0, 1fr);
+          max-width: 1240px; margin: 0 auto; min-height: 100vh; }
+
+  nav.side {
+    position: sticky; top: 0; align-self: start;
+    height: 100vh; overflow-y: auto;
+    border-right: 1px solid var(--border);
+    padding: 32px 20px; font-size: 13px;
+  }
+  nav.side h1 { font-size: 16px; letter-spacing: .15em; margin: 0 0 6px;
+                color: var(--accent); font-weight: 600; }
+  nav.side .sub { color: var(--text-muted); font-size: 11px;
+                  letter-spacing: .15em; margin-bottom: 28px; text-transform: uppercase; }
+  nav.side ul { list-style: none; padding: 0; margin: 0; }
+  nav.side li { margin: 4px 0; }
+  nav.side a { color: var(--text-dim); display: block; padding: 6px 10px;
+               border-radius: 6px; }
+  nav.side a:hover { background: var(--panel); color: var(--text); }
+  nav.side .group { color: var(--text-muted); font-size: 10px;
+                    letter-spacing: .2em; padding: 18px 10px 6px;
+                    text-transform: uppercase; }
+
+  main { padding: 48px 56px 120px; min-width: 0; }
+
+  header.hero { margin-bottom: 56px; padding-bottom: 32px;
+                border-bottom: 1px solid var(--border); }
+  header.hero h2 { font-size: 30px; margin: 0 0 8px; letter-spacing: -.01em; }
+  header.hero p { color: var(--text-dim); margin: 0; }
+  header.hero .meta { margin-top: 18px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { display: inline-block; padding: 4px 10px; border: 1px solid var(--border);
+          border-radius: 999px; font-size: 11px; color: var(--text-dim);
+          letter-spacing: .05em; background: var(--panel); }
+  .chip.accent { color: var(--accent); border-color: rgba(255,179,193,0.4); }
+
+  section { margin-bottom: 56px; }
+  section > h3 { font-size: 20px; margin: 0 0 6px; letter-spacing: -.01em; }
+  section > h3 .num { color: var(--text-muted); margin-right: 12px; font-weight: 500; }
+  section > .lead { color: var(--text-dim); margin: 0 0 24px; font-size: 13px; }
+
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .card { background: var(--panel); border: 1px solid var(--border);
+          border-radius: 10px; padding: 18px 20px; }
+  .card h4 { margin: 0 0 10px; font-size: 14px; color: var(--text);
+             letter-spacing: .02em; display: flex; align-items: center; gap: 8px; }
+  .card h4 .tag { font-size: 10px; padding: 2px 8px; border-radius: 4px;
+                  background: var(--panel-2); color: var(--text-dim); font-weight: 400;
+                  letter-spacing: .1em; text-transform: uppercase; }
+  .card h4 .tag.user { background: rgba(110,231,183,.12); color: var(--ok); }
+  .card h4 .tag.admin { background: rgba(252,211,77,.12); color: var(--warn); }
+  .card h4 .tag.both { background: rgba(192,132,252,.12); color: var(--accent-2); }
+  .card ul { padding-left: 18px; margin: 0; color: var(--text-dim); font-size: 13px; }
+  .card ul li { margin: 3px 0; }
+  .card .path { display: block; color: var(--text-muted); font-size: 11px;
+                margin-top: 10px; font-family: ui-monospace, SFMono-Regular,
+                "Consolas", monospace; }
+
+  .rules { background: var(--panel-2); border: 1px solid var(--border);
+           border-radius: 10px; padding: 20px 24px; }
+  .rules h4 { margin: 0 0 14px; font-size: 13px; letter-spacing: .15em;
+              text-transform: uppercase; color: var(--accent); }
+  .rules table { width: 100%; border-collapse: collapse; }
+  .rules td { padding: 8px 0; vertical-align: top; font-size: 13px; }
+  .rules td:first-child { color: var(--text); width: 180px;
+                          font-weight: 500; padding-right: 16px; }
+  .rules td:last-child { color: var(--text-dim); }
+  .rules tr { border-bottom: 1px solid var(--border); }
+  .rules tr:last-child { border-bottom: none; }
+
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          font-size: 12px; }
+  .flow .step { padding: 6px 12px; background: var(--panel);
+                border: 1px solid var(--border); border-radius: 6px;
+                color: var(--text); }
+  .flow .arrow { color: var(--text-muted); }
+
+  .stack { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  .stack .row { background: var(--panel); border: 1px solid var(--border);
+                border-radius: 8px; padding: 12px 14px; }
+  .stack .row .k { color: var(--text-muted); font-size: 11px;
+                    letter-spacing: .1em; text-transform: uppercase; }
+  .stack .row .v { color: var(--text); font-size: 13px; margin-top: 4px;
+                   font-family: ui-monospace, SFMono-Regular, "Consolas", monospace; }
+
+  code { background: var(--panel); padding: 1px 6px; border-radius: 4px;
+         font-size: 12px; color: var(--accent); }
+
+  footer { color: var(--text-muted); font-size: 11px;
+           border-top: 1px solid var(--border); padding-top: 24px; margin-top: 64px; }
+
+  @media (max-width: 900px) {
+    .wrap { grid-template-columns: 1fr; }
+    nav.side { position: relative; height: auto; border-right: none;
+               border-bottom: 1px solid var(--border); }
+    main { padding: 32px 24px 80px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="side">
+  <h1>PanTrKa</h1>
+  <div class="sub">Feature Catalog</div>
+  <ul>
+    <li class="group">사용자</li>
+    <li><a href="#auth">회원 / 인증</a></li>
+    <li><a href="#product">상품</a></li>
+    <li><a href="#cart">장바구니</a></li>
+    <li><a href="#order">주문 / 결제</a></li>
+    <li><a href="#review">리뷰</a></li>
+    <li><a href="#coupon">쿠폰</a></li>
+    <li><a href="#return">반품 / 교환</a></li>
+    <li><a href="#mypage">마이페이지</a></li>
+    <li><a href="#wishlist">찜</a></li>
+
+    <li class="group">관리자</li>
+    <li><a href="#admin">어드민</a></li>
+
+    <li class="group">시스템</li>
+    <li><a href="#email">이메일 알림</a></li>
+    <li><a href="#rules">핵심 비즈니스 규칙</a></li>
+    <li><a href="#stack">기술 스택 / 인프라</a></li>
+    <li><a href="#test">테스트</a></li>
+  </ul>
+</nav>
+
+<main>
+
+<header class="hero">
+  <h2>PanTrKa 기능 정리</h2>
+  <p>의류 쇼핑몰 모노레포 — 사용자 영역 + 관리자 어드민 + 결제·이메일·S3 연동까지 한눈에.</p>
+  <div class="meta">
+    <span class="chip accent">Spring Boot 4.0.4 / Java 17</span>
+    <span class="chip accent">Next.js 16.2.1 / React 19</span>
+    <span class="chip">PostgreSQL 16</span>
+    <span class="chip">Redis 7</span>
+    <span class="chip">AWS S3</span>
+    <span class="chip">TossPayments</span>
+  </div>
+</header>
+
+<!-- ============================== AUTH ============================== -->
+<section id="auth">
+  <h3><span class="num">01</span>회원 / 인증</h3>
+  <p class="lead">JWT(access 30분 + refresh 7일) 기반. 401 시 axios 인스턴스에서 자동 재발급.</p>
+  <div class="grid">
+    <div class="card">
+      <h4>회원가입 <span class="tag user">USER</span></h4>
+      <ul>
+        <li>이메일/비밀번호/이름/전화번호</li>
+        <li>약관 동의 3종 (이용약관 / 개인정보 / 마케팅)</li>
+        <li>비밀번호 정책: 8자+영문+숫자+특수문자</li>
+        <li>가입 시 웰컴 쿠폰 자동 발급 (실패해도 가입 진행)</li>
+      </ul>
+      <span class="path">frontend/src/app/signup/page.tsx · AuthController</span>
+    </div>
+    <div class="card">
+      <h4>로그인 / 로그아웃 <span class="tag user">USER</span></h4>
+      <ul>
+        <li>access / refresh 토큰 발급, refresh는 Redis 보관</li>
+        <li>탈퇴 회원 차단 (<code>findByEmailAndDeletedAtIsNull</code>)</li>
+        <li>소셜 로그인 provider 컬럼 보유 (LOCAL/KAKAO/GOOGLE)</li>
+      </ul>
+      <span class="path">frontend/src/app/login/page.tsx · stores/authStore.ts</span>
+    </div>
+    <div class="card">
+      <h4>비밀번호 찾기 <span class="tag user">USER</span></h4>
+      <ul>
+        <li>3단계 흐름: 코드 발송 → 인증 → 새 비밀번호</li>
+        <li>Redis 코드 3분 · verified 키 10분 · 재발송 30초</li>
+        <li>소셜 로그인 계정은 차단</li>
+      </ul>
+      <span class="path">frontend/src/app/forgot-password/page.tsx · PasswordResetController</span>
+    </div>
+    <div class="card">
+      <h4>회원 정보 / 비밀번호 변경 <span class="tag user">USER</span></h4>
+      <ul>
+        <li>이름·전화번호 수정</li>
+        <li>비밀번호 변경 30일 제한 (<code>passwordChangedAt</code>)</li>
+        <li>주소록 CRUD + 기본 배송지 지정</li>
+      </ul>
+      <span class="path">mypage/profile · mypage/addresses · UserController</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== PRODUCT ============================== -->
+<section id="product">
+  <h3><span class="num">02</span>상품</h3>
+  <p class="lead">옵션은 항상 <code>"옵션"</code> 그룹 + <code>"S-블랙"</code> 형태 조합값. <code>"FREE"</code> 는 옵션 없는 상품.</p>
+  <div class="grid">
+    <div class="card">
+      <h4>상품 목록 / 검색 <span class="tag user">USER</span></h4>
+      <ul>
+        <li>키워드 + 카테고리 + 가격대 필터</li>
+        <li>정렬: 신상품 / 판매량 (BEST)</li>
+        <li>찜 하트 토글 (비로그인 차단)</li>
+      </ul>
+      <span class="path">products · search · ProductController</span>
+    </div>
+    <div class="card">
+      <h4>상품 상세 <span class="tag user">USER</span></h4>
+      <ul>
+        <li>옵션 드롭다운 분기 (FREE / 색상-사이즈 분리 / 단일)</li>
+        <li>품절 옵션 disabled · 수량 변경 시 자동 리셋</li>
+        <li>장바구니 / 바로 구매 / 찜</li>
+      </ul>
+      <span class="path">products/[id]/ProductDetailClient.tsx</span>
+    </div>
+    <div class="card">
+      <h4>리뷰 섹션 <span class="tag user">USER</span></h4>
+      <ul>
+        <li>별점·이미지·좋아요·페이지네이션</li>
+        <li>N+1 방지: <code>@EntityGraph</code> 사용</li>
+      </ul>
+      <span class="path">products/[id]/ReviewSection.tsx · ReviewController</span>
+    </div>
+    <div class="card">
+      <h4>카테고리 트리 <span class="tag both">공통</span></h4>
+      <ul>
+        <li>self-FK 트리 구조 (depth + sortOrder)</li>
+        <li>5분 staleTime 캐시</li>
+      </ul>
+      <span class="path">CATEGORY 테이블</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== CART ============================== -->
+<section id="cart">
+  <h3><span class="num">03</span>장바구니</h3>
+  <p class="lead">재고 초과 항목은 회색 처리 + 체크박스 자동 해제. 주문 차단.</p>
+  <div class="grid">
+    <div class="card">
+      <h4>장바구니 페이지 <span class="tag user">USER</span></h4>
+      <ul>
+        <li>옵션별 수량 ± / 삭제</li>
+        <li>재고 초과 시 <code>opacity-40 grayscale</code> + 상단 sticky 경고</li>
+        <li>− 버튼은 재고 초과 상태에서도 활성 (수량 줄이기 허용)</li>
+        <li>선택 항목 합계 + 배송비 자동 계산</li>
+      </ul>
+      <span class="path">cart/page.tsx · CartController</span>
+    </div>
+    <div class="card">
+      <h4>캐시 정책 <span class="tag both">공통</span></h4>
+      <ul>
+        <li>장바구니 캐시 무효화는 <code>/payment/success</code> 에서만</li>
+        <li>order 페이지에서 무효화 시 결제창 차단되는 이슈 회피</li>
+      </ul>
+      <span class="path">queryInvalidator.ts</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== ORDER ============================== -->
+<section id="order">
+  <h3><span class="num">04</span>주문 / 결제</h3>
+  <p class="lead">토스페이먼츠 + 비관적 락(<code>PESSIMISTIC_WRITE</code>) 기반 재고 정합성.</p>
+
+  <div style="margin-bottom:18px; padding: 16px 20px; background: var(--panel); border:1px solid var(--border); border-radius:10px;">
+    <div class="flow">
+      <span class="step">주문 생성</span><span class="arrow">→</span>
+      <span class="step">토스 requestPayment</span><span class="arrow">→</span>
+      <span class="step">/payment/success</span><span class="arrow">→</span>
+      <span class="step">POST /api/payments/confirm</span><span class="arrow">→</span>
+      <span class="step">쿠폰 markUsed</span><span class="arrow">→</span>
+      <span class="step">invalidateAfterPayment</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h4>주문 생성 <span class="tag user">USER</span></h4>
+      <ul>
+        <li>카카오 주소 API + 쿠폰 적용</li>
+        <li>배송비: 50,000원 이상 무료 / 미만 3,000원</li>
+        <li>재고 락 후 <code>decreaseStock</code> + 락 객체 refresh</li>
+        <li>주문번호: <code>ORD-{millis}-{UUID앞8}</code></li>
+      </ul>
+      <span class="path">order/page.tsx · OrderService.createOrder</span>
+    </div>
+    <div class="card">
+      <h4>결제 승인 <span class="tag user">USER</span></h4>
+      <ul>
+        <li>토스 API: <code>orderNumber</code> 기반 confirm</li>
+        <li>PAID 시 판매량(<code>salesCount</code>) increase</li>
+        <li>PAID 시 쿠폰 <code>markUsed()</code> + 저장 필수</li>
+        <li>주문 확인 이메일 자동 발송 (@Async)</li>
+      </ul>
+      <span class="path">PaymentService · payment/success/page.tsx</span>
+    </div>
+    <div class="card">
+      <h4>주문 취소 <span class="tag user">USER</span></h4>
+      <ul>
+        <li>PENDING / PAID 에서만 가능</li>
+        <li>쿠폰 복원 + 재고 복구 + 판매량 감소</li>
+        <li>다중 옵션 시 optionValueId 오름차순 락 (데드락 방지)</li>
+        <li>토스 환불 API 미연동 — DB만 변경</li>
+      </ul>
+      <span class="path">OrderService.cancelOrder</span>
+    </div>
+    <div class="card">
+      <h4>구매 확정 <span class="tag user">USER</span></h4>
+      <ul>
+        <li>DELIVERED 상태에서만 가능</li>
+        <li><code>confirmedAt</code> 저장 → 리뷰 작성 권한 해제</li>
+        <li>중복 확정 차단</li>
+      </ul>
+      <span class="path">mypage/orders · OrderService.confirmOrder</span>
+    </div>
+  </div>
+
+  <div style="margin-top: 20px;">
+    <h4 style="color: var(--text-dim); font-size: 12px; letter-spacing: .15em; text-transform: uppercase; margin: 0 0 10px;">주문 상태 흐름</h4>
+    <div class="flow">
+      <span class="step">PENDING</span><span class="arrow">→</span>
+      <span class="step">PAID</span><span class="arrow">→</span>
+      <span class="step">PREPARING</span><span class="arrow">→</span>
+      <span class="step">SHIPPED</span><span class="arrow">→</span>
+      <span class="step">DELIVERED</span><span class="arrow">→</span>
+      <span class="step" style="border-color: rgba(110,231,183,.4); color: var(--ok);">CONFIRMED</span>
+    </div>
+    <div class="flow" style="margin-top: 8px;">
+      <span class="step" style="border-color: rgba(248,113,113,.4); color: var(--danger);">CANCELLED</span>
+      <span class="step" style="border-color: rgba(248,113,113,.4); color: var(--danger);">REFUNDED</span>
+      <span class="step" style="border-color: rgba(252,211,77,.4); color: var(--warn);">RETURN_REQUESTED</span>
+      <span class="step" style="border-color: rgba(252,211,77,.4); color: var(--warn);">EXCHANGE_REQUESTED</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== REVIEW ============================== -->
+<section id="review">
+  <h3><span class="num">05</span>리뷰</h3>
+  <p class="lead">구매 확정한 상품에만 작성 가능. 상품당 1회 (소프트 삭제 후 재작성 가능).</p>
+  <div class="grid">
+    <div class="card">
+      <h4>리뷰 작성 <span class="tag user">USER</span></h4>
+      <ul>
+        <li>DELIVERED + <code>confirmedAt != null</code> 조건</li>
+        <li>별점 1~5 · 텍스트 · 이미지 (5MB)</li>
+        <li>모달 방식, mypage/reviews 에서 진입</li>
+      </ul>
+      <span class="path">mypage/reviews · ReviewController</span>
+    </div>
+    <div class="card">
+      <h4>리뷰 좋아요 <span class="tag user">USER</span></h4>
+      <ul>
+        <li>review_id + member_id UNIQUE 토글</li>
+        <li>상품 상세 ReviewSection 에서 표시</li>
+      </ul>
+      <span class="path">REVIEW_LIKE 테이블</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== COUPON ============================== -->
+<section id="coupon">
+  <h3><span class="num">06</span>쿠폰</h3>
+  <p class="lead">다운로드형 쿠폰 + 회원가입 시 자동 발급되는 웰컴 쿠폰.</p>
+  <div class="grid">
+    <div class="card">
+      <h4>쿠폰 다운로드 <span class="tag user">USER</span></h4>
+      <ul>
+        <li>발급 가능 쿠폰 목록 + 다운로드 (재발급 차단)</li>
+        <li>웰컴 쿠폰은 다운로드 목록 미노출</li>
+        <li>3탭: 사용 가능 / 사용 완료 / 만료</li>
+      </ul>
+      <span class="path">mypage/coupons · CouponController</span>
+    </div>
+    <div class="card">
+      <h4>웰컴 쿠폰 <span class="tag both">공통</span></h4>
+      <ul>
+        <li><code>is_welcome=true</code> 쿠폰은 항상 1개만 활성</li>
+        <li><code>validDays</code> 필수 — 만료일 = min(가입일+N, endDate)</li>
+        <li>회원가입 시 <code>issueWelcomeCouponSafely()</code> 자동 발급</li>
+      </ul>
+      <span class="path">AuthService</span>
+    </div>
+    <div class="card">
+      <h4>쿠폰 적용 (주문) <span class="tag user">USER</span></h4>
+      <ul>
+        <li>주문 생성 시 검증 → PAID 시 <code>markUsed()</code></li>
+        <li>최소 주문 금액 / 최대 할인 금액 적용</li>
+        <li>취소 시 미만료 쿠폰 자동 복원</li>
+      </ul>
+      <span class="path">OrderService · PaymentService</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== RETURN / EXCHANGE ============================== -->
+<section id="return">
+  <h3><span class="num">07</span>반품 / 교환</h3>
+  <p class="lead">DELIVERED + 구매 확정 전에만 신청 가능. 관리자 승인 흐름.</p>
+  <div class="grid">
+    <div class="card">
+      <h4>반품 / 교환 신청 <span class="tag user">USER</span></h4>
+      <ul>
+        <li>사유 / 상세 / 이미지 (20MB)</li>
+        <li>교환은 원하는 옵션 선택 (<code>desired_option_value_id</code>)</li>
+        <li>주문 상태가 RETURN_REQUESTED / EXCHANGE_REQUESTED 로 전환</li>
+      </ul>
+      <span class="path">mypage/orders/[id]/return-exchange · ReturnExchangeController</span>
+    </div>
+    <div class="card">
+      <h4>관리자 처리 <span class="tag admin">ADMIN</span></h4>
+      <ul>
+        <li>5탭 페이지에서 REQUESTED / APPROVED / REJECTED / COMPLETED 관리</li>
+        <li>완료: RETURN → REFUNDED (재고 복구 X)</li>
+        <li>완료: EXCHANGE → DELIVERED (재고 복구 O)</li>
+      </ul>
+      <span class="path">admin/requests · AdminReturnExchangeController</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== MYPAGE ============================== -->
+<section id="mypage">
+  <h3><span class="num">08</span>마이페이지</h3>
+  <p class="lead">사이드 메뉴 + 대시보드 카드. 모든 조회는 본인 데이터만.</p>
+  <div class="grid">
+    <div class="card">
+      <h4>주문 내역</h4>
+      <ul>
+        <li>5탭 (전체 / 진행중 / 완료 / 취소 / 반품·교환)</li>
+        <li><code>confirmedAt</code> 기반 버튼 분기 (확정 / 리뷰 작성 / 반품·교환)</li>
+        <li>주문 상세 + 운송장 표시</li>
+      </ul>
+      <span class="path">mypage/orders</span>
+    </div>
+    <div class="card">
+      <h4>주소록</h4>
+      <ul>
+        <li>다중 주소 + 기본 배송지</li>
+        <li>카카오 주소 API 연동</li>
+      </ul>
+      <span class="path">mypage/addresses</span>
+    </div>
+    <div class="card">
+      <h4>쿠폰함</h4>
+      <ul>
+        <li>다운로드 섹션 + 3탭 (사용 가능 / 완료 / 만료)</li>
+      </ul>
+      <span class="path">mypage/coupons</span>
+    </div>
+    <div class="card">
+      <h4>리뷰 작성</h4>
+      <ul>
+        <li>작성 가능한 주문 항목 모달 방식</li>
+        <li>확정한 상품만 노출</li>
+      </ul>
+      <span class="path">mypage/reviews</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== WISHLIST ============================== -->
+<section id="wishlist">
+  <h3><span class="num">09</span>찜</h3>
+  <div class="grid">
+    <div class="card">
+      <h4>찜 토글 <span class="tag user">USER</span></h4>
+      <ul>
+        <li>상품 목록 / 상세 / 메인 어디서나 하트 토글</li>
+        <li>비로그인 시 로그인 안내 후 리다이렉트</li>
+        <li>mypage/wishlist 에서 일괄 조회</li>
+      </ul>
+      <span class="path">WishlistController · mypage/wishlist</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== ADMIN ============================== -->
+<section id="admin">
+  <h3><span class="num">10</span>관리자 어드민</h3>
+  <p class="lead">240px 사이드바 레이아웃. ROLE_ADMIN 권한자만 접근.</p>
+  <div class="grid">
+    <div class="card">
+      <h4>대시보드 <span class="tag admin">ADMIN</span></h4>
+      <ul>
+        <li>카드 6개 + BarChart + PieChart</li>
+        <li>매출 TOP5 + 재고 부족 상품 + 최근 주문</li>
+        <li>staleTime 60초</li>
+      </ul>
+      <span class="path">admin/page.tsx · AdminDashboardService</span>
+    </div>
+    <div class="card">
+      <h4>상품 관리 <span class="tag admin">ADMIN</span></h4>
+      <ul>
+        <li>등록 / 수정 / 삭제 (소프트 삭제)</li>
+        <li>옵션 등록: 조합형 (예: <code>"S-블랙"</code>)</li>
+        <li>이미지 다중 업로드 + 썸네일 지정 + 정렬</li>
+        <li><code>images: null</code> 변경 안 함 / <code>[]</code> 전체 삭제</li>
+      </ul>
+      <span class="path">admin/products · AdminController</span>
+    </div>
+    <div class="card">
+      <h4>주문 관리 <span class="tag admin">ADMIN</span></h4>
+      <ul>
+        <li>모든 상태 전환 허용 (관리자 신뢰 모델, 매트릭스 없음)</li>
+        <li>SHIPPED 변경 시 운송장 입력 모달</li>
+        <li>SHIPPED 이메일에 운송장·배송사 포함</li>
+      </ul>
+      <span class="path">admin/orders</span>
+    </div>
+    <div class="card">
+      <h4>회원 관리 <span class="tag admin">ADMIN</span></h4>
+      <ul>
+        <li>필터 탭: 전체 / 이번달 신규</li>
+        <li>회원 상세: 통계 · 메모 · 권한 변경</li>
+        <li>강제 탈퇴 (소프트 삭제, 본인 차단)</li>
+      </ul>
+      <span class="path">admin/users · AdminMemberService</span>
+    </div>
+    <div class="card">
+      <h4>쿠폰 관리 <span class="tag admin">ADMIN</span></h4>
+      <ul>
+        <li>CRUD + 🎁 웰컴 뱃지</li>
+        <li>수정 가능: name / 수량 / 기간 / isWelcome / validDays</li>
+        <li>할인 타입·금액은 변경 불가</li>
+        <li><code>issuedQuantity &gt; 0</code> 시 삭제 차단</li>
+      </ul>
+      <span class="path">admin/coupons · AdminCouponController</span>
+    </div>
+    <div class="card">
+      <h4>배너 관리 <span class="tag admin">ADMIN</span></h4>
+      <ul>
+        <li>최대 5개, sortOrder · isActive · title 필수</li>
+        <li>메인 슬라이더에 노출 (자동 4초 슬라이드)</li>
+      </ul>
+      <span class="path">admin/banners · AdminBannerController</span>
+    </div>
+    <div class="card">
+      <h4>재고 관리 <span class="tag admin">ADMIN</span></h4>
+      <ul>
+        <li>옵션별 재고 일괄 조회 / 수정</li>
+        <li>실시간 staleTime 0</li>
+      </ul>
+      <span class="path">admin/inventory · AdminProductService.updateStock</span>
+    </div>
+    <div class="card">
+      <h4>반품 / 교환 관리 <span class="tag admin">ADMIN</span></h4>
+      <ul>
+        <li>5탭 페이지로 상태별 처리</li>
+        <li>승인 / 반려 / 완료 워크플로우</li>
+      </ul>
+      <span class="path">admin/requests</span>
+    </div>
+    <div class="card">
+      <h4>메인페이지 설정 <span class="tag admin">ADMIN</span></h4>
+      <ul>
+        <li>신상품/BEST 사이 텍스트 섹션 (subText)</li>
+        <li>공개 API로 메인 페이지가 조회</li>
+      </ul>
+      <span class="path">AdminMainPageConfigController</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== EMAIL ============================== -->
+<section id="email">
+  <h3><span class="num">11</span>이메일 알림</h3>
+  <p class="lead">Gmail SMTP + <code>@Async</code>. <code>OrderEmailContext</code> 스냅샷으로 LazyInitializationException 회피.</p>
+  <div class="grid">
+    <div class="card">
+      <h4>PAID 알림</h4>
+      <ul>
+        <li>결제 완료 시 자동 발송</li>
+        <li>주문 번호 · 결제 금액 · 배송지</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>SHIPPED 알림</h4>
+      <ul>
+        <li>관리자가 SHIPPED 변경 시 발송</li>
+        <li>실제 운송장 번호 + 배송사 포함</li>
+        <li>null 이면 "준비 중" fallback</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>CANCELLED 알림</h4>
+      <ul>
+        <li>관리자 취소만 발송</li>
+        <li>사용자 직접 취소는 미발송</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>비밀번호 코드</h4>
+      <ul>
+        <li>비밀번호 찾기 인증 코드</li>
+        <li>Redis 3분 만료</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== RULES ============================== -->
+<section id="rules">
+  <h3><span class="num">12</span>핵심 비즈니스 규칙</h3>
+  <div class="rules">
+    <table>
+      <tr><td>배송비</td><td>50,000원 이상 무료 / 미만 3,000원</td></tr>
+      <tr><td>주문 취소 (사용자)</td><td>PENDING / PAID 에서만 가능. 쿠폰 복원 + 재고 복구 + 판매량 감소</td></tr>
+      <tr><td>주문 취소 (관리자)</td><td>모든 상태에서 강제 변경 가능 (매트릭스 없음, 관리자 신뢰 모델)</td></tr>
+      <tr><td>구매 확정</td><td>DELIVERED + 중복 불가 → <code>confirmedAt</code> 저장</td></tr>
+      <tr><td>반품 / 교환 신청</td><td>DELIVERED + <code>confirmedAt == null</code> 에서만</td></tr>
+      <tr><td>리뷰 작성</td><td>DELIVERED + <code>confirmedAt != null</code> 후. 상품당 1회 (소프트 삭제 후 재작성)</td></tr>
+      <tr><td>쿠폰 사용</td><td>주문 생성 시 검증 → PAID 시 markUsed → 취소 시 미만료 복원</td></tr>
+      <tr><td>웰컴 쿠폰</td><td>항상 1개만 활성. validDays 필수. 다운로드 목록 미노출 + 수동 발급 차단</td></tr>
+      <tr><td>판매량</td><td>PAID 시 increase / 취소·환불 시 decrease (0 미만 방지)</td></tr>
+      <tr><td>재고</td><td>주문 시 decrease / 취소 시 increase. 비관적 락 + EntityManager.refresh</td></tr>
+      <tr><td>썸네일 우선순위</td><td><code>isThumbnail=true</code> → sortOrder 최소값 fallback</td></tr>
+      <tr><td>이미지 S3 경로</td><td>products/(5MB) / reviews/(5MB) / return-requests/(20MB) / banners/</td></tr>
+      <tr><td>비밀번호</td><td>8자+영문+숫자+특수문자 / 변경 30일 제한 / 소셜 로그인 차단</td></tr>
+      <tr><td>비밀번호 찾기</td><td>Redis 코드 3분 → verified 키 10분 → 재발송 30초</td></tr>
+      <tr><td>배너</td><td>최대 5개, sortOrder · isActive · title(VARCHAR 100) 필수</td></tr>
+      <tr><td>회원 강제 탈퇴</td><td>소프트 삭제(<code>deletedAt</code>). 본인 변경/탈퇴 차단. 주문/리뷰 등 데이터 보존</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ============================== STACK ============================== -->
+<section id="stack">
+  <h3><span class="num">13</span>기술 스택 / 인프라</h3>
+  <div class="stack">
+    <div class="row"><div class="k">Backend</div><div class="v">Spring Boot 4.0.4 / Java 17</div></div>
+    <div class="row"><div class="k">Frontend</div><div class="v">Next.js 16.2.1 / React 19 / TS</div></div>
+    <div class="row"><div class="k">Style</div><div class="v">Tailwind CSS v4</div></div>
+    <div class="row"><div class="k">상태관리</div><div class="v">zustand + persist</div></div>
+    <div class="row"><div class="k">데이터 페칭</div><div class="v">@tanstack/react-query</div></div>
+    <div class="row"><div class="k">DB</div><div class="v">PostgreSQL 16 :5432</div></div>
+    <div class="row"><div class="k">캐시</div><div class="v">Redis 7 :6379</div></div>
+    <div class="row"><div class="k">스토리지</div><div class="v">AWS S3 (ap-southeast-2)</div></div>
+    <div class="row"><div class="k">결제</div><div class="v">TossPayments API</div></div>
+    <div class="row"><div class="k">이메일</div><div class="v">Gmail SMTP (@Async)</div></div>
+    <div class="row"><div class="k">인증</div><div class="v">JWT access 30분 / refresh 7일</div></div>
+    <div class="row"><div class="k">JPA</div><div class="v">ddl-auto=update, open-in-view=false</div></div>
+    <div class="row"><div class="k">Multipart</div><div class="v">max 20MB</div></div>
+    <div class="row"><div class="k">API 문서</div><div class="v">Swagger /swagger-ui.html</div></div>
+  </div>
+</section>
+
+<!-- ============================== TEST ============================== -->
+<section id="test">
+  <h3><span class="num">14</span>테스트 (27개)</h3>
+  <div class="grid">
+    <div class="card">
+      <h4>단위 / 서비스</h4>
+      <ul>
+        <li>BackendApplicationTests (1)</li>
+        <li>AuthServiceTest (5) — 웰컴 쿠폰 분기 포함</li>
+        <li>OrderServiceTest (8) — 생성/취소/배송비/구매확정</li>
+        <li>PaymentServiceTest (7)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>동시성 / 통합</h4>
+      <ul>
+        <li>OrderConcurrencyTest (3) — Service 레벨 lost update 방어</li>
+        <li>OrderApiConcurrencyTest (3) — HTTP API 레벨</li>
+        <li>JDK <code>java.net.http.HttpClient</code> 사용 (Spring Boot 4.0.4 TestRestTemplate 우회)</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Generated 2026-05-13 · 정보 출처: CLAUDE.md (루트 / backend / frontend) + 컨트롤러 목록 ·
+  Backend Swagger: <a href="http://localhost:8080/swagger-ui.html">/swagger-ui.html</a>
+</footer>
+
+</main>
+</div>
+</body>
+</html>

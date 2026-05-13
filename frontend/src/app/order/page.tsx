@@ -916,11 +916,11 @@ export default function OrderPage() {
                 }}
                 className="w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors"
               >
-                <option value="" className="bg-[#333] text-white">
+                <option value="">
                   쿠폰을 선택하세요 ({availableCoupons.length}장 보유)
                 </option>
                 {availableCoupons.map((c) => (
-                  <option key={c.id} value={c.id} className="bg-[#333] text-white">
+                  <option key={c.id} value={c.id}>
                     {c.couponName} (
                     {c.discountType === "FIXED"
                       ? `${formatPrice(c.discountValue)}원 할인`

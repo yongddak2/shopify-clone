@@ -1,15 +1,18 @@
 package com.pantrka.backend.domain.admin.controller;
 
 import com.pantrka.backend.domain.admin.dto.*;
+import java.time.LocalDate;
 import java.util.List;
 import com.pantrka.backend.domain.admin.service.AdminMemberService;
 import com.pantrka.backend.domain.admin.service.AdminOrderService;
 import com.pantrka.backend.domain.admin.service.AdminProductService;
+import com.pantrka.backend.domain.order.entity.OrderStatus;
 import com.pantrka.backend.global.common.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -84,8 +87,14 @@ public class AdminController {
     @GetMapping("/orders")
     public ResponseEntity<ApiResponse<Page<AdminOrderResponse>>> getOrders(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Page<AdminOrderResponse> response = adminOrderService.getOrders(page, size);
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) OrderStatus status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String searchType,
+            @RequestParam(required = false) String keyword) {
+        Page<AdminOrderResponse> response = adminOrderService.getOrders(
+                page, size, status, startDate, endDate, searchType, keyword);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

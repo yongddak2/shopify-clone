@@ -72,6 +72,16 @@ src/
 
 ---
 
+## 라이트 테마 일관성
+
+- 단일 라이트 테마 (`globals.css` `:root` 변수). 다크 테마 토글 없음
+- **다크 헥스 하드코딩 금지** — `bg-[#2a2a2a]`, `border-[#555]` 같은 임시 색상 X
+- 인라인 `style={{ backgroundColor: "..." }}` 도 동일 규칙. 정규식 검색 회피의 함정이라 특히 주의
+- 입력/카드/드롭다운 등 — `var(--input-bg)` / `var(--card-bg)` / `var(--border-color)` / `var(--text-secondary)` 사용
+- 선택 강조는 `bg-[var(--text-primary)] text-[var(--btn-primary-text)]` (invert 효과)
+
+---
+
 ## React Query 캐시 전략
 
 ### queryInvalidator.ts 도메인별 함수
@@ -143,6 +153,13 @@ thumbnailUrl: string   ← images 배열 아님. product.images[0] 사용 금지
 couponName, couponDiscountAmount   ← 쿠폰 할인 표시
 returnRequested, exchangeRequested ← 반품/교환 버튼 분기
 confirmedAt: string | null         ← 구매확정 여부 판단
+```
+
+### 어드민 주문 (AdminOrder)
+```
+totalAmount, finalAmount       ← 상품구매금액 vs 실결제금액 분리 표시
+paymentMethod: CARD/TRANSFER/VIRTUAL | null  ← 결제 전이면 null, 한글 매핑 필요
+memberName                     ← 주문자 컬럼에 #ID와 함께 표시
 ```
 
 ### 주문 상태 한글 매핑

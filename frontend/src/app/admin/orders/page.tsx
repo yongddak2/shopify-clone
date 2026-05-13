@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect, Fragment } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { getAdminOrders, updateOrderStatus } from "@/lib/admin";
 import { invalidateOrderRelated } from "@/lib/queryInvalidator";
 import { Info, X } from "lucide-react";
-import type { AdminOrder } from "@/types";
+import type { AdminOrder, PaymentMethod } from "@/types";
 
 const CARRIERS = ["CJ대한통운", "롯데택배", "한진택배", "우체국택배", "로젠택배", "기타"];
 
@@ -28,6 +28,19 @@ const STATUS_LABELS: Record<string, string> = {
   EXCHANGE_REQUESTED: "교환신청",
 };
 
+// 필터 탭에 노출하는 모든 상태 (반품·교환 포함, 9개)
+const FILTER_STATUSES = [
+  "PENDING",
+  "PAID",
+  "PREPARING",
+  "SHIPPED",
+  "DELIVERED",
+  "CANCELLED",
+  "REFUNDED",
+  "RETURN_REQUESTED",
+  "EXCHANGE_REQUESTED",
+];
+
 // 관리자가 직접 변경 가능한 상태 (반품/교환 신청 상태는 admin/requests에서 관리)
 const ORDER_STATUSES = [
   "PENDING",
@@ -38,6 +51,47 @@ const ORDER_STATUSES = [
   "CANCELLED",
   "REFUNDED",
 ];
+
+const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  CARD: "카드",
+  TRANSFER: "계좌이체",
+  VIRTUAL: "가상계좌",
+};
+
+const DATE_PRESETS: { label: string; days: number }[] = [
+  { label: "오늘", days: 0 },
+  { label: "7일", days: 6 },
+  { label: "15일", days: 14 },
+  { label: "1개월", days: 29 },
+  { label: "3개월", days: 89 },
+];
+
+const PAGE_SIZES = [20, 50, 100];
+
+const SEARCH_TYPES: { value: string; label: string }[] = [
+  { value: "ORDER_NUMBER", label: "주문번호" },
+  { value: "MEMBER_NAME", label: "주문자명" },
+  { value: "RECIPIENT", label: "수령자명" },
+  { value: "MEMBER_EMAIL", label: "회원 이메일" },
+  { value: "PRODUCT_NAME", label: "상품명" },
+];
+
+function todayISO() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function daysAgoISO(days: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
 const STATUS_BADGE: Record<string, string> = {
   PENDING: "bg-[var(--badge-yellow-bg)] text-[var(--badge-yellow-text)]",
@@ -54,6 +108,13 @@ const STATUS_BADGE: Record<string, string> = {
 export default function AdminOrdersPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState<number>(PAGE_SIZES[0]);
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [searchType, setSearchType] = useState<string>("ORDER_NUMBER");
+  const [keywordInput, setKeywordInput] = useState<string>("");
+  const [appliedKeyword, setAppliedKeyword] = useState<string>("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [statusChange, setStatusChange] = useState<{
     order: AdminOrder;
@@ -72,10 +133,52 @@ export default function AdminOrdersPage() {
   }, [statusChange?.order.id, statusChange?.newStatus]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["admin", "orders", page],
-    queryFn: () => getAdminOrders(page),
+    queryKey: ["admin", "orders", { page, pageSize, statusFilter, startDate, endDate, searchType, appliedKeyword }],
+    queryFn: () => getAdminOrders({
+      page,
+      size: pageSize,
+      status: statusFilter === "ALL" ? undefined : statusFilter,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      searchType: appliedKeyword ? searchType : undefined,
+      keyword: appliedKeyword || undefined,
+    }),
     staleTime: 0,
+    placeholderData: keepPreviousData,
   });
+
+  const applyDatePreset = (days: number) => {
+    setStartDate(daysAgoISO(days));
+    setEndDate(todayISO());
+    setPage(0);
+  };
+
+  const clearDates = () => {
+    setStartDate("");
+    setEndDate("");
+    setPage(0);
+  };
+
+  const handleStatusTab = (s: string) => {
+    setStatusFilter(s);
+    setPage(0);
+  };
+
+  const handlePageSizeChange = (n: number) => {
+    setPageSize(n);
+    setPage(0);
+  };
+
+  const executeSearch = () => {
+    setAppliedKeyword(keywordInput.trim());
+    setPage(0);
+  };
+
+  const clearSearch = () => {
+    setKeywordInput("");
+    setAppliedKeyword("");
+    setPage(0);
+  };
 
   const statusMutation = useMutation({
     mutationFn: ({ id, status, shipping }: {
@@ -118,6 +221,7 @@ export default function AdminOrdersPage() {
 
   const orders = data?.data?.content ?? [];
   const totalPages = data?.data?.totalPages ?? 0;
+  const totalElements = data?.data?.totalElements ?? 0;
 
   return (
     <div className="p-8">
@@ -135,6 +239,108 @@ export default function AdminOrdersPage() {
         </button>
       </div>
 
+      {/* 상태 탭 */}
+      <div className="mb-4 overflow-x-auto">
+        <div className="flex gap-1 whitespace-nowrap border-b border-[var(--border-color)]">
+          {(["ALL", ...FILTER_STATUSES]).map((s) => (
+            <button
+              key={s}
+              onClick={() => handleStatusTab(s)}
+              className={`px-4 py-2 text-xs tracking-wider transition-colors border-b-2 -mb-px ${
+                statusFilter === s
+                  ? "border-[var(--text-primary)] text-[var(--text-primary)]"
+                  : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              {s === "ALL" ? "전체" : STATUS_LABELS[s] ?? s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 날짜 필터 + 페이지당 개수 */}
+      <div className="flex flex-wrap items-center gap-3 mb-6 text-xs">
+        <div className="flex gap-1">
+          {DATE_PRESETS.map((p) => (
+            <button
+              key={p.label}
+              onClick={() => applyDatePreset(p.days)}
+              className="px-3 py-1.5 border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--text-muted)] transition-colors"
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => { setStartDate(e.target.value); setPage(0); }}
+            className="bg-[var(--input-bg)] border border-[var(--border-color)] px-2 py-1.5 focus:outline-none"
+          />
+          <span className="text-[var(--text-muted)]">~</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => { setEndDate(e.target.value); setPage(0); }}
+            className="bg-[var(--input-bg)] border border-[var(--border-color)] px-2 py-1.5 focus:outline-none"
+          />
+          {(startDate || endDate) && (
+            <button
+              onClick={clearDates}
+              className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors px-2"
+            >초기화</button>
+          )}
+        </div>
+        <div className="ml-auto flex items-center gap-3">
+          <span className="text-[var(--text-muted)]">총 {totalElements}건</span>
+          <select
+            value={pageSize}
+            onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+            className="bg-[var(--input-bg)] border border-[var(--border-color)] text-[var(--text-secondary)] px-2 py-1.5 focus:outline-none"
+          >
+            {PAGE_SIZES.map((n) => (
+              <option key={n} value={n}>{n}개씩</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* 검색 */}
+      <div className="flex items-center gap-2 mb-6 text-xs">
+        <select
+          value={searchType}
+          onChange={(e) => setSearchType(e.target.value)}
+          className="bg-[var(--input-bg)] border border-[var(--border-color)] text-[var(--text-secondary)] px-3 py-1.5 focus:outline-none"
+        >
+          {SEARCH_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>{t.label}</option>
+          ))}
+        </select>
+        <input
+          type="text"
+          value={keywordInput}
+          onChange={(e) => setKeywordInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") executeSearch(); }}
+          placeholder="검색어를 입력하세요"
+          className="bg-[var(--input-bg)] border border-[var(--border-color)] text-[var(--text-secondary)] px-3 py-1.5 w-72 focus:outline-none"
+        />
+        <button
+          onClick={executeSearch}
+          className="bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] px-4 py-1.5 transition-colors"
+        >
+          검색
+        </button>
+        {appliedKeyword && (
+          <button
+            onClick={clearSearch}
+            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors px-2"
+          >
+            검색 해제
+          </button>
+        )}
+      </div>
+
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -143,20 +349,29 @@ export default function AdminOrdersPage() {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[900px]">
+          <table className="w-full text-sm min-w-[1100px]">
             <thead>
               <tr className="border-b border-[var(--border-color)] text-[var(--text-muted)] text-xs tracking-wider">
+                <th className="py-3 px-3 text-left">주문일</th>
                 <th className="py-3 px-3 text-left">주문번호</th>
-                <th className="py-3 px-3 text-center">주문자ID</th>
+                <th className="py-3 px-3 text-left">주문자</th>
                 <th className="py-3 px-3 text-left">수령인</th>
                 <th className="py-3 px-3 text-left">상품</th>
-                <th className="py-3 px-3 text-right">결제금액</th>
+                <th className="py-3 px-3 text-right">상품구매금액</th>
+                <th className="py-3 px-3 text-right">실결제금액</th>
+                <th className="py-3 px-3 text-center">결제수단</th>
                 <th className="py-3 px-3 text-center">상태</th>
-                <th className="py-3 px-3 text-left">주문일</th>
                 <th className="py-3 px-3 text-center">관리</th>
               </tr>
             </thead>
             <tbody>
+              {orders.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="py-16 text-center text-[var(--text-muted)] text-sm">
+                    검색된 주문이 없습니다.
+                  </td>
+                </tr>
+              )}
               {orders.map((o: AdminOrder) => {
                 const itemSummary =
                   o.items.length === 0
@@ -171,23 +386,32 @@ export default function AdminOrdersPage() {
                       className="border-b border-[var(--border-color)] hover:bg-[var(--card-bg)] transition-colors cursor-pointer"
                       onClick={() => setExpandedId(isExpanded ? null : o.id)}
                     >
+                      <td className="py-3 px-3 text-[var(--text-muted)]">{formatDate(o.createdAt)}</td>
                       <td className="py-3 px-3 text-[var(--text-muted)] text-xs font-mono">
                         {o.orderNumber.length > 16
                           ? o.orderNumber.slice(0, 16) + "..."
                           : o.orderNumber}
                       </td>
-                      <td className="py-3 px-3 text-center text-[var(--text-muted)]">{o.memberId}</td>
+                      <td className="py-3 px-3 text-[var(--text-secondary)]">
+                        {o.memberName}
+                        <span className="text-[var(--text-muted)] text-xs ml-1.5">#{o.memberId}</span>
+                      </td>
                       <td className="py-3 px-3 text-[var(--text-secondary)]">{o.recipient}</td>
                       <td className="py-3 px-3 text-[var(--text-secondary)] text-xs">{itemSummary}</td>
+                      <td className="py-3 px-3 text-right text-[var(--text-muted)]">
+                        {formatPrice(o.totalAmount)}원
+                      </td>
                       <td className="py-3 px-3 text-right text-[var(--text-secondary)]">
                         {formatPrice(o.finalAmount)}원
+                      </td>
+                      <td className="py-3 px-3 text-center text-[var(--text-muted)] text-xs">
+                        {o.paymentMethod ? PAYMENT_METHOD_LABELS[o.paymentMethod] : "-"}
                       </td>
                       <td className="py-3 px-3 text-center">
                         <span className={`inline-block px-2 py-0.5 text-xs rounded ${STATUS_BADGE[o.status] ?? ""}`}>
                           {STATUS_LABELS[o.status] ?? o.status}
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-[var(--text-muted)]">{formatDate(o.createdAt)}</td>
                       <td className="py-3 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <select
                           value=""
@@ -209,7 +433,7 @@ export default function AdminOrdersPage() {
                     {/* 아코디언 확장 */}
                     {isExpanded && (
                       <tr>
-                        <td colSpan={8} className="bg-[var(--section-bg)] px-6 py-4 border-b border-[var(--border-color)]">
+                        <td colSpan={10} className="bg-[var(--section-bg)] px-6 py-4 border-b border-[var(--border-color)]">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
                             <div>
                               <p className="text-[var(--text-muted)] mb-2 tracking-wider">주문 상품</p>
