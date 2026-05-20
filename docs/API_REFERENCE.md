@@ -107,6 +107,7 @@ PanTrKa 전체 REST API 목록. 공통 응답은 `ApiResponse` (`{success, messa
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
 | GET | /api/main-page-config | 메인 텍스트 조회 (공개) |
+| GET | /api/main-page/new-arrivals | 메인 NEW ARRIVALS 큐레이션 상품 목록 (공개, 비활성·삭제 자동 필터링) |
 
 ## Return/Exchange Images
 
@@ -160,6 +161,12 @@ PanTrKa 전체 REST API 목록. 공통 응답은 `ApiResponse` (`{success, messa
 | DELETE | /api/admin/banners/{id} | 배너 삭제 (S3 연동) |
 | GET | /api/admin/main-page-config | 메인 페이지 텍스트 조회 |
 | PUT | /api/admin/main-page-config | 메인 페이지 텍스트 갱신 |
+| GET | /api/admin/main-page/new-arrivals | NEW ARRIVALS 큐레이션 목록 |
+| POST | /api/admin/main-page/new-arrivals | NEW ARRIVALS 일괄 추가 (최대 10개, 중복 차단) |
+| PUT | /api/admin/main-page/new-arrivals | NEW ARRIVALS 전체 교체 (productIds 순서대로) |
+| PUT | /api/admin/main-page/new-arrivals/order | NEW ARRIVALS 순서 재정렬 (orderedIds) |
+| PATCH | /api/admin/main-page/new-arrivals/{id}/move | NEW ARRIVALS 단일 항목 이동 (UP/DOWN) |
+| DELETE | /api/admin/main-page/new-arrivals/{id} | NEW ARRIVALS 단일 항목 제거 |
 | GET | /api/admin/requests | 반품/교환 목록 (5탭) |
 | PATCH | /api/admin/requests/{id}/approve | 반품/교환 승인 |
 | PATCH | /api/admin/requests/{id}/reject | 반품/교환 거절 |
