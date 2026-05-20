@@ -77,6 +77,14 @@ export const invalidateMainPageConfigRelated = (qc: QueryClient) => {
 };
 
 // ─────────────────────────────────────────────────────────────
+// Main Page New Arrivals (관리자 큐레이션)
+// ─────────────────────────────────────────────────────────────
+export const invalidateNewArrivalsRelated = (qc: QueryClient) => {
+  qc.invalidateQueries({ queryKey: ["mainNewArrivals"] });
+  qc.invalidateQueries({ queryKey: ["admin", "newArrivals"] });
+};
+
+// ─────────────────────────────────────────────────────────────
 // Review (리뷰)
 // ─────────────────────────────────────────────────────────────
 export const invalidateReviewRelated = (qc: QueryClient) => {

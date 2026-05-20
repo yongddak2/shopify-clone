@@ -11,6 +11,8 @@ import type {
   Category,
   Banner,
   MainPageConfig,
+  NewArrivalEntry,
+  Product,
   ReturnExchangeRequest,
   InventoryItem,
   AdminDashboard,
@@ -298,6 +300,56 @@ export async function updateMainPageConfig(subText: string | null) {
 // 메인 페이지 설정 (공개)
 export async function getPublicMainPageConfig() {
   const res = await api.get<ApiResponse<MainPageConfig>>("/api/main-page-config");
+  return res.data;
+}
+
+// 메인 페이지 NEW ARRIVALS 큐레이션 (관리자)
+export async function getAdminNewArrivals() {
+  const res = await api.get<ApiResponse<NewArrivalEntry[]>>(
+    "/api/admin/main-page/new-arrivals"
+  );
+  return res.data;
+}
+
+export async function addNewArrivals(productIds: number[]) {
+  const res = await api.post<ApiResponse<NewArrivalEntry[]>>(
+    "/api/admin/main-page/new-arrivals",
+    { productIds }
+  );
+  return res.data;
+}
+
+export async function deleteNewArrival(id: number) {
+  await api.delete(`/api/admin/main-page/new-arrivals/${id}`);
+}
+
+export async function moveNewArrival(id: number, direction: "UP" | "DOWN") {
+  const res = await api.patch<ApiResponse<NewArrivalEntry[]>>(
+    `/api/admin/main-page/new-arrivals/${id}/move`,
+    { direction }
+  );
+  return res.data;
+}
+
+export async function reorderNewArrivals(orderedIds: number[]) {
+  const res = await api.put<ApiResponse<NewArrivalEntry[]>>(
+    "/api/admin/main-page/new-arrivals/order",
+    { orderedIds }
+  );
+  return res.data;
+}
+
+export async function replaceNewArrivals(productIds: number[]) {
+  const res = await api.put<ApiResponse<NewArrivalEntry[]>>(
+    "/api/admin/main-page/new-arrivals",
+    { productIds }
+  );
+  return res.data;
+}
+
+// 메인 페이지 NEW ARRIVALS (공개)
+export async function getPublicNewArrivals() {
+  const res = await api.get<ApiResponse<Product[]>>("/api/main-page/new-arrivals");
   return res.data;
 }
 

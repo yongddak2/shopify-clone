@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getBanners,
@@ -13,12 +13,30 @@ import {
   getAdminMainPageConfig,
   updateMainPageConfig,
 } from "@/lib/admin";
-import { ChevronUp, ChevronDown, Trash2, Pencil } from "lucide-react";
+import { Menu, Trash2, Pencil } from "lucide-react";
 import {
   invalidateBannerRelated,
   invalidateMainPageConfigRelated,
 } from "@/lib/queryInvalidator";
 import type { Banner } from "@/types";
+import NewArrivalsSection from "./NewArrivalsSection";
+import {
+  DndContext,
+  PointerSensor,
+  KeyboardSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const MAX_BANNERS = 5;
 const ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
@@ -51,7 +69,36 @@ export default function AdminBannersPage() {
   });
 
   const banners = data?.data ?? [];
-  const sorted = [...banners].sort((a, b) => a.sortOrder - b.sortOrder);
+  const serverSorted = useMemo(
+    () => [...banners].sort((a, b) => a.sortOrder - b.sortOrder),
+    [banners]
+  );
+  const [localOrder, setLocalOrder] = useState<Banner[] | null>(null);
+  const sorted = localOrder ?? serverSorted;
+
+  useEffect(() => {
+    setLocalOrder(null);
+  }, [serverSorted]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIdx = sorted.findIndex((b) => b.id === active.id);
+    const newIdx = sorted.findIndex((b) => b.id === over.id);
+    if (oldIdx < 0 || newIdx < 0) return;
+
+    const next = arrayMove(sorted, oldIdx, newIdx);
+    setLocalOrder(next);
+    orderMutation.mutate(
+      next.map((b, i) => ({ id: b.id, sortOrder: i + 1 }))
+    );
+  };
 
   // 메인 페이지 텍스트 설정
   const { data: configData } = useQuery({
@@ -120,7 +167,10 @@ export default function AdminBannersPage() {
     onSuccess: () => {
       invalidateBannerRelated(queryClient);
     },
-    onError: () => setError("순서 변경에 실패했습니다."),
+    onError: () => {
+      setError("순서 변경에 실패했습니다.");
+      setLocalOrder(null);
+    },
   });
 
   const toggleMutation = useMutation({
@@ -204,18 +254,6 @@ export default function AdminBannersPage() {
       return;
     }
     updateMutation.mutate({ id: editTarget.id, title: trimmed });
-  };
-
-  const handleMove = (index: number, direction: "up" | "down") => {
-    const swapIdx = direction === "up" ? index - 1 : index + 1;
-    if (swapIdx < 0 || swapIdx >= sorted.length) return;
-
-    const newOrders = sorted.map((b, i) => {
-      if (i === index) return { id: b.id, sortOrder: sorted[swapIdx].sortOrder };
-      if (i === swapIdx) return { id: b.id, sortOrder: sorted[index].sortOrder };
-      return { id: b.id, sortOrder: b.sortOrder };
-    });
-    orderMutation.mutate(newOrders);
   };
 
   return (
@@ -308,96 +346,29 @@ export default function AdminBannersPage() {
           등록된 배너가 없습니다.
         </div>
       ) : (
-        <div className="space-y-3">
-          {sorted.map((banner, idx) => (
-            <div
-              key={banner.id}
-              className="flex items-center gap-4 bg-[var(--card-bg)] border border-[var(--border-color)] p-4"
-            >
-              {/* 순서 번호 */}
-              <span className="text-lg font-light text-[var(--text-muted)] w-8 text-center flex-shrink-0">
-                {idx + 1}
-              </span>
-
-              {/* 썸네일 */}
-              <div className="w-[200px] h-[100px] bg-[var(--section-bg)] flex-shrink-0 overflow-hidden">
-                <img
-                  src={banner.imageUrl}
-                  alt={`배너 ${idx + 1}`}
-                  className="w-full h-full object-cover"
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={sorted.map((b) => b.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-3">
+              {sorted.map((banner, idx) => (
+                <SortableBannerRow
+                  key={banner.id}
+                  banner={banner}
+                  index={idx}
+                  onToggle={() => toggleMutation.mutate(banner.id)}
+                  onEdit={() => startEdit(banner)}
+                  onDelete={() => setDeleteTarget(banner)}
                 />
-              </div>
-
-              {/* 정보 */}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-[var(--text-primary)] truncate mb-1">
-                  {banner.title || (
-                    <span className="text-[var(--text-dim)] italic">(제목 없음)</span>
-                  )}
-                </p>
-                <p className="text-xs text-[var(--text-muted)] truncate mb-1">
-                  {banner.imageUrl}
-                </p>
-                <p className="text-xs text-[var(--text-dim)]">
-                  {new Date(banner.createdAt).toLocaleDateString("ko-KR")}
-                </p>
-              </div>
-
-              {/* 활성/비활성 토글 */}
-              <button
-                onClick={() => toggleMutation.mutate(banner.id)}
-                className={`flex-shrink-0 w-12 h-6 rounded-full relative transition-colors ${
-                  banner.active
-                    ? "bg-[var(--accent)]"
-                    : "bg-[var(--border-color)]"
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-                    banner.active ? "left-[26px]" : "left-0.5"
-                  }`}
-                />
-              </button>
-              <span className="text-xs text-[var(--text-muted)] w-10 flex-shrink-0">
-                {banner.active ? "활성" : "비활성"}
-              </span>
-
-              {/* 순서 변경 */}
-              <div className="flex flex-col gap-0.5 flex-shrink-0">
-                <button
-                  onClick={() => handleMove(idx, "up")}
-                  disabled={idx === 0}
-                  className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronUp className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleMove(idx, "down")}
-                  disabled={idx === sorted.length - 1}
-                  className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* 수정 */}
-              <button
-                onClick={() => startEdit(banner)}
-                className="flex-shrink-0 p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-              >
-                <Pencil className="w-4 h-4" />
-              </button>
-
-              {/* 삭제 */}
-              <button
-                onClick={() => setDeleteTarget(banner)}
-                className="flex-shrink-0 p-2 text-[var(--text-muted)] hover:text-red-600 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {/* 등록·수정 통합 모달 */}
@@ -465,6 +436,9 @@ export default function AdminBannersPage() {
         </div>
       )}
 
+      {/* NEW ARRIVALS 큐레이션 섹션 */}
+      <NewArrivalsSection />
+
       {/* 삭제 확인 모달 */}
       {deleteTarget && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
@@ -494,6 +468,106 @@ export default function AdminBannersPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function SortableBannerRow({
+  banner,
+  index,
+  onToggle,
+  onEdit,
+  onDelete,
+}: {
+  banner: Banner;
+  index: number;
+  onToggle: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: banner.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : "auto",
+    opacity: isDragging ? 0.85 : 1,
+    boxShadow: isDragging ? "0 12px 28px rgba(0,0,0,0.18)" : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-4 bg-[var(--card-bg)] border border-[var(--border-color)] p-4"
+    >
+      <span className="text-lg font-light text-[var(--text-muted)] w-8 text-center flex-shrink-0">
+        {index + 1}
+      </span>
+
+      <div className="w-[200px] h-[100px] bg-[var(--section-bg)] flex-shrink-0 overflow-hidden">
+        <img
+          src={banner.imageUrl}
+          alt={`배너 ${index + 1}`}
+          className="w-full h-full object-cover pointer-events-none"
+        />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-[var(--text-primary)] truncate mb-1">
+          {banner.title || (
+            <span className="text-[var(--text-dim)] italic">(제목 없음)</span>
+          )}
+        </p>
+        <p className="text-xs text-[var(--text-muted)] truncate mb-1">
+          {banner.imageUrl}
+        </p>
+        <p className="text-xs text-[var(--text-dim)]">
+          {new Date(banner.createdAt).toLocaleDateString("ko-KR")}
+        </p>
+      </div>
+
+      <button
+        onClick={onToggle}
+        className={`flex-shrink-0 w-12 h-6 rounded-full relative transition-colors ${
+          banner.active ? "bg-[var(--accent)]" : "bg-[var(--border-color)]"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+            banner.active ? "left-[26px]" : "left-0.5"
+          }`}
+        />
+      </button>
+      <span className="text-xs text-[var(--text-muted)] w-10 flex-shrink-0">
+        {banner.active ? "활성" : "비활성"}
+      </span>
+
+      <button
+        onClick={onEdit}
+        className="flex-shrink-0 p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+      >
+        <Pencil className="w-4 h-4" />
+      </button>
+
+      <button
+        onClick={onDelete}
+        className="flex-shrink-0 p-2 text-[var(--text-muted)] hover:text-red-600 transition-colors"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="flex-shrink-0 p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-grab active:cursor-grabbing touch-none"
+        aria-label="드래그해서 순서 변경"
+        title="드래그해서 순서 변경"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
     </div>
   );
 }

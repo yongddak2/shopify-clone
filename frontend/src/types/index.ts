@@ -395,6 +395,13 @@ export interface MainPageConfig {
   subText: string | null;
 }
 
+// 메인 페이지 NEW ARRIVALS 큐레이션 (어드민)
+export interface NewArrivalEntry {
+  id: number;
+  sortOrder: number;
+  product: Product;
+}
+
 // 반품/교환
 export type ReasonType = 'RETURN' | 'EXCHANGE';
 export type ReasonCategory = 'CHANGE_OF_MIND' | 'SELLER_FAULT';

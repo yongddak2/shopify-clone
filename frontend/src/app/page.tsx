@@ -6,11 +6,16 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProducts } from "@/lib/product";
 import { getWishlists, toggleWishlist } from "@/lib/wishlist";
-import { getPublicBanners, getPublicMainPageConfig } from "@/lib/admin";
+import {
+  getPublicBanners,
+  getPublicMainPageConfig,
+  getPublicNewArrivals,
+} from "@/lib/admin";
 import { invalidateWishlistRelated } from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
 import { Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Product, Banner } from "@/types";
+import NewArrivalsCarousel from "./NewArrivalsCarousel";
 
 function formatPrice(price: number) {
   return price.toLocaleString("ko-KR");
@@ -299,9 +304,16 @@ export default function Home() {
 
   const mainSubText = configData?.data?.subText ?? null;
 
+  const { data: curatedNewArrivalsData, isLoading: curatedLoading } = useQuery({
+    queryKey: ["mainNewArrivals"],
+    queryFn: getPublicNewArrivals,
+  });
+  const curatedNewArrivals = curatedNewArrivalsData?.data ?? [];
+
   const { data: newData, isLoading: newLoading } = useQuery({
     queryKey: ["mainNewProducts", 4],
     queryFn: () => getProducts({ page: 0, size: 4, sort: "createdAt,desc" }),
+    enabled: !curatedLoading && curatedNewArrivals.length === 0,
   });
 
   const { data: bestData, isLoading: bestLoading } = useQuery({
@@ -337,7 +349,12 @@ export default function Home() {
     wishlistMutation.mutate(productId);
   };
 
-  const newProducts = newData?.data?.content ?? [];
+  const fallbackNew = newData?.data?.content ?? [];
+  const newProducts: Product[] =
+    curatedNewArrivals.length > 0 ? curatedNewArrivals : fallbackNew;
+  const newArrivalsLoading =
+    curatedLoading || (curatedNewArrivals.length === 0 && newLoading);
+  const useCarousel = curatedNewArrivals.length > 4;
   const bestProducts = bestData?.data?.content ?? [];
 
   return (
@@ -360,12 +377,20 @@ export default function Home() {
             MORE VIEW &rsaquo;
           </Link>
         </div>
-        <ProductGrid
-          products={newProducts}
-          wishlistIds={wishlistIds}
-          onWishlistClick={handleWishlistClick}
-          isLoading={newLoading}
-        />
+        {useCarousel ? (
+          <NewArrivalsCarousel
+            products={newProducts}
+            wishlistIds={wishlistIds}
+            onWishlistClick={handleWishlistClick}
+          />
+        ) : (
+          <ProductGrid
+            products={newProducts}
+            wishlistIds={wishlistIds}
+            onWishlistClick={handleWishlistClick}
+            isLoading={newArrivalsLoading}
+          />
+        )}
       </section>
 
       {/* 메인 텍스트 섹션 (신상품 ↔ BEST 사이) */}

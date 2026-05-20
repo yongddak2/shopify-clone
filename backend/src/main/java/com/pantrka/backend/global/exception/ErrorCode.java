@@ -78,6 +78,11 @@ public enum ErrorCode {
     BANNER_NOT_FOUND(HttpStatus.NOT_FOUND, "배너를 찾을 수 없습니다."),
     BANNER_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "배너는 최대 5개까지 등록 가능합니다."),
 
+    // Main Page New Arrival
+    NEW_ARRIVAL_NOT_FOUND(HttpStatus.NOT_FOUND, "등록된 상품을 찾을 수 없습니다."),
+    NEW_ARRIVAL_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "NEW ARRIVALS는 최대 10개까지 등록 가능합니다."),
+    NEW_ARRIVAL_ALREADY_REGISTERED(HttpStatus.BAD_REQUEST, "이미 등록된 상품입니다."),
+
     // File
     INVALID_FILE_TYPE(HttpStatus.BAD_REQUEST, "허용되지 않는 파일 형식입니다."),
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드에 실패했습니다."),
