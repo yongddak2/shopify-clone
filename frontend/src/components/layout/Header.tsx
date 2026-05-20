@@ -3,42 +3,61 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Search, ShoppingBag, User, Menu, X } from "lucide-react";
+import { Search, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/authStore";
 import { logout } from "@/lib/auth";
+import { getCart } from "@/lib/cart";
+
+type MenuKey = "SHOP" | "ABOUT" | "PNTK" | "INFO";
+
+const SHOP_CATEGORIES = [
+  { label: "ALL", href: "/products" },
+  { label: "BAGS", href: "/products?category=BAGS" },
+  { label: "TOPS", href: "/products?category=TOPS" },
+  { label: "BOTTOMS", href: "/products?category=BOTTOMS" },
+  { label: "ACCS", href: "/products?category=ACCS" },
+];
+
+const INFO_LINKS = [
+  { label: "NOTICE", href: "/info/notice" },
+  { label: "Q&A", href: "/info/qa" },
+  { label: "FAQ", href: "/info/faq" },
+];
 
 function Logo() {
   return (
-    <Link
-      href="/"
-      className="block hover:opacity-80 transition-opacity"
-    >
+    <Link href="/" className="block hover:opacity-90 transition-opacity">
       <img src="/logo.png" alt="PanTrKa" className="h-10" />
     </Link>
   );
 }
 
-const sideMenuLinks = [
-  { href: "/products", label: "SHOP" },
-];
-
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
-  const [sideOpen, setSideOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState<MenuKey | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isLoggedIn, user } = useAuthStore();
   const loggedIn = mounted && isLoggedIn();
   const isAdmin = mounted && loggedIn && user?.role === "ADMIN";
 
-  // 메인(/) + 스크롤 50px 이하 + 검색 닫힘 + 사이드 닫힘 → 투명
+  const { data: cartData } = useQuery({
+    queryKey: ["cart"],
+    queryFn: getCart,
+    enabled: loggedIn,
+  });
+  const cartCount = cartData?.data?.length ?? 0;
+
   const isMain = pathname === "/";
-  const isTransparent = isMain && !scrolled && !searchOpen && !sideOpen;
+  // 메인 페이지 상단에서는 호버 중에도 헤더 자체는 항상 투명 유지
+  const isTransparent = isMain && !scrolled && !searchOpen;
 
   useEffect(() => {
     setMounted(true);
@@ -50,7 +69,6 @@ export default function Header() {
       return;
     }
     const handleScroll = () => {
-      // 배너 높이: 데스크톱(md+) 80vh max 800px, 모바일 50vh — page.tsx와 동기화
       const isDesktop = window.innerWidth >= 768;
       const bannerHeight = isDesktop
         ? Math.min(window.innerHeight * 0.8, 800)
@@ -73,7 +91,7 @@ export default function Header() {
   }, [searchOpen]);
 
   useEffect(() => {
-    if (sideOpen || logoutModalOpen) {
+    if (logoutModalOpen) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -81,12 +99,15 @@ export default function Header() {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [sideOpen, logoutModalOpen]);
+  }, [logoutModalOpen]);
+
+  useEffect(() => {
+    setOpenMenu(null);
+  }, [pathname]);
 
   const handleLogout = async () => {
     await logout();
     setLogoutModalOpen(false);
-    setSideOpen(false);
     window.location.href = "/";
   };
 
@@ -104,92 +125,183 @@ export default function Header() {
     setSearchQuery("");
   };
 
+  const scheduleClose = () => {
+    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    closeTimeoutRef.current = setTimeout(() => setOpenMenu(null), 140);
+  };
+  const cancelClose = () => {
+    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    closeTimeoutRef.current = null;
+  };
+  const openOrSwitch = (menu: MenuKey | null) => {
+    cancelClose();
+    setOpenMenu(menu);
+  };
+
+  // 헤더 좌측 메뉴 — Abril Fatface, 핑크 액센트, 호버 시 흰색
+  const menuLabelClass =
+    "font-serif-display text-lg lg:text-xl tracking-wide uppercase " +
+    "text-[var(--header-pink-accent)] hover:text-white transition-colors";
+
+  // 헤더 우측 링크 (Search / Login / Cart / My page) — 같은 폰트·색상, 약간 작게
+  const rightLinkClass =
+    "font-serif-display text-sm lg:text-base tracking-wide " +
+    "text-[var(--header-pink-accent)] hover:text-white transition-colors whitespace-nowrap";
+
   return (
     <>
       <header
         data-transparent={isTransparent ? "true" : undefined}
         className="fixed top-0 left-0 right-0 z-50 bg-[var(--header-bg)] border-b border-[var(--border-color)] transition-colors duration-300"
       >
-        <div className="max-w-7xl mx-auto px-6 lg:px-10">
-          <div className="flex items-center justify-between h-16">
-            {/* 왼쪽: 햄버거 (데스크톱 + 모바일 공통) */}
-            <div className="w-24 flex items-center">
-              <button
-                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-                onClick={() => setSideOpen(true)}
+        {/* 전체 폭 + 좌우 padding만 — 메뉴/아이콘이 양끝에 붙도록 max-w 제거. z-10으로 드롭다운 패널 위에 올라감 */}
+        <div className="relative z-10 flex items-center justify-between h-16 px-4 sm:px-6 lg:px-10">
+          {/* 좌측: 4개 메뉴 (화면 좌측 끝에 붙음) */}
+          <nav className="flex items-center gap-5 lg:gap-8">
+            <div
+              onMouseEnter={() => openOrSwitch("SHOP")}
+              onMouseLeave={scheduleClose}
+            >
+              <Link
+                href="/products"
+                className={menuLabelClass}
+                onClick={() => setOpenMenu(null)}
               >
-                <Menu className="w-6 h-6" strokeWidth={1.5} />
+                SHOP
+              </Link>
+            </div>
+
+            <div
+              onMouseEnter={() => openOrSwitch("ABOUT")}
+              onMouseLeave={scheduleClose}
+            >
+              <Link
+                href="/about"
+                className={menuLabelClass}
+                onClick={() => setOpenMenu(null)}
+              >
+                ABOUT
+              </Link>
+            </div>
+
+            <div
+              onMouseEnter={() => openOrSwitch("PNTK")}
+              onMouseLeave={scheduleClose}
+            >
+              <Link
+                href="/pntk"
+                className={menuLabelClass}
+                onClick={() => setOpenMenu(null)}
+              >
+                PNTK
+              </Link>
+            </div>
+
+            <div
+              onMouseEnter={() => openOrSwitch("INFO")}
+              onMouseLeave={scheduleClose}
+            >
+              <button type="button" className={menuLabelClass}>
+                INFO
               </button>
             </div>
+          </nav>
 
-            {/* 중앙: 로고 */}
-            <div className="absolute left-1/2 -translate-x-1/2">
-              <Logo />
-            </div>
+          {/* 중앙: 로고 */}
+          <div className="absolute left-1/2 -translate-x-1/2">
+            <Logo />
+          </div>
 
-            {/* 오른쪽: 아이콘들 (로그인 전후 동일 레이아웃) */}
-            <div className="flex items-center gap-5">
-              <button
-                onClick={() => setSearchOpen(!searchOpen)}
-                className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-              >
-                <Search className="w-5 h-5" strokeWidth={1.5} />
-              </button>
+          {/* 우측: Search / Login·Logout / Cart:N / My page — 동일 폰트·색상 */}
+          <div className="flex items-center gap-6 lg:gap-8">
+            <button
+              onClick={() => setSearchOpen(!searchOpen)}
+              className={rightLinkClass}
+            >
+              Search
+            </button>
 
-              {!mounted ? (
-                <div className="w-32" />
-              ) : (
-                <>
-                  {/* Login/Join 또는 LOGOUT */}
-                  {loggedIn ? (
-                    <>
-                      <button
-                        onClick={() => setLogoutModalOpen(true)}
-                        className="text-xs tracking-widest text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors hidden md:block"
-                      >
-                        LOGOUT
-                      </button>
-                      <button
-                        onClick={() => setLogoutModalOpen(true)}
-                        className="text-[10px] tracking-widest text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors md:hidden"
-                      >
-                        LOGOUT
-                      </button>
-                    </>
-                  ) : (
-                    <Link
-                      href="/login"
-                      className="text-xs tracking-widest text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-                    >
-                      Login/Join
-                    </Link>
-                  )}
-
-                  {/* 쇼핑백 - 항상 표시 */}
-                  <Link
-                    href={loggedIn ? "/cart" : "/login"}
-                    className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+            {!mounted ? (
+              <div className="w-48" />
+            ) : (
+              <>
+                {loggedIn ? (
+                  <button
+                    onClick={() => setLogoutModalOpen(true)}
+                    className={rightLinkClass}
                   >
-                    <ShoppingBag className="w-5 h-5" strokeWidth={1.5} />
+                    Logout
+                  </button>
+                ) : (
+                  <Link href="/login" className={rightLinkClass}>
+                    Login/Join
                   </Link>
+                )}
 
-                  {/* 마이페이지 - 항상 표시 */}
+                <Link
+                  href={loggedIn ? "/cart" : "/login"}
+                  className={rightLinkClass}
+                >
+                  Cart:{cartCount}
+                </Link>
+
+                <Link
+                  href={loggedIn ? "/mypage" : "/login"}
+                  className={rightLinkClass}
+                >
+                  My page
+                </Link>
+
+                {isAdmin && (
                   <Link
-                    href={loggedIn ? "/mypage" : "/login"}
-                    className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                    href="/admin"
+                    className={`${rightLinkClass} hidden md:inline`}
                   >
-                    <User className="w-5 h-5" strokeWidth={1.5} />
+                    Admin
                   </Link>
-                </>
-              )}
-            </div>
+                )}
+              </>
+            )}
           </div>
         </div>
+
+        {/* 4개 메뉴 드롭다운 — 모두 동일 너비 */}
+        <DropdownPanel
+          open={openMenu === "SHOP"}
+          onMouseEnter={() => openOrSwitch("SHOP")}
+          onMouseLeave={scheduleClose}
+        >
+          <ShopDropdownContent onItemClick={() => setOpenMenu(null)} />
+        </DropdownPanel>
+
+        <DropdownPanel
+          open={openMenu === "ABOUT"}
+          onMouseEnter={() => openOrSwitch("ABOUT")}
+          onMouseLeave={scheduleClose}
+        >
+          <AboutDropdownContent />
+        </DropdownPanel>
+
+        <DropdownPanel
+          open={openMenu === "PNTK"}
+          onMouseEnter={() => openOrSwitch("PNTK")}
+          onMouseLeave={scheduleClose}
+        >
+          <PntkDropdownContent />
+        </DropdownPanel>
+
+        <DropdownPanel
+          open={openMenu === "INFO"}
+          onMouseEnter={() => openOrSwitch("INFO")}
+          onMouseLeave={scheduleClose}
+        >
+          <InfoDropdownContent onItemClick={() => setOpenMenu(null)} />
+        </DropdownPanel>
       </header>
 
-      {/* 검색바 - 레이어드 슬라이드 다운 */}
+      {/* 검색바 */}
       <div
-        className="fixed left-0 right-0 z-50 transition-all duration-300 ease-in-out border-b border-[var(--border-color)] bg-[var(--header-bg)]"
+        className="fixed left-0 right-0 z-40 transition-all duration-300 ease-in-out border-b border-[var(--border-color)] bg-[var(--header-bg)]"
         style={{
           top: "4rem",
           transform: searchOpen ? "translateY(0)" : "translateY(-100%)",
@@ -197,12 +309,15 @@ export default function Header() {
           pointerEvents: searchOpen ? "auto" : "none",
         }}
       >
-        <div className="max-w-7xl mx-auto px-6 lg:px-10">
+        <div className="px-4 sm:px-6 lg:px-10">
           <form
             onSubmit={handleSearchSubmit}
             className="flex items-center gap-4 h-14"
           >
-            <Search className="w-4 h-4 text-[var(--text-muted)] flex-shrink-0" strokeWidth={1.5} />
+            <Search
+              className="w-4 h-4 text-[var(--text-muted)] flex-shrink-0"
+              strokeWidth={1.5}
+            />
             <input
               ref={searchInputRef}
               type="text"
@@ -222,73 +337,14 @@ export default function Header() {
         </div>
       </div>
 
-      {/* 검색 오버레이 (블러 처리) */}
       {searchOpen && (
         <div
-          className="fixed inset-0 z-40 bg-[var(--overlay-bg-light)] backdrop-blur-md"
+          className="fixed inset-0 z-30 bg-[var(--overlay-bg-light)] backdrop-blur-md"
           style={{ top: "calc(4rem + 3.5rem)" }}
           onClick={closeSearch}
         />
       )}
 
-      {/* 사이드 메뉴 오버레이 */}
-      <div
-        className="fixed inset-0 z-[60] bg-[var(--overlay-bg)] transition-opacity duration-300"
-        style={{
-          opacity: sideOpen ? 1 : 0,
-          pointerEvents: sideOpen ? "auto" : "none",
-        }}
-        onClick={() => setSideOpen(false)}
-      />
-
-      {/* 사이드 메뉴 패널 */}
-      <div
-        className="fixed top-0 left-0 bottom-0 z-[70] w-[75vw] max-w-[350px] bg-[var(--header-bg)] border-r border-[var(--border-color)] transition-transform duration-300 ease-in-out flex flex-col"
-        style={{
-          transform: sideOpen ? "translateX(0)" : "translateX(-100%)",
-        }}
-      >
-        {/* 패널 상단 */}
-        <div className="flex items-center justify-between h-16 px-6 border-b border-[var(--border-color)]">
-          <span className="text-lg font-bold tracking-widest text-[var(--text-primary)]">
-            PanTrKa
-          </span>
-          <button
-            onClick={() => setSideOpen(false)}
-            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-          >
-            <X className="w-6 h-6" strokeWidth={1.5} />
-          </button>
-        </div>
-
-        {/* 패널 메뉴 */}
-        <nav className="flex flex-col px-6 py-6 gap-5">
-          {sideMenuLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-sm tracking-[0.15em] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-              onClick={() => setSideOpen(false)}
-            >
-              {link.label}
-            </Link>
-          ))}
-          {isAdmin && (
-            <>
-              <div className="border-t border-[var(--border-color)]" />
-              <Link
-                href="/admin"
-                className="text-sm tracking-[0.15em] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-                onClick={() => setSideOpen(false)}
-              >
-                관리자
-              </Link>
-            </>
-          )}
-        </nav>
-      </div>
-
-      {/* 로그아웃 확인 모달 */}
       {logoutModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
           <div
@@ -317,5 +373,129 @@ export default function Header() {
         </div>
       )}
     </>
+  );
+}
+
+function DropdownPanel({
+  open,
+  onMouseEnter,
+  onMouseLeave,
+  children,
+}: {
+  open: boolean;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+  children: React.ReactNode;
+}) {
+  // 4개 메뉴 모두 동일한 너비 — SHOP 기준으로 통일
+  return (
+    <div
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      aria-hidden={!open}
+      className="absolute top-0 left-0 w-[36vw] min-w-[440px] max-w-[640px] h-screen origin-top transition-all duration-300 ease-out"
+      style={{
+        background: "var(--dropdown-pink-bg)",
+        opacity: open ? 1 : 0,
+        transform: open ? "translateY(0)" : "translateY(-12px)",
+        pointerEvents: open ? "auto" : "none",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ShopDropdownContent({ onItemClick }: { onItemClick: () => void }) {
+  return (
+    <div className="h-full pt-28 pb-10 pl-10 lg:pl-16 pr-6">
+      <Link
+        href="/pntk/2026-hs"
+        onClick={onItemClick}
+        className="block font-display font-bold tracking-tight text-[34px] lg:text-[44px] leading-none mb-8 italic"
+        style={{
+          color: "var(--header-yellow)",
+          textShadow: "0 2px 8px rgba(0,0,0,0.25)",
+        }}
+      >
+        2026 H/S
+      </Link>
+
+      <ul className="space-y-5 lg:space-y-6">
+        {SHOP_CATEGORIES.map((cat) => (
+          <li key={cat.label}>
+            <Link
+              href={cat.href}
+              onClick={onItemClick}
+              className="font-display font-bold tracking-tight text-[30px] lg:text-[40px] leading-none italic block hover:opacity-90 transition-opacity"
+              style={{
+                color: "var(--header-yellow)",
+                textShadow: "0 2px 8px rgba(0,0,0,0.25)",
+              }}
+            >
+              {cat.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function AboutDropdownContent() {
+  // 콘텐츠는 추후 사용자 전달 예정 — 패널 활성화만 구현
+  return (
+    <div className="h-full pt-28 pb-10 pl-10 lg:pl-16 pr-6">
+      <p
+        className="font-display tracking-wide italic text-[18px] lg:text-[20px]"
+        style={{
+          color: "var(--header-yellow)",
+          textShadow: "0 2px 8px rgba(0,0,0,0.25)",
+        }}
+      >
+        준비 중
+      </p>
+    </div>
+  );
+}
+
+function PntkDropdownContent() {
+  // 콘텐츠는 추후 사용자 전달 예정 — 패널 활성화만 구현
+  return (
+    <div className="h-full pt-28 pb-10 pl-10 lg:pl-16 pr-6">
+      <p
+        className="font-display tracking-wide italic text-[18px] lg:text-[20px]"
+        style={{
+          color: "var(--header-yellow)",
+          textShadow: "0 2px 8px rgba(0,0,0,0.25)",
+        }}
+      >
+        준비 중
+      </p>
+    </div>
+  );
+}
+
+function InfoDropdownContent({ onItemClick }: { onItemClick: () => void }) {
+  return (
+    <div className="h-full pt-28 pb-10 pl-10 lg:pl-16 pr-6">
+      <ul className="space-y-5 lg:space-y-6">
+        {INFO_LINKS.map((link) => (
+          <li key={link.label}>
+            <Link
+              href={link.href}
+              onClick={onItemClick}
+              className="font-display font-bold tracking-tight text-[30px] lg:text-[40px] leading-none italic block hover:opacity-90 transition-opacity"
+              style={{
+                color: "var(--header-yellow)",
+                textShadow: "0 2px 8px rgba(0,0,0,0.25)",
+              }}
+            >
+              {link.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

@@ -1,8 +1,23 @@
 import type { Metadata } from "next";
+import { Oswald } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import Providers from "@/components/Providers";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+
+const oswald = Oswald({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-oswald",
+  display: "swap",
+});
+
+const abrilFatface = localFont({
+  src: "./fonts/AbrilFatface-Regular.ttf",
+  variable: "--font-abril",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "PanTrKa | 의류 쇼핑몰",
@@ -15,7 +30,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className="h-full antialiased">
+    <html
+      lang="ko"
+      className={`h-full antialiased ${oswald.variable} ${abrilFatface.variable}`}
+    >
       <body className="min-h-full flex flex-col">
         <Providers>
           <Header />
