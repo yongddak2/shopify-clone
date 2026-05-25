@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, CornerDownRight } from "lucide-react";
 import { getFaqs } from "@/lib/faq";
 import type { SupportCategory } from "@/types";
 
@@ -33,13 +33,17 @@ export default function FaqPage() {
   }, [faqs, selectedCategory]);
 
   return (
-    <div className="min-h-[calc(100vh-64px)] px-6 py-16">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl tracking-[0.2em] font-light text-center mb-12 text-[var(--text-primary)]">
+    <div>
+      <header className="mb-10">
+        <h1 className="text-2xl tracking-[0.2em] font-light text-[var(--text-primary)]">
           FAQ
         </h1>
+        <p className="mt-3 text-xs tracking-wider text-[var(--text-dim)]">
+          자주 묻는 질문을 카테고리별로 모아두었습니다.
+        </p>
+      </header>
 
-        {/* 카테고리 탭 */}
+      <div>
         <div className="flex items-center gap-6 overflow-x-auto pb-4 mb-8 border-b border-[var(--border-color)] scrollbar-hide">
           {CATEGORY_TABS.map((tab) => (
             <button
@@ -86,17 +90,29 @@ export default function FaqPage() {
                       {faq.question}
                     </span>
                     <ChevronDown
-                      className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${
+                      className={`w-4 h-4 text-[var(--text-muted)] transition-transform duration-300 ${
                         isOpen ? "rotate-180" : ""
                       }`}
                       strokeWidth={1.5}
                     />
                   </button>
-                  {isOpen && (
-                    <div className="px-2 pb-6 pl-[88px] text-sm leading-relaxed text-[var(--text-secondary)] whitespace-pre-wrap">
-                      {faq.answer}
+                  <div
+                    className={`grid transition-all duration-300 ease-out ${
+                      isOpen
+                        ? "grid-rows-[1fr] opacity-100"
+                        : "grid-rows-[0fr] opacity-0"
+                    }`}
+                  >
+                    <div className="overflow-hidden">
+                      <div className="px-2 pb-6 pl-[88px] flex gap-3 text-sm leading-relaxed text-[var(--text-secondary)]">
+                        <CornerDownRight
+                          className="w-4 h-4 text-[var(--text-muted)] mt-0.5 shrink-0"
+                          strokeWidth={1.5}
+                        />
+                        <span className="whitespace-pre-wrap">{faq.answer}</span>
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </li>
               );
             })}

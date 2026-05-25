@@ -1,11 +1,16 @@
 export default function PrivacyPage() {
   return (
-    <div className="min-h-[calc(100vh-64px)] px-6 py-16">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl tracking-[0.2em] font-light text-center mb-12 text-[var(--text-primary)]">
+    <div>
+      <header className="mb-10">
+        <h1 className="text-2xl tracking-[0.2em] font-light text-[var(--text-primary)]">
           개인정보처리방침
         </h1>
+        <p className="mt-3 text-xs tracking-wider text-[var(--text-dim)]">
+          PanTrKa가 수집·이용하는 개인정보 처리 방침입니다.
+        </p>
+      </header>
 
+      <div className="max-w-4xl">
         <p className="text-sm text-[var(--text-secondary)] mb-10 leading-relaxed">
           [서비스명](이하 &quot;회사&quot;)은 「개인정보 보호법」 제30조에 따라
           정보주체의 개인정보를 보호하고 이와 관련한 고충을 신속하고 원활하게

@@ -1,12 +1,16 @@
 export default function TermsPage() {
   return (
-    <div className="min-h-[calc(100vh-64px)] px-6 py-16">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl tracking-[0.2em] font-light text-center mb-12 text-[var(--text-primary)]">
+    <div>
+      <header className="mb-10">
+        <h1 className="text-2xl tracking-[0.2em] font-light text-[var(--text-primary)]">
           이용약관
         </h1>
+        <p className="mt-3 text-xs tracking-wider text-[var(--text-dim)]">
+          PanTrKa 서비스 이용에 관한 약관입니다.
+        </p>
+      </header>
 
-        <div className="space-y-10 text-sm leading-relaxed text-[var(--text-secondary)]">
+      <div className="max-w-4xl space-y-10 text-sm leading-relaxed text-[var(--text-secondary)]">
           {/* 제1조 */}
           <section>
             <h2 className="text-base font-medium text-[var(--text-primary)] mb-3">
@@ -311,7 +315,6 @@ export default function TermsPage() {
               <p>전화: [전화번호]</p>
             </div>
           </section>
-        </div>
       </div>
     </div>
   );

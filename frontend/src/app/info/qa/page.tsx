@@ -60,13 +60,17 @@ function QnaContent() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-64px)] px-6 py-16">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl tracking-[0.2em] font-light text-center mb-12 text-[var(--text-primary)]">
+    <div>
+      <header className="mb-10">
+        <h1 className="text-2xl tracking-[0.2em] font-light text-[var(--text-primary)]">
           Q&amp;A
         </h1>
+        <p className="mt-3 text-xs tracking-wider text-[var(--text-dim)]">
+          궁금한 점을 직접 문의하실 수 있습니다.
+        </p>
+      </header>
 
-        {/* 카테고리 탭 */}
+      <div>
         <div className="flex items-center gap-6 overflow-x-auto pb-4 mb-6 border-b border-[var(--border-color)] scrollbar-hide">
           {CATEGORY_TABS.map((tab) => (
             <button
