@@ -25,8 +25,9 @@ public class ProductController {
     public ResponseEntity<ApiResponse<Page<ProductSummaryResponse>>> getProducts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "latest") String sort) {
-        Page<ProductSummaryResponse> response = productService.getProducts(page, size, sort);
+            @RequestParam(defaultValue = "latest") String sort,
+            @RequestParam(required = false) Long categoryId) {
+        Page<ProductSummaryResponse> response = productService.getProducts(page, size, sort, categoryId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

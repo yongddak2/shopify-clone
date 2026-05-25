@@ -36,8 +36,11 @@ public class AdminProductService {
     private final ProductOptionValueRepository productOptionValueRepository;
     private final OrderItemRepository orderItemRepository;
 
-    public Page<AdminProductResponse> getProducts(int page, int size) {
-        Page<Product> products = productRepository.findAll(
+    public Page<AdminProductResponse> getProducts(int page, int size, String keyword, Long categoryId) {
+        String normalized = (keyword == null || keyword.isBlank()) ? "" : keyword.trim();
+        Page<Product> products = productRepository.findAdminProducts(
+                normalized,
+                categoryId,
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
         return products.map(AdminProductResponse::from);
     }

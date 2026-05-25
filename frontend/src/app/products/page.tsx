@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -44,6 +44,20 @@ function ProductsContent() {
     queryFn: () => getCategories(),
     staleTime: 5 * 60 * 1000, // 카테고리는 거의 안 바뀜
   });
+
+  // URL ?category=BAGS 같은 이름 파라미터 → 초기 categoryId 매핑 (한 번만)
+  const urlCategoryInitialized = useRef(false);
+  useEffect(() => {
+    if (urlCategoryInitialized.current) return;
+    const cats = categoriesData?.data;
+    if (!cats || cats.length === 0) return;
+    const urlCategory = searchParams.get("category");
+    if (urlCategory) {
+      const matched = cats.find((c) => c.name === urlCategory);
+      if (matched) setCategoryId(matched.id);
+    }
+    urlCategoryInitialized.current = true;
+  }, [categoriesData, searchParams]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["products", { page, categoryId, sort }],

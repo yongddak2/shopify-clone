@@ -115,6 +115,31 @@ PanTrKa 전체 REST API 목록. 공통 응답은 `ApiResponse` (`{success, messa
 |--------|------|------|
 | POST | /api/return-requests/images | 반품/교환 이미지 업로드 (S3, 최대 3장, 20MB) |
 
+## Notice (공지사항)
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | /api/notices | 공지사항 목록 (공개, 페이지·사이즈, isPinned DESC → createdAt DESC 정렬) |
+| GET | /api/notices/{id} | 공지사항 상세 (공개) |
+
+## FAQ
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | /api/faqs | FAQ 전체 목록 (공개, category·sortOrder 정렬, 페이징 없음) |
+
+## Q&A (1:1 문의)
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | /api/qnas | 문의 목록 (공개, category 필터, 비밀글은 제목 마스킹·작성자명 마스킹) |
+| GET | /api/qnas/{id} | 문의 상세 (비밀글이면 작성자/관리자만, 외엔 403) |
+| GET | /api/qnas/me | 본인 문의 목록 (인증 필요, 페이지) |
+| POST | /api/qnas | 문의 작성 (인증 필요, category/title/content/secret/imageUrls 최대 3장) |
+| PATCH | /api/qnas/{id} | 문의 수정 (작성자 본인, **답변 등록 전만 가능**) |
+| DELETE | /api/qnas/{id} | 문의 삭제 (작성자 본인 또는 ADMIN, 소프트 딜리트) |
+| POST | /api/qnas/images | 문의 이미지 업로드 (인증, S3 qnas/, 5MB) |
+
 ---
 
 ## Admin
@@ -137,7 +162,7 @@ PanTrKa 전체 REST API 목록. 공통 응답은 `ApiResponse` (`{success, messa
 
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
-| GET | /api/admin/dashboard | 대시보드 통계 (카드 6개 + 차트 + 인기상품 + 재고부족 + 최근주문) |
+| GET | /api/admin/dashboard | 대시보드 통계 (카드 7개: 주문/매출/객단가/회원/신규회원/반품교환/미답변Q&A + 차트 + 인기상품 + 재고부족 + 최근주문) |
 
 ### Admin — 주문/회원/쿠폰/배너/반품교환
 
@@ -171,3 +196,27 @@ PanTrKa 전체 REST API 목록. 공통 응답은 `ApiResponse` (`{success, messa
 | PATCH | /api/admin/requests/{id}/approve | 반품/교환 승인 |
 | PATCH | /api/admin/requests/{id}/reject | 반품/교환 거절 |
 | PATCH | /api/admin/requests/{id}/complete | 반품/교환 처리완료 |
+
+### Admin — 공지사항/FAQ
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | /api/admin/notices | 공지사항 목록 (keyword 검색, 페이징) |
+| GET | /api/admin/notices/{id} | 공지사항 상세 |
+| POST | /api/admin/notices | 공지사항 등록 (title 필수 200자, content 필수, isPinned) |
+| PATCH | /api/admin/notices/{id} | 공지사항 수정 |
+| DELETE | /api/admin/notices/{id} | 공지사항 삭제 (소프트 딜리트) |
+| GET | /api/admin/faqs | FAQ 전체 목록 |
+| POST | /api/admin/faqs | FAQ 등록 (category enum, question 300자, answer) — 등록 시 카테고리 내 마지막 순서로 배치 |
+| PATCH | /api/admin/faqs/{id} | FAQ 수정 |
+| DELETE | /api/admin/faqs/{id} | FAQ 삭제 (hard delete) |
+| PATCH | /api/admin/faqs/sort | FAQ 순서 일괄 변경 (`{items:[{id, sortOrder}]}`) |
+| GET | /api/admin/qnas | 1:1 문의 목록 (keyword/category/answered 필터, 페이징) |
+| GET | /api/admin/qnas/{id} | 1:1 문의 상세 |
+| PATCH | /api/admin/qnas/{id}/answer | 문의 답변 등록·수정 (신규 답변일 때만 작성자에게 이메일 발송) |
+| DELETE | /api/admin/qnas/{id}/answer | 답변만 삭제 (문의는 유지) |
+| DELETE | /api/admin/qnas/{id} | 문의 삭제 (소프트 딜리트) |
+| GET | /api/admin/answer-templates | 답변 템플릿 목록 |
+| POST | /api/admin/answer-templates | 템플릿 등록 (title 100자, content) |
+| PATCH | /api/admin/answer-templates/{id} | 템플릿 수정 |
+| DELETE | /api/admin/answer-templates/{id} | 템플릿 삭제 |

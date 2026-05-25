@@ -33,8 +33,10 @@ public class AdminController {
     @GetMapping("/products")
     public ResponseEntity<ApiResponse<Page<AdminProductResponse>>> getProducts(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Page<AdminProductResponse> response = adminProductService.getProducts(page, size);
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long categoryId) {
+        Page<AdminProductResponse> response = adminProductService.getProducts(page, size, keyword, categoryId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

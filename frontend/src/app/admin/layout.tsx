@@ -12,6 +12,9 @@ import {
   Ticket,
   Image,
   RotateCcw,
+  Megaphone,
+  HelpCircle,
+  MessageCircle,
   ExternalLink,
   LogOut,
 } from "lucide-react";
@@ -27,6 +30,9 @@ const menuItems = [
   { href: "/admin/users", label: "회원관리", icon: Users, exact: false },
   { href: "/admin/coupons", label: "쿠폰관리", icon: Ticket, exact: false },
   { href: "/admin/banners", label: "배너관리", icon: Image, exact: false },
+  { href: "/admin/notices", label: "공지사항", icon: Megaphone, exact: false },
+  { href: "/admin/faqs", label: "FAQ", icon: HelpCircle, exact: false },
+  { href: "/admin/qnas", label: "1:1 문의", icon: MessageCircle, exact: false },
   { href: "/admin/requests", label: "반품/교환 관리", icon: RotateCcw, exact: false },
 ];
 

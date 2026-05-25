@@ -1,12 +1,14 @@
 package com.pantrka.backend.domain.admin.dto;
 
 import com.pantrka.backend.domain.product.entity.Product;
+import com.pantrka.backend.domain.product.entity.ProductImage;
 import com.pantrka.backend.domain.product.entity.ProductStatus;
 import lombok.Builder;
 import lombok.Getter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 
 @Getter
@@ -21,6 +23,8 @@ public class AdminProductResponse {
     private final ProductStatus status;
     private final int viewCount;
     private final Long categoryId;
+    private final String categoryName;
+    private final String thumbnailUrl;
     private final LocalDateTime createdAt;
     private final LocalDateTime deletedAt;
     private final List<ProductImageDto> images;
@@ -86,10 +90,22 @@ public class AdminProductResponse {
                 .status(product.getStatus())
                 .viewCount(product.getViewCount())
                 .categoryId(product.getCategory() != null ? product.getCategory().getId() : null)
+                .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
+                .thumbnailUrl(resolveThumbnailUrl(product))
                 .createdAt(product.getCreatedAt())
                 .deletedAt(product.getDeletedAt())
                 .images(images)
                 .optionGroups(optionGroups)
                 .build();
+    }
+
+    private static String resolveThumbnailUrl(Product product) {
+        return product.getImages().stream()
+                .filter(ProductImage::isThumbnail)
+                .findFirst()
+                .or(() -> product.getImages().stream()
+                        .min(Comparator.comparingInt(ProductImage::getSortOrder)))
+                .map(ProductImage::getUrl)
+                .orElse(null);
     }
 }

@@ -228,6 +228,8 @@ export interface AdminProduct {
   discountRate: number;
   status: string;
   categoryId: number;
+  categoryName: string | null;
+  thumbnailUrl: string | null;
   description: string;
   viewCount: number;
   createdAt: string;
@@ -471,6 +473,7 @@ export interface AdminDashboard {
   pendingRequestCount: number;
   monthlyAverageOrderValue: number;
   newMembersThisMonth: number;
+  unansweredQnaCount: number;
   dailyRevenue: AdminDashboardDailyRevenue[];
   lowStockProducts: AdminDashboardLowStock[];
   recentOrders: AdminDashboardRecentOrder[];
@@ -489,4 +492,112 @@ export interface CreateCouponRequest {
   endDate: string;
   isWelcome?: boolean;
   validDays?: number;
+}
+
+// Notice
+export interface NoticeListItem {
+  id: number;
+  title: string;
+  pinned: boolean;
+  createdAt: string;
+}
+
+export interface NoticeDetail {
+  id: number;
+  title: string;
+  content: string;
+  pinned: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NoticeRequest {
+  title: string;
+  content: string;
+  pinned: boolean;
+}
+
+// Support (FAQ + Q&A 공유)
+export type SupportCategory = "DELIVERY" | "EXCHANGE" | "PAYMENT" | "MEMBER" | "PRODUCT" | "ETC";
+
+// Q&A
+export interface QnaListItem {
+  id: number;
+  category: SupportCategory;
+  categoryLabel: string;
+  title: string;
+  secret: boolean;
+  answered: boolean;
+  visible: boolean;
+  authorMasked: string;
+  createdAt: string;
+  answeredAt: string | null;
+}
+
+export interface QnaDetail {
+  id: number;
+  category: SupportCategory;
+  categoryLabel: string;
+  title: string;
+  content: string;
+  secret: boolean;
+  answer: string | null;
+  answeredAt: string | null;
+  answered: boolean;
+  authorId: number | null;
+  authorName: string | null;
+  imageUrls: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QnaCreateRequest {
+  category: SupportCategory;
+  title: string;
+  content: string;
+  secret: boolean;
+  imageUrls?: string[];
+}
+
+export interface QnaUpdateRequest {
+  category: SupportCategory;
+  title: string;
+  content: string;
+  secret: boolean;
+}
+
+export interface QnaAnswerRequest {
+  answer: string;
+}
+
+// Answer Template
+export interface AnswerTemplate {
+  id: number;
+  title: string;
+  content: string;
+  sortOrder: number;
+}
+
+export interface AnswerTemplateRequest {
+  title: string;
+  content: string;
+}
+
+export interface Faq {
+  id: number;
+  category: SupportCategory;
+  categoryLabel: string;
+  question: string;
+  answer: string;
+  sortOrder: number;
+}
+
+export interface FaqRequest {
+  category: SupportCategory;
+  question: string;
+  answer: string;
+}
+
+export interface FaqSortRequest {
+  items: { id: number; sortOrder: number }[];
 }

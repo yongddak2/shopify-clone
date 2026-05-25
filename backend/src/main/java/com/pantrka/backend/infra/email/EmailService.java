@@ -72,6 +72,22 @@ public class EmailService {
                 "관리자 취소 이메일");
     }
 
+    @Async
+    public void sendQnaAnswerEmail(String to, String recipientName, String title, String answer) {
+        String greeting = "%s님, 문의하신 내용에 답변이 등록되었습니다.".formatted(escape(recipientName == null ? "고객" : recipientName));
+        String body = """
+                <tr><td style="padding:8px 0; color:#a0a0a0; font-size:13px;">문의 제목</td>
+                    <td style="padding:8px 0; color:#ffffff; font-size:13px; text-align:right;">%s</td></tr>
+                %s
+                <tr><td colspan="2" style="padding:16px 0 8px 0; color:#a0a0a0; font-size:13px;">답변</td></tr>
+                <tr><td colspan="2" style="padding:0 0 16px 0; color:#ffffff; font-size:13px; line-height:1.7; white-space:pre-wrap;">%s</td></tr>
+                <tr><td colspan="2" style="padding-top:8px; color:#666666; font-size:12px; line-height:1.6;">
+                  로그인 후 마이페이지 또는 INFO &gt; Q&amp;A 에서 확인하실 수 있습니다.
+                </td></tr>
+                """.formatted(escape(title), divider(), escape(answer));
+        send(to, "[PanTrKa] 문의하신 내용에 답변이 등록되었습니다", wrap("답변 등록", greeting, body), "Q&A 답변 이메일");
+    }
+
     private void send(String to, String subject, String html, String label) {
         try {
             MimeMessage message = mailSender.createMimeMessage();

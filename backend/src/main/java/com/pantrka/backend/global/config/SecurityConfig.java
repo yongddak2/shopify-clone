@@ -41,6 +41,14 @@ public class SecurityConfig {
                         // Public - Products, Categories & Banners
                         .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**", "/api/categories", "/api/banners", "/api/main-page-config").permitAll()
 
+                        // Public - Notices & FAQ
+                        .requestMatchers(HttpMethod.GET, "/api/notices", "/api/notices/**", "/api/faqs").permitAll()
+
+                        // Q&A - /me는 인증 필수 (더 구체적인 매처를 먼저 선언)
+                        .requestMatchers(HttpMethod.GET, "/api/qnas/me").authenticated()
+                        // Public - Q&A 목록·상세 조회 (작성/수정/삭제/이미지업로드는 인증 필요)
+                        .requestMatchers(HttpMethod.GET, "/api/qnas", "/api/qnas/**").permitAll()
+
                         // Public - Auth
                         .requestMatchers(HttpMethod.POST,
                                 "/api/auth/signup",

@@ -17,6 +17,18 @@ import type {
   InventoryItem,
   AdminDashboard,
   AdminMemberDetail,
+  NoticeDetail,
+  NoticeListItem,
+  NoticeRequest,
+  Faq,
+  FaqRequest,
+  FaqSortRequest,
+  QnaListItem,
+  QnaDetail,
+  QnaAnswerRequest,
+  SupportCategory,
+  AnswerTemplate,
+  AnswerTemplateRequest,
 } from "@/types";
 
 // 대시보드
@@ -46,10 +58,18 @@ export async function getCategories() {
 }
 
 // 상품 관리
-export async function getAdminProducts(page = 0) {
+export async function getAdminProducts(page = 0, keyword = "", categoryId?: number) {
   const res = await api.get<ApiResponse<PageResponse<AdminProduct>>>(
     "/api/admin/products",
-    { params: { page, size: 20, sort: "id,desc" } }
+    {
+      params: {
+        page,
+        size: 20,
+        sort: "id,desc",
+        keyword: keyword || undefined,
+        categoryId: categoryId ?? undefined,
+      },
+    }
   );
   return res.data;
 }
@@ -383,4 +403,113 @@ export async function completeRequest(id: number) {
     `/api/admin/requests/${id}/complete`
   );
   return res.data.data;
+}
+
+// 공지사항 관리
+export async function getAdminNotices(page = 0, keyword = "") {
+  const res = await api.get<ApiResponse<PageResponse<NoticeListItem>>>(
+    "/api/admin/notices",
+    { params: { page, size: 20, keyword: keyword || undefined } }
+  );
+  return res.data;
+}
+
+export async function getAdminNotice(id: number) {
+  const res = await api.get<ApiResponse<NoticeDetail>>(`/api/admin/notices/${id}`);
+  return res.data.data;
+}
+
+export async function createNotice(data: NoticeRequest) {
+  const res = await api.post<ApiResponse<NoticeDetail>>("/api/admin/notices", data);
+  return res.data.data;
+}
+
+export async function updateNotice(id: number, data: NoticeRequest) {
+  const res = await api.patch<ApiResponse<NoticeDetail>>(`/api/admin/notices/${id}`, data);
+  return res.data.data;
+}
+
+export async function deleteNotice(id: number) {
+  await api.delete(`/api/admin/notices/${id}`);
+}
+
+// FAQ 관리
+export async function getAdminFaqs() {
+  const res = await api.get<ApiResponse<Faq[]>>("/api/admin/faqs");
+  return res.data.data;
+}
+
+export async function createFaq(data: FaqRequest) {
+  const res = await api.post<ApiResponse<Faq>>("/api/admin/faqs", data);
+  return res.data.data;
+}
+
+export async function updateFaq(id: number, data: FaqRequest) {
+  const res = await api.patch<ApiResponse<Faq>>(`/api/admin/faqs/${id}`, data);
+  return res.data.data;
+}
+
+export async function deleteFaq(id: number) {
+  await api.delete(`/api/admin/faqs/${id}`);
+}
+
+export async function reorderFaqs(data: FaqSortRequest) {
+  await api.patch("/api/admin/faqs/sort", data);
+}
+
+// Q&A 관리
+export async function getAdminQnas(
+  page = 0,
+  keyword = "",
+  category?: SupportCategory,
+  answered?: boolean
+) {
+  const res = await api.get<ApiResponse<PageResponse<QnaListItem>>>("/api/admin/qnas", {
+    params: {
+      page,
+      size: 20,
+      keyword: keyword || undefined,
+      category: category ?? undefined,
+      answered: answered ?? undefined,
+    },
+  });
+  return res.data;
+}
+
+export async function getAdminQna(id: number) {
+  const res = await api.get<ApiResponse<QnaDetail>>(`/api/admin/qnas/${id}`);
+  return res.data.data;
+}
+
+export async function answerQna(id: number, data: QnaAnswerRequest) {
+  const res = await api.patch<ApiResponse<QnaDetail>>(`/api/admin/qnas/${id}/answer`, data);
+  return res.data.data;
+}
+
+export async function deleteQnaAnswer(id: number) {
+  await api.delete(`/api/admin/qnas/${id}/answer`);
+}
+
+export async function deleteAdminQna(id: number) {
+  await api.delete(`/api/admin/qnas/${id}`);
+}
+
+// 답변 템플릿 관리
+export async function getAnswerTemplates() {
+  const res = await api.get<ApiResponse<AnswerTemplate[]>>("/api/admin/answer-templates");
+  return res.data.data;
+}
+
+export async function createAnswerTemplate(data: AnswerTemplateRequest) {
+  const res = await api.post<ApiResponse<AnswerTemplate>>("/api/admin/answer-templates", data);
+  return res.data.data;
+}
+
+export async function updateAnswerTemplate(id: number, data: AnswerTemplateRequest) {
+  const res = await api.patch<ApiResponse<AnswerTemplate>>(`/api/admin/answer-templates/${id}`, data);
+  return res.data.data;
+}
+
+export async function deleteAnswerTemplate(id: number) {
+  await api.delete(`/api/admin/answer-templates/${id}`);
 }

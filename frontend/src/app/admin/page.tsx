@@ -25,6 +25,7 @@ import {
   UserPlus,
   ChevronDown,
   ChevronRight,
+  MessageCircle,
 } from "lucide-react";
 import { getDashboard } from "@/lib/admin";
 import type {
@@ -135,6 +136,7 @@ const cards = [
   { key: "totalMembers" as const, label: "전체 회원", icon: Users, color: "#5bbd5b", suffix: "명", href: "/admin/users" },
   { key: "newMembers" as const, label: "이번 달 신규 회원", icon: UserPlus, color: "#5bbdaa", suffix: "명", href: "/admin/users?filter=newThisMonth" },
   { key: "pendingRequests" as const, label: "처리 대기 반품/교환", icon: RotateCcw, color: "#d4715b", suffix: "건", href: "/admin/requests" },
+  { key: "unansweredQna" as const, label: "미답변 Q&A", icon: MessageCircle, color: "#8c5bd4", suffix: "건", href: "/admin/qnas?answered=false" },
 ];
 
 export default function AdminDashboardPage() {
@@ -154,6 +156,7 @@ export default function AdminDashboardPage() {
     totalMembers: data?.totalMemberCount ?? 0,
     newMembers: data?.newMembersThisMonth ?? 0,
     pendingRequests: data?.pendingRequestCount ?? 0,
+    unansweredQna: data?.unansweredQnaCount ?? 0,
   };
 
   const chartData = (data?.dailyRevenue ?? []).map((d) => ({

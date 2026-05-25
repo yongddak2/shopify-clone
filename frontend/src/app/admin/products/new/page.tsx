@@ -23,11 +23,10 @@ const STATUS_OPTIONS = [
   { value: "INACTIVE", label: "INACTIVE" },
 ];
 const FALLBACK_CATEGORIES = [
-  { id: 1, name: "상의" },
-  { id: 2, name: "하의" },
-  { id: 3, name: "아우터" },
-  { id: 4, name: "원피스/스커트" },
-  { id: 5, name: "악세서리" },
+  { id: 6, name: "BAGS" },
+  { id: 7, name: "TOPS" },
+  { id: 8, name: "BOTTOMS" },
+  { id: 9, name: "ACCS" },
 ];
 
 interface UploadedImage {

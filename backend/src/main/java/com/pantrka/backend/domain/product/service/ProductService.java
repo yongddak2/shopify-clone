@@ -31,7 +31,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
 
-    public Page<ProductSummaryResponse> getProducts(int page, int size, String sort) {
+    public Page<ProductSummaryResponse> getProducts(int page, int size, String sort, Long categoryId) {
         Sort sorting = switch (sort) {
             case "price_asc" -> Sort.by(Sort.Direction.ASC, "basePrice");
             case "price_desc" -> Sort.by(Sort.Direction.DESC, "basePrice");
@@ -40,7 +40,7 @@ public class ProductService {
         };
 
         Pageable pageable = PageRequest.of(page, size, sorting);
-        return productRepository.findByStatusAndDeletedAtIsNull(ProductStatus.ACTIVE, pageable)
+        return productRepository.findActiveProducts(ProductStatus.ACTIVE, categoryId, pageable)
                 .map(ProductSummaryResponse::from);
     }
 

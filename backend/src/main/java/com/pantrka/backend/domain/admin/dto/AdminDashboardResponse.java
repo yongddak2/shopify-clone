@@ -25,6 +25,7 @@ public class AdminDashboardResponse {
 
     private final BigDecimal monthlyAverageOrderValue;
     private final long newMembersThisMonth;
+    private final long unansweredQnaCount;
 
     private final List<DailyRevenueDto> dailyRevenue;
     private final List<LowStockDto> lowStockProducts;

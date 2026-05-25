@@ -16,6 +16,7 @@ import com.pantrka.backend.domain.product.entity.Product;
 import com.pantrka.backend.domain.product.entity.ProductOptionValue;
 import com.pantrka.backend.domain.product.repository.ProductOptionValueRepository;
 import com.pantrka.backend.domain.product.repository.ProductRepository;
+import com.pantrka.backend.domain.qna.repository.QnaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -44,6 +45,7 @@ public class AdminDashboardService {
     private final ReturnExchangeRequestRepository returnExchangeRequestRepository;
     private final ProductOptionValueRepository productOptionValueRepository;
     private final ProductRepository productRepository;
+    private final QnaRepository qnaRepository;
 
     public AdminDashboardResponse getDashboard() {
         LocalDateTime now = LocalDateTime.now();
@@ -69,6 +71,7 @@ public class AdminDashboardService {
         long newMembersThisMonth = memberRepository.countByCreatedAtBetweenAndDeletedAtIsNull(
                 monthStart, tomorrowStart);
         long pendingRequestCount = returnExchangeRequestRepository.countByStatus(RequestStatus.REQUESTED);
+        long unansweredQnaCount = qnaRepository.countUnanswered();
 
         return AdminDashboardResponse.builder()
                 .todayOrderCount(todayOrderCount)
@@ -77,6 +80,7 @@ public class AdminDashboardService {
                 .pendingRequestCount(pendingRequestCount)
                 .monthlyAverageOrderValue(aov)
                 .newMembersThisMonth(newMembersThisMonth)
+                .unansweredQnaCount(unansweredQnaCount)
                 .dailyRevenue(buildDailyRevenue(today, sevenDaysAgoStart, tomorrowStart))
                 .lowStockProducts(buildLowStock())
                 .recentOrders(buildRecentOrders())

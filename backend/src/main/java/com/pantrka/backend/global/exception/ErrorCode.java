@@ -116,6 +116,21 @@ public enum ErrorCode {
     EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이메일 발송에 실패했습니다."),
     RESET_CODE_COOLTIME(HttpStatus.TOO_MANY_REQUESTS, "잠시 후 다시 시도해주세요."),
 
+    // Notice
+    NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "공지사항을 찾을 수 없습니다."),
+
+    // FAQ
+    FAQ_NOT_FOUND(HttpStatus.NOT_FOUND, "FAQ를 찾을 수 없습니다."),
+
+    // Q&A
+    QNA_NOT_FOUND(HttpStatus.NOT_FOUND, "문의를 찾을 수 없습니다."),
+    QNA_FORBIDDEN(HttpStatus.FORBIDDEN, "해당 문의에 접근 권한이 없습니다."),
+    QNA_ANSWERED_CANNOT_MODIFY(HttpStatus.BAD_REQUEST, "이미 답변된 문의는 수정할 수 없습니다."),
+    QNA_IMAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "문의 이미지는 최대 3장까지 첨부 가능합니다."),
+
+    // Answer Template
+    ANSWER_TEMPLATE_NOT_FOUND(HttpStatus.NOT_FOUND, "답변 템플릿을 찾을 수 없습니다."),
+
     // Common
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "잘못된 입력값입니다.");
 

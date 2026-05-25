@@ -10,6 +10,7 @@ import {
   Heart,
   Ticket,
   MessageSquare,
+  MessageCircle,
   UserCog,
   Truck,
   PackageCheck,
@@ -27,6 +28,7 @@ const menuItems = [
   { href: "/mypage/wishlist", label: "찜 목록", icon: Heart },
   { href: "/mypage/coupons", label: "쿠폰함", icon: Ticket },
   { href: "/mypage/reviews", label: "리뷰 관리", icon: MessageSquare },
+  { href: "/mypage/qnas", label: "내 문의", icon: MessageCircle },
   { href: "/mypage/profile", label: "회원정보 수정", icon: UserCog },
 ];
 

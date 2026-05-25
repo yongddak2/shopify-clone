@@ -18,7 +18,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findByIdAndDeletedAtIsNull(Long id);
 
     @EntityGraph(attributePaths = {"images"})
-    Page<Product> findByStatusAndDeletedAtIsNull(ProductStatus status, Pageable pageable);
+    @Query("SELECT p FROM Product p WHERE p.status = :status AND p.deletedAt IS NULL " +
+            "AND (:categoryId IS NULL OR p.category.id = :categoryId)")
+    Page<Product> findActiveProducts(@Param("status") ProductStatus status,
+                                     @Param("categoryId") Long categoryId,
+                                     Pageable pageable);
 
     @EntityGraph(attributePaths = {"images"})
     @Query("SELECT p FROM Product p WHERE p.status = 'ACTIVE' AND p.deletedAt IS NULL " +
@@ -38,4 +42,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT p FROM Product p WHERE p.deletedAt IS NULL AND p.salesCount > 0 " +
             "ORDER BY p.salesCount DESC, p.id ASC")
     List<Product> findTopBySales(Pageable pageable);
+
+    @Query("SELECT p FROM Product p " +
+            "WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "AND (:categoryId IS NULL OR p.category.id = :categoryId)")
+    Page<Product> findAdminProducts(@Param("keyword") String keyword,
+                                    @Param("categoryId") Long categoryId,
+                                    Pageable pageable);
 }
