@@ -24,9 +24,19 @@ public class NoticeService {
                 .map(NoticeListResponse::from);
     }
 
+    @Transactional
     public NoticeDetailResponse getNotice(Long id) {
         Notice notice = noticeRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOTICE_NOT_FOUND));
-        return NoticeDetailResponse.from(notice);
+        notice.increaseViewCount();
+
+        Notice prev = noticeRepository
+                .findFirstByDeletedAtIsNullAndCreatedAtLessThanOrderByCreatedAtDesc(notice.getCreatedAt())
+                .orElse(null);
+        Notice next = noticeRepository
+                .findFirstByDeletedAtIsNullAndCreatedAtGreaterThanOrderByCreatedAtAsc(notice.getCreatedAt())
+                .orElse(null);
+
+        return NoticeDetailResponse.from(notice, prev, next);
     }
 }

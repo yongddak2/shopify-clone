@@ -499,7 +499,13 @@ export interface NoticeListItem {
   id: number;
   title: string;
   pinned: boolean;
+  viewCount: number;
   createdAt: string;
+}
+
+export interface NoticeNavigation {
+  id: number;
+  title: string;
 }
 
 export interface NoticeDetail {
@@ -507,8 +513,11 @@ export interface NoticeDetail {
   title: string;
   content: string;
   pinned: boolean;
+  viewCount: number;
   createdAt: string;
   updatedAt: string;
+  prev: NoticeNavigation | null;
+  next: NoticeNavigation | null;
 }
 
 export interface NoticeRequest {
@@ -600,4 +609,32 @@ export interface FaqRequest {
 
 export interface FaqSortRequest {
   items: { id: number; sortOrder: number }[];
+}
+
+// Season Collection (PNTK)
+export interface SeasonSummary {
+  id: number;
+  name: string;
+  slug: string;
+  isActive: boolean;
+  sortOrder: number;
+  imageCount: number;
+}
+
+export interface SeasonImage {
+  id: number;
+  imageUrl: string;
+  sortOrder: number;
+}
+
+export interface SeasonDetail {
+  id: number;
+  name: string;
+  slug: string;
+  images: SeasonImage[];
+}
+
+export interface SeasonOrderItem {
+  id: number;
+  sortOrder: number;
 }

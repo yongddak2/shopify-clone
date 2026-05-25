@@ -29,6 +29,9 @@ public class Notice {
     @Column(nullable = false)
     private boolean isPinned = false;
 
+    @Column(nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+    private Long viewCount = 0L;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 
@@ -52,5 +55,9 @@ public class Notice {
 
     public void markDeleted() {
         this.deletedAt = LocalDateTime.now();
+    }
+
+    public void increaseViewCount() {
+        this.viewCount = (this.viewCount == null ? 0L : this.viewCount) + 1;
     }
 }

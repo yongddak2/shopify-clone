@@ -13,6 +13,7 @@ public class NoticeListResponse {
     private final Long id;
     private final String title;
     private final boolean pinned;
+    private final Long viewCount;
     private final LocalDateTime createdAt;
 
     public static NoticeListResponse from(Notice notice) {
@@ -20,6 +21,7 @@ public class NoticeListResponse {
                 .id(notice.getId())
                 .title(notice.getTitle())
                 .pinned(notice.isPinned())
+                .viewCount(notice.getViewCount())
                 .createdAt(notice.getCreatedAt())
                 .build();
     }

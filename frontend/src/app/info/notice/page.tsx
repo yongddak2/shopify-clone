@@ -1,8 +1,9 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { Pin } from "lucide-react";
 import { getNotices } from "@/lib/notice";
 
 function formatDate(s: string) {
@@ -10,6 +11,7 @@ function formatDate(s: string) {
 }
 
 function NoticeListContent() {
+  const router = useRouter();
   const [page, setPage] = useState(0);
 
   const { data, isLoading } = useQuery({
@@ -21,75 +23,98 @@ function NoticeListContent() {
   const totalPages = data?.data?.totalPages ?? 0;
 
   return (
-    <div className="min-h-[calc(100vh-64px)] px-6 py-16">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl tracking-[0.2em] font-light text-center mb-12 text-[var(--text-primary)]">
+    <div>
+      <header className="mb-10">
+        <h1 className="text-2xl tracking-[0.2em] font-light text-[var(--text-primary)]">
           NOTICE
         </h1>
+        <p className="mt-3 text-xs tracking-wider text-[var(--text-dim)]">
+          PanTrKa의 새로운 소식과 안내사항을 전해드립니다.
+        </p>
+      </header>
 
-        {isLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-12 bg-[var(--skeleton)] animate-pulse" />
-            ))}
-          </div>
-        ) : notices.length === 0 ? (
-          <div className="text-center py-20 text-[var(--text-muted)] text-sm">
-            등록된 공지사항이 없습니다.
-          </div>
-        ) : (
-          <ul className="border-t border-[var(--border-color)]">
-            {notices.map((n) => (
-              <li
-                key={n.id}
-                className="border-b border-[var(--border-color)]"
-              >
-                <Link
-                  href={`/info/notice/${n.id}`}
-                  className="flex items-center gap-3 py-5 px-2 hover:bg-[var(--card-bg)] transition-colors"
+      {isLoading ? (
+        <div className="space-y-3 py-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-14 bg-[var(--skeleton)] animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[600px]">
+            <thead>
+              <tr className="border-y border-[var(--border-color)] text-[var(--text-muted)] text-xs tracking-wider">
+                <th className="py-3 px-3 text-left w-[40px]" aria-hidden />
+                <th className="py-3 px-3 text-left">제목</th>
+                <th className="py-3 px-3 text-center w-[100px]">조회수</th>
+                <th className="py-3 px-3 text-center w-[110px]">등록일</th>
+              </tr>
+            </thead>
+            <tbody>
+              {notices.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={4}
+                    className="py-20 text-center text-[var(--text-muted)] text-sm border-b border-[var(--border-color)]"
+                  >
+                    등록된 공지사항이 없습니다.
+                  </td>
+                </tr>
+              )}
+              {notices.map((n) => (
+                <tr
+                  key={n.id}
+                  onClick={() => router.push(`/info/notice/${n.id}`)}
+                  className="border-b border-[var(--border-color)] cursor-pointer hover:bg-[var(--card-bg)] transition-colors"
                 >
-                  {n.pinned && (
-                    <span className="inline-block px-2 py-0.5 text-[10px] tracking-wider bg-[var(--text-primary)] text-[var(--btn-primary-text)]">
-                      PIN
-                    </span>
-                  )}
-                  <span className="flex-1 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+                  <td className="py-4 px-3">
+                    {n.pinned ? (
+                      <Pin
+                        className="w-3.5 h-3.5 text-[var(--text-primary)] -rotate-45"
+                        strokeWidth={2}
+                      />
+                    ) : null}
+                  </td>
+                  <td className="py-4 px-3 text-[var(--text-secondary)]">
                     {n.title}
-                  </span>
-                  <span className="text-xs text-[var(--text-muted)] whitespace-nowrap">
+                  </td>
+                  <td className="py-4 px-3 text-center text-[var(--text-muted)] text-xs tabular-nums">
+                    {n.viewCount ?? 0}
+                  </td>
+                  <td className="py-4 px-3 text-center text-[var(--text-muted)] text-xs whitespace-nowrap">
                     {formatDate(n.createdAt)}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-2 mt-12">
-            {Array.from({ length: totalPages }).map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setPage(i)}
-                className={`w-9 h-9 text-xs transition-colors ${
-                  page === i
-                    ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                {i + 1}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-12">
+          {Array.from({ length: totalPages }).map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setPage(i)}
+              className={`w-9 h-9 text-xs transition-colors ${
+                page === i
+                  ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
+                  : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              {i + 1}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 export default function NoticeListPage() {
   return (
-    <Suspense fallback={<div className="min-h-[calc(100vh-64px)]" />}>
+    <Suspense fallback={<div />}>
       <NoticeListContent />
     </Suspense>
   );

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import ReactMarkdown from "react-markdown";
 import { createNotice } from "@/lib/admin";
 
 export default function AdminNoticeNewPage() {
@@ -13,6 +14,7 @@ export default function AdminNoticeNewPage() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [isPinned, setIsPinned] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [error, setError] = useState("");
 
   const mutation = useMutation({
@@ -57,16 +59,35 @@ export default function AdminNoticeNewPage() {
         </div>
 
         <div>
-          <label className="block text-xs tracking-wider text-[var(--text-muted)] mb-2">
-            내용
-          </label>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            rows={16}
-            className="w-full px-3 py-2 text-sm bg-[var(--input-bg)] border border-[var(--border-color)] text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-muted)] resize-y"
-            placeholder="공지사항 본문"
-          />
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs tracking-wider text-[var(--text-muted)]">
+              내용 <span className="ml-2 text-[10px] text-[var(--text-dim)]">마크다운 지원 (제목 #, 목록 -, 굵게 **, 이미지 ![alt](url))</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowPreview((v) => !v)}
+              className="text-[11px] tracking-wider text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+            >
+              {showPreview ? "← 편집으로" : "미리보기 →"}
+            </button>
+          </div>
+          {showPreview ? (
+            <div className="notice-content min-h-[400px] px-4 py-3 text-sm bg-[var(--input-bg)] border border-[var(--border-color)] text-[var(--text-secondary)]">
+              {content.trim() ? (
+                <ReactMarkdown>{content}</ReactMarkdown>
+              ) : (
+                <p className="text-[var(--text-muted)]">미리보기할 내용이 없습니다.</p>
+              )}
+            </div>
+          ) : (
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              rows={16}
+              className="w-full px-3 py-2 text-sm bg-[var(--input-bg)] border border-[var(--border-color)] text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-muted)] resize-y font-mono"
+              placeholder="공지사항 본문"
+            />
+          )}
         </div>
 
         <div>

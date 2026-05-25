@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 public interface NoticeRepository extends JpaRepository<Notice, Long> {
@@ -21,4 +22,8 @@ public interface NoticeRepository extends JpaRepository<Notice, Long> {
             "AND LOWER(n.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "ORDER BY n.isPinned DESC, n.createdAt DESC")
     Page<Notice> findAdminNotices(@Param("keyword") String keyword, Pageable pageable);
+
+    Optional<Notice> findFirstByDeletedAtIsNullAndCreatedAtLessThanOrderByCreatedAtDesc(LocalDateTime createdAt);
+
+    Optional<Notice> findFirstByDeletedAtIsNullAndCreatedAtGreaterThanOrderByCreatedAtAsc(LocalDateTime createdAt);
 }
