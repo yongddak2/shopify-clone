@@ -14,7 +14,13 @@ src/
 │   ├── login/page.tsx
 │   ├── signup/page.tsx                   ← 약관 동의 3종
 │   ├── forgot-password/page.tsx          ← 비밀번호 찾기 3단계
-│   ├── terms/page.tsx / privacy/page.tsx
+│   ├── terms/{page,layout}.tsx / privacy/{page,layout}.tsx  ← InfoLayout re-export로 사이드 메뉴 공유
+│   ├── info/
+│   │   ├── layout.tsx + InfoSidebar.tsx  ← 5메뉴 사이드(NOTICE/FAQ/Q&A/이용약관/개인정보)
+│   │   ├── notice/page.tsx + [id]/       ← 공지 (마크다운 본문 + 이전/다음 + 조회수)
+│   │   ├── faq/page.tsx                  ← 카테고리 탭 + 아코디언(grid-rows 트릭 애니메이션)
+│   │   └── qa/page.tsx + new/ + [id]/edit/
+│   ├── pntk/page.tsx + [slug]/           ← 시즌 컬렉션 (4열 풀폭 + 시즌 탭 + PhotoLightbox)
 │   ├── search/page.tsx                   ← 키워드/카테고리/가격 필터
 │   ├── products/
 │   │   ├── page.tsx                      ← 상품 목록 + 찜 하트
@@ -52,6 +58,7 @@ src/
 │       │   ├── page.tsx                  ← CRUD + 🎁 웰컴 뱃지
 │       │   └── new/page.tsx              ← 웰컴 토글 체크박스
 │       ├── banners/page.tsx
+│       ├── seasons/page.tsx + [id]/photos/  ← PNTK 시즌 CRUD + 사진 multipart 업로드/드래그 정렬
 │       └── requests/page.tsx             ← 반품/교환 관리 5탭
 ├── lib/
 │   ├── api.ts            ← axios 인스턴스, 401 자동 재발급
@@ -65,6 +72,7 @@ src/
 │   ├── wishlist.ts       ← getWishlists/toggleWishlist
 │   ├── coupon.ts         ← getMyCoupons/getAvailableCoupons/issueCoupon
 │   ├── review.ts         ← getProductReviews/getMyReviews/createReview/deleteReview/toggleLike/uploadImage
+│   ├── season.ts         ← getPublicSeasonList/getSeasonBySlug (PNTK 공개)
 │   └── queryInvalidator.ts
 ├── stores/authStore.ts   ← zustand + persist, SSR 안전 처리
 └── types/index.ts        ← 공통 타입 전체
@@ -97,6 +105,7 @@ src/
 - `invalidateUserRelated` — user
 - `invalidateDashboardRelated` — admin dashboard
 - `invalidateAdminMemberRelated` — admin users, admin user, admin dashboard
+- `invalidateSeasonRelated` — pntk-seasons, season, admin seasons, admin season-images
 - `invalidateAfterPayment` — 결제 완료 시 4개 도메인 일괄
 
 ### 운영 원칙

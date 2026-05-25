@@ -119,8 +119,8 @@ PanTrKa 전체 REST API 목록. 공통 응답은 `ApiResponse` (`{success, messa
 
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
-| GET | /api/notices | 공지사항 목록 (공개, 페이지·사이즈, isPinned DESC → createdAt DESC 정렬) |
-| GET | /api/notices/{id} | 공지사항 상세 (공개) |
+| GET | /api/notices | 공지사항 목록 (공개, 페이지·사이즈, isPinned DESC → createdAt DESC 정렬, viewCount 포함) |
+| GET | /api/notices/{id} | 공지사항 상세 (공개, 조회 시 viewCount 자동 증가, prev/next 글 ID·제목 함께 응답) |
 
 ## FAQ
 
@@ -139,6 +139,13 @@ PanTrKa 전체 REST API 목록. 공통 응답은 `ApiResponse` (`{success, messa
 | PATCH | /api/qnas/{id} | 문의 수정 (작성자 본인, **답변 등록 전만 가능**) |
 | DELETE | /api/qnas/{id} | 문의 삭제 (작성자 본인 또는 ADMIN, 소프트 딜리트) |
 | POST | /api/qnas/images | 문의 이미지 업로드 (인증, S3 qnas/, 5MB) |
+
+## Season Collection (PNTK)
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | /api/season-collections | 활성 시즌 목록 (sortOrder 정렬, name·slug·사진 개수) |
+| GET | /api/season-collections/{slug} | 시즌 상세 + 사진 배열 (sortOrder 정렬, 비활성/삭제 시 404) |
 
 ---
 
@@ -220,3 +227,18 @@ PanTrKa 전체 REST API 목록. 공통 응답은 `ApiResponse` (`{success, messa
 | POST | /api/admin/answer-templates | 템플릿 등록 (title 100자, content) |
 | PATCH | /api/admin/answer-templates/{id} | 템플릿 수정 |
 | DELETE | /api/admin/answer-templates/{id} | 템플릿 삭제 |
+
+### Admin — 시즌 컬렉션 (PNTK)
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | /api/admin/season-collections | 전체 시즌 목록 (비활성 포함) |
+| POST | /api/admin/season-collections | 신규 시즌 (`{name}`, 영문·숫자·공백만, slug 자동 생성, 중복 시 -2/-3 suffix) |
+| PATCH | /api/admin/season-collections/{id} | 이름 수정 (slug 재생성) |
+| PATCH | /api/admin/season-collections/{id}/toggle | 노출 토글 (isActive) |
+| PUT | /api/admin/season-collections/order | 시즌 드래그 정렬 `[{id, sortOrder}]` |
+| DELETE | /api/admin/season-collections/{id} | 시즌 삭제 (소프트 + 사진 S3 정리) |
+| GET | /api/admin/season-collections/{id}/images | 사진 목록 (sortOrder) |
+| POST | /api/admin/season-collections/{id}/images | 사진 multipart 업로드 (`files[]`, 한 장 10MB, request 20MB 한계) |
+| PUT | /api/admin/season-collections/{id}/images/order | 사진 드래그 정렬 `[{id, sortOrder}]` |
+| DELETE | /api/admin/season-collections/images/{imageId} | 사진 1장 삭제 (+ S3 deleteFile) |

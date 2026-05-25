@@ -81,9 +81,10 @@ npx tsc --noEmit     # 타입 체크
 - **비밀번호**: 8자+영문+숫자+특수문자 / 변경 30일 제한(`passwordChangedAt`) / 소셜 로그인 차단
 - **비밀번호 찾기**: Redis 코드 3분 → verified 키 10분 → 재발송 30초 이중 방어
 - **배너**: 최대 5개, sortOrder, isActive, title (필수, VARCHAR 100)
+- **시즌 컬렉션(PNTK)**: 이름은 영문/숫자/공백만, slug 자동 생성(kebab-case, 중복 시 -2/-3). 사진 한 장 10MB. 헤더 PNTK 클릭 → `/pntk` → 첫 활성 시즌(sortOrder 최상단)으로 redirect. `/pntk/[slug]` 상단에 시즌 탭 네비
 - **썸네일**: `isThumbnail=true` 우선, sortOrder 최소값 fallback
   - 적용 대상: ProductSummaryResponse, CartItemResponse, WishlistResponse, OrderItemResponse
-- **이미지 S3 경로**: products/(5MB) / reviews/(5MB) / return-requests/(20MB) / banners/
+- **이미지 S3 경로**: products/(5MB) / reviews/(5MB) / return-requests/(20MB) / banners/ / season-collections/(10MB)
 
 ---
 
