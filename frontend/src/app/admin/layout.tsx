@@ -15,6 +15,7 @@ import {
   Megaphone,
   HelpCircle,
   MessageCircle,
+  Sparkles,
   ExternalLink,
   LogOut,
 } from "lucide-react";
@@ -22,18 +23,34 @@ import { useAuthStore } from "@/stores/authStore";
 import { logout } from "@/lib/auth";
 import { getMyInfo } from "@/lib/user";
 
-const menuItems = [
-  { href: "/admin", label: "대시보드", icon: LayoutDashboard, exact: true },
-  { href: "/admin/products", label: "상품관리", icon: Package, exact: false },
-  { href: "/admin/inventory", label: "재고관리", icon: Boxes, exact: false },
-  { href: "/admin/orders", label: "주문관리", icon: ClipboardList, exact: false },
-  { href: "/admin/users", label: "회원관리", icon: Users, exact: false },
-  { href: "/admin/coupons", label: "쿠폰관리", icon: Ticket, exact: false },
-  { href: "/admin/banners", label: "배너관리", icon: Image, exact: false },
-  { href: "/admin/notices", label: "공지사항", icon: Megaphone, exact: false },
-  { href: "/admin/faqs", label: "FAQ", icon: HelpCircle, exact: false },
-  { href: "/admin/qnas", label: "1:1 문의", icon: MessageCircle, exact: false },
-  { href: "/admin/requests", label: "반품/교환 관리", icon: RotateCcw, exact: false },
+const menuGroups = [
+  {
+    title: null,
+    items: [
+      { href: "/admin", label: "대시보드", icon: LayoutDashboard, exact: true },
+    ],
+  },
+  {
+    title: "운영",
+    items: [
+      { href: "/admin/products", label: "상품관리", icon: Package, exact: false },
+      { href: "/admin/inventory", label: "재고관리", icon: Boxes, exact: false },
+      { href: "/admin/orders", label: "주문관리", icon: ClipboardList, exact: false },
+      { href: "/admin/users", label: "회원관리", icon: Users, exact: false },
+      { href: "/admin/coupons", label: "쿠폰관리", icon: Ticket, exact: false },
+      { href: "/admin/banners", label: "배너관리", icon: Image, exact: false },
+      { href: "/admin/seasons", label: "시즌관리", icon: Sparkles, exact: false },
+    ],
+  },
+  {
+    title: "고객지원",
+    items: [
+      { href: "/admin/notices", label: "공지사항", icon: Megaphone, exact: false },
+      { href: "/admin/faqs", label: "FAQ", icon: HelpCircle, exact: false },
+      { href: "/admin/qnas", label: "1:1 문의", icon: MessageCircle, exact: false },
+      { href: "/admin/requests", label: "반품/교환 관리", icon: RotateCcw, exact: false },
+    ],
+  },
 ];
 
 export default function AdminLayout({
@@ -134,25 +151,36 @@ export default function AdminLayout({
         </div>
 
         {/* 메뉴 */}
-        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.href, item.exact);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded text-sm transition-colors ${
-                  active
-                    ? "bg-[var(--card-bg)] text-[var(--text-primary)]"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--card-bg)]"
-                }`}
-              >
-                <Icon className="w-4 h-4" strokeWidth={1.5} />
-                {item.label}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 py-4 px-3 overflow-y-auto">
+          {menuGroups.map((group, gi) => (
+            <div key={gi} className={gi === 0 ? "" : "mt-6"}>
+              {group.title && (
+                <div className="px-3 mb-2 text-[10px] tracking-[0.2em] text-[var(--text-dim)] uppercase">
+                  {group.title}
+                </div>
+              )}
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const active = isActive(item.href, item.exact);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded text-sm transition-colors ${
+                        active
+                          ? "bg-[var(--card-bg)] text-[var(--text-primary)]"
+                          : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--card-bg)]"
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" strokeWidth={1.5} />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* 하단 고정 */}
