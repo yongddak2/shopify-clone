@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/authStore";
 import { logout } from "@/lib/auth";
 import { getCart } from "@/lib/cart";
+import { getPublicSeasonList } from "@/lib/season";
 
 type MenuKey = "SHOP" | "ABOUT" | "PNTK" | "INFO";
 
@@ -287,7 +288,7 @@ export default function Header() {
           onMouseEnter={() => openOrSwitch("PNTK")}
           onMouseLeave={scheduleClose}
         >
-          <PntkDropdownContent />
+          <PntkDropdownContent onItemClick={() => setOpenMenu(null)} />
         </DropdownPanel>
 
         <DropdownPanel
@@ -459,19 +460,44 @@ function AboutDropdownContent() {
   );
 }
 
-function PntkDropdownContent() {
-  // 콘텐츠는 추후 사용자 전달 예정 — 패널 활성화만 구현
+function PntkDropdownContent({ onItemClick }: { onItemClick: () => void }) {
+  const { data: seasons = [] } = useQuery({
+    queryKey: ["pntk-seasons"],
+    queryFn: getPublicSeasonList,
+    staleTime: 60_000,
+  });
+
   return (
-    <div className="h-full pt-28 pb-10 pl-10 lg:pl-16 pr-6">
-      <p
-        className="font-display tracking-wide italic text-[18px] lg:text-[20px]"
-        style={{
-          color: "var(--header-yellow)",
-          textShadow: "0 2px 8px rgba(0,0,0,0.25)",
-        }}
-      >
-        준비 중
-      </p>
+    <div className="h-full pt-28 pb-10 pl-10 lg:pl-16 pr-6 overflow-y-auto">
+      {seasons.length === 0 ? (
+        <p
+          className="font-display tracking-wide italic text-[18px] lg:text-[20px]"
+          style={{
+            color: "var(--header-yellow)",
+            textShadow: "0 2px 8px rgba(0,0,0,0.25)",
+          }}
+        >
+          준비 중
+        </p>
+      ) : (
+        <ul className="space-y-5 lg:space-y-6">
+          {seasons.map((season) => (
+            <li key={season.id}>
+              <Link
+                href={`/pntk/${season.slug}`}
+                onClick={onItemClick}
+                className="font-display font-bold tracking-tight text-[30px] lg:text-[40px] leading-none italic block hover:opacity-90 transition-opacity"
+                style={{
+                  color: "var(--header-yellow)",
+                  textShadow: "0 2px 8px rgba(0,0,0,0.25)",
+                }}
+              >
+                {season.name}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -123,6 +123,16 @@ export const invalidateAdminMemberRelated = (qc: QueryClient) => {
 };
 
 // ─────────────────────────────────────────────────────────────
+// Season Collection (PNTK 시즌 컬렉션)
+// ─────────────────────────────────────────────────────────────
+export const invalidateSeasonRelated = (qc: QueryClient) => {
+  qc.invalidateQueries({ queryKey: ["pntk-seasons"] });
+  qc.invalidateQueries({ queryKey: ["season"] });
+  qc.invalidateQueries({ queryKey: ["admin", "seasons"] });
+  qc.invalidateQueries({ queryKey: ["admin", "season-images"] });
+};
+
+// ─────────────────────────────────────────────────────────────
 // 복합: 결제 완료 — 주문/장바구니/재고/쿠폰 모두 영향
 // ─────────────────────────────────────────────────────────────
 export const invalidateAfterPayment = (qc: QueryClient) => {

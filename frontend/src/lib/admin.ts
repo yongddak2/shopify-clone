@@ -29,6 +29,9 @@ import type {
   SupportCategory,
   AnswerTemplate,
   AnswerTemplateRequest,
+  SeasonSummary,
+  SeasonImage,
+  SeasonOrderItem,
 } from "@/types";
 
 // 대시보드
@@ -512,4 +515,59 @@ export async function updateAnswerTemplate(id: number, data: AnswerTemplateReque
 
 export async function deleteAnswerTemplate(id: number) {
   await api.delete(`/api/admin/answer-templates/${id}`);
+}
+
+// ───────────────────────────────────────────
+// Season Collection (PNTK)
+// ───────────────────────────────────────────
+export async function getAdminSeasons() {
+  const res = await api.get<ApiResponse<SeasonSummary[]>>("/api/admin/season-collections");
+  return res.data.data;
+}
+
+export async function createSeason(name: string) {
+  const res = await api.post<ApiResponse<SeasonSummary>>("/api/admin/season-collections", { name });
+  return res.data.data;
+}
+
+export async function updateSeasonName(id: number, name: string) {
+  const res = await api.patch<ApiResponse<SeasonSummary>>(`/api/admin/season-collections/${id}`, { name });
+  return res.data.data;
+}
+
+export async function toggleSeasonActive(id: number) {
+  const res = await api.patch<ApiResponse<SeasonSummary>>(`/api/admin/season-collections/${id}/toggle`);
+  return res.data.data;
+}
+
+export async function reorderSeasons(orders: SeasonOrderItem[]) {
+  await api.put("/api/admin/season-collections/order", orders);
+}
+
+export async function deleteSeason(id: number) {
+  await api.delete(`/api/admin/season-collections/${id}`);
+}
+
+export async function getSeasonImages(id: number) {
+  const res = await api.get<ApiResponse<SeasonImage[]>>(`/api/admin/season-collections/${id}/images`);
+  return res.data.data;
+}
+
+export async function uploadSeasonImages(id: number, files: File[]): Promise<SeasonImage[]> {
+  const formData = new FormData();
+  files.forEach((f) => formData.append("files", f));
+  const res = await api.post<ApiResponse<SeasonImage[]>>(
+    `/api/admin/season-collections/${id}/images`,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return res.data.data;
+}
+
+export async function reorderSeasonImages(id: number, orders: SeasonOrderItem[]) {
+  await api.put(`/api/admin/season-collections/${id}/images/order`, orders);
+}
+
+export async function deleteSeasonImage(imageId: number) {
+  await api.delete(`/api/admin/season-collections/images/${imageId}`);
 }

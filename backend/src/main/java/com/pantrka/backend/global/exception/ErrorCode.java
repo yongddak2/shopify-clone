@@ -131,6 +131,12 @@ public enum ErrorCode {
     // Answer Template
     ANSWER_TEMPLATE_NOT_FOUND(HttpStatus.NOT_FOUND, "답변 템플릿을 찾을 수 없습니다."),
 
+    // Season Collection
+    SEASON_NOT_FOUND(HttpStatus.NOT_FOUND, "시즌 컬렉션을 찾을 수 없습니다."),
+    SEASON_NAME_DUPLICATED(HttpStatus.CONFLICT, "이미 사용 중인 시즌 이름입니다."),
+    SEASON_NAME_INVALID(HttpStatus.BAD_REQUEST, "시즌 이름은 영문, 숫자, 공백만 사용할 수 있습니다."),
+    SEASON_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "시즌 사진을 찾을 수 없습니다."),
+
     // Common
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "잘못된 입력값입니다.");
 
