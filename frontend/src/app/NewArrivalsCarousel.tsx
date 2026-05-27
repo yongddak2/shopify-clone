@@ -65,6 +65,20 @@ export default function NewArrivalsCarousel({
   const [hovered, setHovered] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // 화살표를 썸네일(이미지) 세로 중앙에 맞추기 위해 첫 썸네일 높이를 측정
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [arrowTop, setArrowTop] = useState<number | null>(null);
+
+  useEffect(() => {
+    const thumb = trackRef.current?.querySelector<HTMLElement>("[data-thumb]");
+    if (!thumb) return;
+    const update = () => setArrowTop(thumb.offsetHeight / 2);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(thumb);
+    return () => ro.disconnect();
+  }, []);
+
   const clearTimer = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -128,7 +142,7 @@ export default function NewArrivalsCarousel({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className="overflow-hidden">
+      <div className="overflow-hidden" ref={trackRef}>
         <div
           className="flex"
           style={{
@@ -139,7 +153,7 @@ export default function NewArrivalsCarousel({
           {looped.map((product, idx) => (
             <div
               key={`${product.id}-${idx}`}
-              className="flex-shrink-0 px-2.5"
+              className="flex-shrink-0 px-1"
               style={{ width: `${cardWidthPercent}%` }}
             >
               <ProductCard
@@ -152,20 +166,22 @@ export default function NewArrivalsCarousel({
         </div>
       </div>
 
-      {/* 좌우 화살표 — 사진 바깥으로 빼되 모바일에서는 안전 거리 유지 */}
+      {/* 좌우 화살표 — 버튼 배경 없이 기호만. top은 썸네일 세로 중앙(측정값) */}
       <button
         onClick={goPrev}
-        className="absolute -left-2 md:-left-6 lg:-left-12 top-1/3 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/80 hover:bg-white shadow-md flex items-center justify-center transition-colors border border-[var(--border-color)]"
+        style={{ top: arrowTop ?? undefined }}
+        className="absolute -left-2 md:-left-6 lg:-left-12 top-1/3 -translate-y-1/2 z-10 flex items-center justify-center text-[var(--text-primary)] hover:opacity-50 transition-opacity"
         aria-label="이전"
       >
-        <ChevronLeft className="w-5 h-5 text-[var(--text-primary)]" />
+        <ChevronLeft className="w-7 h-7" strokeWidth={1.5} />
       </button>
       <button
         onClick={goNext}
-        className="absolute -right-2 md:-right-6 lg:-right-12 top-1/3 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/80 hover:bg-white shadow-md flex items-center justify-center transition-colors border border-[var(--border-color)]"
+        style={{ top: arrowTop ?? undefined }}
+        className="absolute -right-2 md:-right-6 lg:-right-12 top-1/3 -translate-y-1/2 z-10 flex items-center justify-center text-[var(--text-primary)] hover:opacity-50 transition-opacity"
         aria-label="다음"
       >
-        <ChevronRight className="w-5 h-5 text-[var(--text-primary)]" />
+        <ChevronRight className="w-7 h-7" strokeWidth={1.5} />
       </button>
     </div>
   );
@@ -188,7 +204,10 @@ export function ProductCard({
 
   return (
     <Link href={`/products/${product.id}`} className="group block">
-      <div className="relative aspect-[3/4] bg-[var(--card-bg)] mb-4 overflow-hidden">
+      <div
+        data-thumb
+        className="relative aspect-[3/4] bg-[var(--card-bg)] mb-4 overflow-hidden"
+      >
         {product.thumbnailUrl ? (
           <img
             src={product.thumbnailUrl}

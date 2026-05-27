@@ -38,7 +38,7 @@ function ProductGrid({
 }) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-10">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-2 gap-y-10">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i}>
             <div className="aspect-[3/4] bg-[var(--skeleton)] animate-pulse mb-4" />
@@ -53,7 +53,7 @@ function ProductGrid({
   if (products.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-10">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-2 gap-y-10">
       {products.map((product) => {
         const isSoldOut = product.status === "SOLDOUT";
         const hasDiscount = product.discountRate > 0;
