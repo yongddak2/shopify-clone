@@ -37,6 +37,7 @@ public class AdminProductCreateRequest {
         private String url;
         private int sortOrder;
         private boolean isThumbnail;
+        private boolean detail;
     }
 
     @Getter

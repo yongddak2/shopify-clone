@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getCategories, createProduct, uploadProductImage, deleteProductImage } from "@/lib/admin";
+import { getCategories, createProduct, uploadProductImage, uploadProductDetailImage, deleteProductImage } from "@/lib/admin";
 import { invalidateProductRelated } from "@/lib/queryInvalidator";
 import type { CreateProductRequest } from "@/types";
 
@@ -32,11 +32,14 @@ const FALLBACK_CATEGORIES = [
 interface UploadedImage {
   url: string;
   uploading: boolean;
+  tempKey?: string; // 업로드 중 항목 식별 (동시 업로드 race 방지)
 }
 
 const ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_IMAGES = 5;
+const MAX_DETAIL_FILE_SIZE = 10 * 1024 * 1024; // 10MB (상세 설명 이미지)
+const MAX_DETAIL_IMAGES = 20;
 
 export default function AdminProductNewPage() {
   const router = useRouter();
@@ -50,6 +53,8 @@ export default function AdminProductNewPage() {
   const [status, setStatus] = useState("ACTIVE");
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [detailImages, setDetailImages] = useState<UploadedImage[]>([]);
+  const detailFileInputRef = useRef<HTMLInputElement>(null);
 
   const [sizeMode, setSizeMode] = useState<'none' | 'custom'>('none');
   const [colorMode, setColorMode] = useState<'none' | 'custom'>('none');
@@ -157,34 +162,85 @@ export default function AdminProductNewPage() {
     setDiscountRate(v);
   };
 
+  // 여러 파일 병렬 업로드 — 각 파일에 고유 키를 부여해 동시 완료 시 안전하게 교체
+  const uploadFilesInto = async (
+    files: File[],
+    config: {
+      images: UploadedImage[];
+      setImages: React.Dispatch<React.SetStateAction<UploadedImage[]>>;
+      max: number;
+      maxSize: number;
+      sizeMsg: string;
+      uploader: (file: File) => Promise<string>;
+    }
+  ) => {
+    if (files.length === 0) return;
+
+    const remaining = config.max - config.images.length;
+    if (remaining <= 0) {
+      setError(`이미지는 최대 ${config.max}장까지 등록할 수 있습니다.`);
+      return;
+    }
+
+    const accepted: { key: string; file: File }[] = [];
+    let warn = "";
+    for (const file of files) {
+      if (accepted.length >= remaining) break;
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        warn = "허용되지 않는 파일 형식입니다. (jpg, jpeg, png, gif, webp)";
+        continue;
+      }
+      if (file.size > config.maxSize) {
+        warn = config.sizeMsg;
+        continue;
+      }
+      accepted.push({ key: crypto.randomUUID(), file });
+    }
+
+    if (accepted.length === 0) {
+      setError(warn || "추가할 수 있는 이미지가 없습니다.");
+      return;
+    }
+    if (!warn && files.length > remaining) {
+      warn = `이미지는 최대 ${config.max}장까지 등록할 수 있어 일부만 추가됩니다.`;
+    }
+    setError(warn);
+
+    config.setImages((prev) => [
+      ...prev,
+      ...accepted.map((a) => ({ tempKey: a.key, url: "", uploading: true })),
+    ]);
+
+    await Promise.all(
+      accepted.map(async (a) => {
+        try {
+          const url = await config.uploader(a.file);
+          config.setImages((prev) =>
+            prev.map((img) =>
+              img.tempKey === a.key ? { ...img, url, uploading: false } : img
+            )
+          );
+        } catch {
+          config.setImages((prev) => prev.filter((img) => img.tempKey !== a.key));
+          setError("일부 이미지 업로드에 실패했습니다.");
+        }
+      })
+    );
+  };
+
   // 이미지 업로드/삭제
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
     if (e.target) e.target.value = "";
-    if (!file) return;
-
-    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-    if (!ALLOWED_EXTENSIONS.includes(ext)) {
-      setError("허용되지 않는 파일 형식입니다. (jpg, jpeg, png, gif, webp)");
-      return;
-    }
-    if (file.size > MAX_FILE_SIZE) {
-      setError("파일 크기는 5MB 이하만 가능합니다.");
-      return;
-    }
-
-    const idx = uploadedImages.length;
-    setUploadedImages((prev) => [...prev, { url: "", uploading: true }]);
-
-    try {
-      const url = await uploadProductImage(file);
-      setUploadedImages((prev) =>
-        prev.map((img, i) => (i === idx ? { url, uploading: false } : img))
-      );
-    } catch {
-      setUploadedImages((prev) => prev.filter((_, i) => i !== idx));
-      setError("이미지 업로드에 실패했습니다.");
-    }
+    uploadFilesInto(files, {
+      images: uploadedImages,
+      setImages: setUploadedImages,
+      max: MAX_IMAGES,
+      maxSize: MAX_FILE_SIZE,
+      sizeMsg: "파일 크기는 5MB 이하만 가능합니다.",
+      uploader: uploadProductImage,
+    });
   };
 
   const handleRemoveImage = async (idx: number) => {
@@ -192,6 +248,32 @@ export default function AdminProductNewPage() {
     if (img.uploading) return;
 
     setUploadedImages((prev) => prev.filter((_, i) => i !== idx));
+    try {
+      await deleteProductImage(img.url);
+    } catch {
+      // S3 삭제 실패해도 목록에서는 제거 유지
+    }
+  };
+
+  // 상세 설명 이미지 업로드/삭제 (10MB)
+  const handleDetailFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (e.target) e.target.value = "";
+    uploadFilesInto(files, {
+      images: detailImages,
+      setImages: setDetailImages,
+      max: MAX_DETAIL_IMAGES,
+      maxSize: MAX_DETAIL_FILE_SIZE,
+      sizeMsg: "상세 이미지는 10MB 이하만 가능합니다.",
+      uploader: uploadProductDetailImage,
+    });
+  };
+
+  const handleRemoveDetailImage = async (idx: number) => {
+    const img = detailImages[idx];
+    if (img.uploading) return;
+
+    setDetailImages((prev) => prev.filter((_, i) => i !== idx));
     try {
       await deleteProductImage(img.url);
     } catch {
@@ -222,6 +304,7 @@ export default function AdminProductNewPage() {
     const readyImages = uploadedImages.filter((img) => !img.uploading && img.url);
     if (readyImages.length === 0) { setError("최소 1장의 이미지를 등록해주세요."); return; }
     if (uploadedImages.some((img) => img.uploading)) { setError("이미지 업로드가 진행 중입니다. 잠시 후 다시 시도해주세요."); return; }
+    if (detailImages.some((img) => img.uploading)) { setError("상세 이미지 업로드가 진행 중입니다. 잠시 후 다시 시도해주세요."); return; }
 
     const optionGroups = [
       {
@@ -234,11 +317,21 @@ export default function AdminProductNewPage() {
       },
     ];
 
-    const images = readyImages.map((img, i) => ({
+    const galleryImages = readyImages.map((img, i) => ({
       url: img.url,
       sortOrder: i,
       isThumbnail: i === 0,
+      detail: false,
     }));
+    const detailImagePayload = detailImages
+      .filter((img) => !img.uploading && img.url)
+      .map((img, i) => ({
+        url: img.url,
+        sortOrder: i,
+        isThumbnail: false,
+        detail: true,
+      }));
+    const images = [...galleryImages, ...detailImagePayload];
 
     mutation.mutate({
       name: name.trim(),
@@ -481,6 +574,7 @@ export default function AdminProductNewPage() {
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            multiple
             onChange={handleFileSelect}
             className="hidden"
           />
@@ -514,6 +608,59 @@ export default function AdminProductNewPage() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
+                className="w-[100px] h-[100px] border border-dashed border-[var(--border-color)] flex flex-col items-center justify-center text-[var(--text-muted)] hover:border-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+              >
+                <span className="text-2xl leading-none">+</span>
+                <span className="text-[10px] mt-1">이미지 추가</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 상세 설명 이미지 업로드 */}
+        <div>
+          <label className="block text-xs text-[var(--text-muted)] mb-1">
+            상세 설명 이미지 ({detailImages.filter((img) => !img.uploading).length}/{MAX_DETAIL_IMAGES})
+          </label>
+          <p className="text-[11px] text-[var(--text-dim)] mb-2">
+            상품 상세 페이지 하단에 추가한 순서대로 세로로 표시됩니다. (장당 최대 10MB)
+          </p>
+          <input
+            ref={detailFileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleDetailFileSelect}
+            className="hidden"
+          />
+          <div className="flex flex-wrap gap-3">
+            {detailImages.map((img, idx) => (
+              <div key={idx} className="relative w-[100px] h-[100px] border border-[var(--border-color)] bg-[var(--input-bg)]">
+                {img.uploading ? (
+                  <div className="flex items-center justify-center w-full h-full">
+                    <span className="text-xs text-[var(--text-muted)] animate-pulse">업로드 중...</span>
+                  </div>
+                ) : (
+                  <>
+                    <img src={img.url} alt={`상세 이미지 ${idx + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveDetailImage(idx)}
+                      className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-black/60 text-white text-xs hover:bg-black/80 transition-colors"
+                    >
+                      ✕
+                    </button>
+                    <span className="absolute bottom-1 left-1 px-1.5 py-0.5 text-[10px] bg-black/60 text-white">
+                      {idx + 1}
+                    </span>
+                  </>
+                )}
+              </div>
+            ))}
+            {detailImages.length < MAX_DETAIL_IMAGES && (
+              <button
+                type="button"
+                onClick={() => detailFileInputRef.current?.click()}
                 className="w-[100px] h-[100px] border border-dashed border-[var(--border-color)] flex flex-col items-center justify-center text-[var(--text-muted)] hover:border-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
               >
                 <span className="text-2xl leading-none">+</span>

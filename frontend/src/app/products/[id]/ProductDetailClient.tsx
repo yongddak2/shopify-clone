@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProductDetail } from "@/lib/product";
-import { addToCart } from "@/lib/cart";
+import { addToCart, getCart } from "@/lib/cart";
 import { getWishlists, toggleWishlist } from "@/lib/wishlist";
 import {
   invalidateCartRelated,
@@ -38,6 +38,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
   const [optionError, setOptionError] = useState("");
   const [cartError, setCartError] = useState("");
   const [cartModal, setCartModal] = useState(false);
+  const [buyNowPending, setBuyNowPending] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["product", id],
@@ -160,8 +161,8 @@ export default function ProductDetailClient({ id }: { id: string }) {
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-6 lg:px-10 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+      <div className="max-w-[1600px] mx-auto px-6 lg:px-12 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.7fr_1fr] gap-10 lg:gap-20">
           <div className="aspect-[3/4] bg-[var(--skeleton)] animate-pulse" />
           <div className="space-y-4">
             <div className="h-8 bg-[var(--skeleton)] animate-pulse w-3/4" />
@@ -210,67 +211,124 @@ export default function ProductDetailClient({ id }: { id: string }) {
     cartMutation.mutate({ optionValueId: selectedOptionValueId, qty: quantity });
   };
 
-  const images = (product.images ?? []).length > 0 ? product.images : [null];
+  // 바로 구매하기: 장바구니에 담은 뒤 해당 항목만 선택해 주문 페이지로 직행
+  const handleBuyNow = async () => {
+    if (!isLoggedIn()) {
+      if (confirm("로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?")) {
+        router.push("/login");
+      }
+      return;
+    }
+
+    if (selectedOptionValueId == null) {
+      setOptionError("옵션을 선택해주세요.");
+      return;
+    }
+
+    setOptionError("");
+    setCartError("");
+    setBuyNowPending(true);
+    try {
+      await addToCart(Number(id), selectedOptionValueId, quantity);
+      const cart = await getCart();
+      const target = cart.data?.find(
+        (it) => it.optionValueId === selectedOptionValueId
+      );
+      if (!target) {
+        setCartError("주문 정보를 불러오지 못했습니다.");
+        return;
+      }
+      sessionStorage.setItem("orderCartItemIds", JSON.stringify([target.id]));
+      invalidateCartRelated(queryClient);
+      router.push("/order");
+    } catch {
+      setCartError("주문 처리에 실패했습니다.");
+    } finally {
+      setBuyNowPending(false);
+    }
+  };
+
+  const allImages = product.images ?? [];
+  const galleryImages = allImages
+    .filter((img) => !img.detail)
+    .sort((a, b) => {
+      if (a.isThumbnail !== b.isThumbnail) return a.isThumbnail ? -1 : 1;
+      return a.sortOrder - b.sortOrder;
+    });
+  const detailImages = allImages
+    .filter((img) => img.detail)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const images = galleryImages.length > 0 ? galleryImages : [null];
 
   return (
-    <div className="max-w-7xl mx-auto px-6 lg:px-10 py-12">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-16">
-        {/* 좌측: 이미지 갤러리 */}
+    <div className="max-w-[1600px] mx-auto px-6 lg:px-12 py-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.7fr_1fr] gap-10 lg:gap-20 items-start">
+        {/* 좌측: 이미지 갤러리 + 상세 설명 이미지 */}
         <div>
-          <div className="aspect-[3/4] bg-[var(--card-bg)] overflow-hidden mb-4">
-            {images[mainImageIndex] ? (
-              <img
-                src={images[mainImageIndex]!.url}
-                alt={product.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-[var(--section-bg)]" />
+          {/* 갤러리: 좌측 세로 썸네일 + 메인 이미지 (상세 이미지보다 좁게) */}
+          <div className="flex gap-3 lg:max-w-[80%]">
+            {images.length > 1 && (
+              <div className="flex flex-col gap-2 w-16 md:w-20 flex-shrink-0">
+                {images.map((img, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setMainImageIndex(i)}
+                    className={`aspect-square w-full overflow-hidden border-2 transition-colors ${
+                      mainImageIndex === i
+                        ? "border-[var(--text-primary)]"
+                        : "border-transparent"
+                    }`}
+                  >
+                    {img ? (
+                      <img
+                        src={img.url}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-[var(--section-bg)]" />
+                    )}
+                  </button>
+                ))}
+              </div>
             )}
+            <div className="flex-1 aspect-[3/4] bg-[var(--card-bg)] overflow-hidden">
+              {images[mainImageIndex] ? (
+                <img
+                  src={images[mainImageIndex]!.url}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-[var(--section-bg)]" />
+              )}
+            </div>
           </div>
-          {images.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto">
-              {images.map((img, i) => (
-                <button
-                  key={i}
-                  onClick={() => setMainImageIndex(i)}
-                  className={`w-20 h-20 flex-shrink-0 overflow-hidden border-2 transition-colors ${
-                    mainImageIndex === i
-                      ? "border-[var(--text-primary)]"
-                      : "border-transparent"
-                  }`}
-                >
-                  {img ? (
-                    <img
-                      src={img.url}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-[var(--section-bg)]" />
-                  )}
-                </button>
+
+          {/* 상세 설명 이미지 — 섹션 구분 후 세로로 풀폭 나열 */}
+          {detailImages.length > 0 && (
+            <div className="mt-24 pt-16 border-t border-[var(--border-color)]">
+              <h2 className="text-center text-sm tracking-[0.25em] font-light text-[var(--text-primary)] mb-16">
+                PRODUCT DETAIL
+              </h2>
+              {detailImages.map((img) => (
+                <img
+                  key={img.id}
+                  src={img.url}
+                  alt={`${product.name} 상세 이미지`}
+                  className="w-full block"
+                />
               ))}
             </div>
           )}
         </div>
 
-        {/* 우측: 상품 정보 */}
-        <div>
-          <div className="flex items-start justify-between gap-4 mb-4">
+        {/* 우측: 상품 정보 (스크롤 시 따라오도록 sticky) */}
+        <div className="md:sticky md:top-24 self-start">
+          <div className="mb-4">
             <h1 className="text-xl md:text-2xl font-light tracking-wide text-[var(--text-primary)]">
               {product.name}
             </h1>
-            <button
-              onClick={handleWishlistToggle}
-              disabled={wishlistMutation.isPending}
-              className="flex-shrink-0 mt-1 text-[var(--text-muted)] hover:text-red-400 transition-colors"
-            >
-              <Heart
-                className={`w-6 h-6 ${isWishlisted ? "text-red-400 fill-red-400" : ""}`}
-                strokeWidth={1.5}
-              />
-            </button>
           </div>
 
           {/* 가격 */}
@@ -514,29 +572,49 @@ export default function ProductDetailClient({ id }: { id: string }) {
             )}
           </div>
 
-          {/* 장바구니 담기 */}
-          <Button
-            fullWidth
-            onClick={handleAddToCart}
-            loading={cartMutation.isPending}
-            disabled={product.status === "SOLDOUT" || (selectedOptionValueId != null && currentStock === 0)}
-          >
-            {product.status === "SOLDOUT" || (selectedOptionValueId != null && currentStock === 0)
-              ? "품절"
-              : "장바구니 담기"}
-          </Button>
-
-          {/* 상품 설명 */}
-          {product.description && (
-            <div className="mt-12 pt-8 border-t border-[var(--border-color)]">
-              <h3 className="text-xs tracking-widest text-[var(--text-muted)] mb-4">
-                DESCRIPTION
-              </h3>
-              <p className="text-sm text-[var(--text-secondary)] leading-relaxed whitespace-pre-line">
-                {product.description}
-              </p>
-            </div>
-          )}
+          {/* 구매 버튼: 찜 + 장바구니 + 바로 구매하기 (무신사 배치) */}
+          {(() => {
+            const isSoldOut =
+              product.status === "SOLDOUT" ||
+              (selectedOptionValueId != null && currentStock === 0);
+            return (
+              <div className="flex gap-2">
+                <button
+                  onClick={handleWishlistToggle}
+                  disabled={wishlistMutation.isPending}
+                  aria-label="찜하기"
+                  className="w-14 flex-shrink-0 flex items-center justify-center border border-[var(--btn-outline-border)] hover:border-[var(--text-muted)] transition-colors"
+                >
+                  <Heart
+                    className={`w-5 h-5 ${
+                      isWishlisted
+                        ? "text-red-400 fill-red-400"
+                        : "text-[var(--text-muted)]"
+                    }`}
+                    strokeWidth={1.5}
+                  />
+                </button>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={handleAddToCart}
+                  loading={cartMutation.isPending}
+                  disabled={isSoldOut}
+                >
+                  {isSoldOut ? "품절" : "장바구니"}
+                </Button>
+                <Button
+                  variant="primary"
+                  className="flex-1"
+                  onClick={handleBuyNow}
+                  loading={buyNowPending}
+                  disabled={isSoldOut}
+                >
+                  바로 구매하기
+                </Button>
+              </div>
+            );
+          })()}
         </div>
       </div>
       {/* 리뷰 섹션 */}

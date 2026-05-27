@@ -6,7 +6,6 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.math.BigDecimal;
-import java.util.Comparator;
 
 @Getter
 @Builder
@@ -25,13 +24,7 @@ public class CartItemResponse {
     private final String thumbnailUrl;
 
     public static CartItemResponse from(CartItem cartItem) {
-        String thumbnailUrl = cartItem.getProduct().getImages().stream()
-                .filter(ProductImage::isThumbnail)
-                .findFirst()
-                .or(() -> cartItem.getProduct().getImages().stream()
-                        .min(Comparator.comparingInt(ProductImage::getSortOrder)))
-                .map(ProductImage::getUrl)
-                .orElse(null);
+        String thumbnailUrl = ProductImage.resolveThumbnailUrl(cartItem.getProduct().getImages());
 
         return CartItemResponse.builder()
                 .id(cartItem.getId())

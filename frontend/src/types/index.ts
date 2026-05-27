@@ -26,6 +26,7 @@ export interface ProductImage {
   url: string;
   sortOrder: number;
   isThumbnail: boolean;
+  detail: boolean;
 }
 
 export interface Product {
@@ -262,7 +263,7 @@ export interface CreateProductRequest {
   categoryId: number;
   description: string;
   status: string;
-  images?: { url: string; sortOrder: number; isThumbnail: boolean }[];
+  images?: { url: string; sortOrder: number; isThumbnail: boolean; detail: boolean }[];
   optionGroups: {
     name: string;
     optionValues: { value: string; additionalPrice: number; stockQuantity: number }[];

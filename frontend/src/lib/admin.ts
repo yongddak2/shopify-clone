@@ -50,6 +50,16 @@ export async function uploadProductImage(file: File): Promise<string> {
   return res.data.data;
 }
 
+// 상세 설명 이미지 전용 (10MB 허용)
+export async function uploadProductDetailImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await api.post<ApiResponse<string>>("/api/admin/images/detail", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data.data;
+}
+
 export async function deleteProductImage(imageUrl: string): Promise<void> {
   await api.delete("/api/admin/images", { params: { imageUrl } });
 }

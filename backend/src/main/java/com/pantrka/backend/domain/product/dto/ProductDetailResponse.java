@@ -30,6 +30,7 @@ public class ProductDetailResponse {
         private final String url;
         private final int sortOrder;
         private final boolean isThumbnail;
+        private final boolean detail;
     }
 
     @Getter
@@ -56,6 +57,7 @@ public class ProductDetailResponse {
                         .url(image.getUrl())
                         .sortOrder(image.getSortOrder())
                         .isThumbnail(image.isThumbnail())
+                        .detail(image.isDetail())
                         .build())
                 .toList();
 

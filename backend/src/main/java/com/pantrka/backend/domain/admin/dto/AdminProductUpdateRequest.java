@@ -25,5 +25,6 @@ public class AdminProductUpdateRequest {
         private String url;
         private int sortOrder;
         private boolean isThumbnail;
+        private boolean detail;
     }
 }

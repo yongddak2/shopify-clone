@@ -8,7 +8,6 @@ import lombok.Getter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.List;
 
 @Getter
@@ -37,6 +36,7 @@ public class AdminProductResponse {
         private final String url;
         private final int sortOrder;
         private final boolean isThumbnail;
+        private final boolean detail;
     }
 
     @Getter
@@ -63,6 +63,7 @@ public class AdminProductResponse {
                         .url(image.getUrl())
                         .sortOrder(image.getSortOrder())
                         .isThumbnail(image.isThumbnail())
+                        .detail(image.isDetail())
                         .build())
                 .toList();
 
@@ -91,21 +92,11 @@ public class AdminProductResponse {
                 .viewCount(product.getViewCount())
                 .categoryId(product.getCategory() != null ? product.getCategory().getId() : null)
                 .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
-                .thumbnailUrl(resolveThumbnailUrl(product))
+                .thumbnailUrl(ProductImage.resolveThumbnailUrl(product.getImages()))
                 .createdAt(product.getCreatedAt())
                 .deletedAt(product.getDeletedAt())
                 .images(images)
                 .optionGroups(optionGroups)
                 .build();
-    }
-
-    private static String resolveThumbnailUrl(Product product) {
-        return product.getImages().stream()
-                .filter(ProductImage::isThumbnail)
-                .findFirst()
-                .or(() -> product.getImages().stream()
-                        .min(Comparator.comparingInt(ProductImage::getSortOrder)))
-                .map(ProductImage::getUrl)
-                .orElse(null);
     }
 }

@@ -8,6 +8,7 @@ import {
   getCategories,
   updateProduct,
   uploadProductImage,
+  uploadProductDetailImage,
   deleteProductImage,
 } from "@/lib/admin";
 import { invalidateProductRelated } from "@/lib/queryInvalidator";
@@ -31,12 +32,15 @@ const STATUS_OPTIONS = [
 const ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_IMAGES = 5;
+const MAX_DETAIL_FILE_SIZE = 10 * 1024 * 1024; // 10MB (상세 설명 이미지)
+const MAX_DETAIL_IMAGES = 20;
 
 interface EditingImage {
   id: number | null; // null = 신규 업로드
   url: string;
   uploading: boolean;
   markedForDelete: boolean;
+  tempKey?: string; // 업로드 중 항목 식별 (신규 업로드, 동시 업로드 race 방지)
 }
 
 export default function AdminProductEditPage() {
@@ -79,9 +83,11 @@ export default function AdminProductEditPage() {
   const [description, setDescription] = useState("");
   const [editingOptions, setEditingOptions] = useState<AdminProductOptionUpdate[]>([]);
   const [editingImages, setEditingImages] = useState<EditingImage[]>([]);
+  const [detailEditingImages, setDetailEditingImages] = useState<EditingImage[]>([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const detailFileInputRef = useRef<HTMLInputElement>(null);
   const initialized = useRef(false);
 
   // 상품 데이터 로드 시 폼 초기화 (한 번만)
@@ -105,12 +111,27 @@ export default function AdminProductEditPage() {
       }))
     );
 
-    const sortedImages = [...(product.images ?? [])].sort((a, b) => {
-      if (a.isThumbnail !== b.isThumbnail) return a.isThumbnail ? -1 : 1;
-      return a.sortOrder - b.sortOrder;
-    });
+    const allImages = product.images ?? [];
+    const galleryImages = allImages
+      .filter((img) => !img.detail)
+      .sort((a, b) => {
+        if (a.isThumbnail !== b.isThumbnail) return a.isThumbnail ? -1 : 1;
+        return a.sortOrder - b.sortOrder;
+      });
+    const detailImgs = allImages
+      .filter((img) => img.detail)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+
     setEditingImages(
-      sortedImages.map((img) => ({
+      galleryImages.map((img) => ({
+        id: img.id,
+        url: img.url,
+        uploading: false,
+        markedForDelete: false,
+      }))
+    );
+    setDetailEditingImages(
+      detailImgs.map((img) => ({
         id: img.id,
         url: img.url,
         uploading: false,
@@ -154,42 +175,92 @@ export default function AdminProductEditPage() {
     setEditingOptions((prev) => [...prev, { id: null, value: "", additionalPrice: 0, stockQuantity: 0 }]);
   };
 
-  // 이미지 핸들러
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (e.target) e.target.value = "";
-    if (!file) return;
+  // 여러 파일 병렬 업로드 — 각 파일에 고유 키를 부여해 동시 완료 시 안전하게 교체
+  const uploadFilesInto = async (
+    files: File[],
+    config: {
+      images: EditingImage[];
+      setImages: React.Dispatch<React.SetStateAction<EditingImage[]>>;
+      max: number;
+      maxSize: number;
+      sizeMsg: string;
+      uploader: (file: File) => Promise<string>;
+    }
+  ) => {
+    if (files.length === 0) return;
 
-    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-    if (!ALLOWED_EXTENSIONS.includes(ext)) {
-      setError("허용되지 않는 파일 형식입니다. (jpg, jpeg, png, gif, webp)");
+    const activeCount = config.images.filter((img) => !img.markedForDelete).length;
+    const remaining = config.max - activeCount;
+    if (remaining <= 0) {
+      setError(`이미지는 최대 ${config.max}장까지 등록할 수 있습니다.`);
       return;
     }
-    if (file.size > MAX_FILE_SIZE) {
-      setError("파일 크기는 5MB 이하만 가능합니다.");
+
+    const accepted: { key: string; file: File }[] = [];
+    let warn = "";
+    for (const file of files) {
+      if (accepted.length >= remaining) break;
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        warn = "허용되지 않는 파일 형식입니다. (jpg, jpeg, png, gif, webp)";
+        continue;
+      }
+      if (file.size > config.maxSize) {
+        warn = config.sizeMsg;
+        continue;
+      }
+      accepted.push({ key: crypto.randomUUID(), file });
+    }
+
+    if (accepted.length === 0) {
+      setError(warn || "추가할 수 있는 이미지가 없습니다.");
       return;
     }
-    setError("");
+    if (!warn && files.length > remaining) {
+      warn = `이미지는 최대 ${config.max}장까지 등록할 수 있어 일부만 추가됩니다.`;
+    }
+    setError(warn);
 
-    const placeholderIdx = editingImages.length;
-    setEditingImages((prev) => [
+    config.setImages((prev) => [
       ...prev,
-      { id: null, url: "", uploading: true, markedForDelete: false },
+      ...accepted.map((a) => ({
+        id: null,
+        tempKey: a.key,
+        url: "",
+        uploading: true,
+        markedForDelete: false,
+      })),
     ]);
 
-    try {
-      const url = await uploadProductImage(file);
-      setEditingImages((prev) =>
-        prev.map((img, i) =>
-          i === placeholderIdx
-            ? { id: null, url, uploading: false, markedForDelete: false }
-            : img
-        )
-      );
-    } catch {
-      setEditingImages((prev) => prev.filter((_, i) => i !== placeholderIdx));
-      setError("이미지 업로드에 실패했습니다.");
-    }
+    await Promise.all(
+      accepted.map(async (a) => {
+        try {
+          const url = await config.uploader(a.file);
+          config.setImages((prev) =>
+            prev.map((img) =>
+              img.tempKey === a.key ? { ...img, url, uploading: false } : img
+            )
+          );
+        } catch {
+          config.setImages((prev) => prev.filter((img) => img.tempKey !== a.key));
+          setError("일부 이미지 업로드에 실패했습니다.");
+        }
+      })
+    );
+  };
+
+  // 이미지 핸들러
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (e.target) e.target.value = "";
+    uploadFilesInto(files, {
+      images: editingImages,
+      setImages: setEditingImages,
+      max: MAX_IMAGES,
+      maxSize: MAX_FILE_SIZE,
+      sizeMsg: "파일 크기는 5MB 이하만 가능합니다.",
+      uploader: uploadProductImage,
+    });
   };
 
   // X 버튼: 삭제 마킹만 (S3 삭제는 저장 시점에)
@@ -208,9 +279,37 @@ export default function AdminProductEditPage() {
     );
   };
 
+  // 상세 설명 이미지 핸들러 (10MB)
+  const handleDetailFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (e.target) e.target.value = "";
+    uploadFilesInto(files, {
+      images: detailEditingImages,
+      setImages: setDetailEditingImages,
+      max: MAX_DETAIL_IMAGES,
+      maxSize: MAX_DETAIL_FILE_SIZE,
+      sizeMsg: "상세 이미지는 10MB 이하만 가능합니다.",
+      uploader: uploadProductDetailImage,
+    });
+  };
+
+  const handleMarkRemoveDetailImage = (index: number) => {
+    const img = detailEditingImages[index];
+    if (img.uploading) return;
+    setDetailEditingImages((prev) =>
+      prev.map((it, i) => (i === index ? { ...it, markedForDelete: true } : it))
+    );
+  };
+
+  const handleUndoRemoveDetailImage = (index: number) => {
+    setDetailEditingImages((prev) =>
+      prev.map((it, i) => (i === index ? { ...it, markedForDelete: false } : it))
+    );
+  };
+
   // 취소: 신규 업로드된 이미지(아직 DB에 없음)는 S3에서 제거 후 목록 페이지로 이동
   const handleCancel = async () => {
-    const newlyUploaded = editingImages.filter(
+    const newlyUploaded = [...editingImages, ...detailEditingImages].filter(
       (img) => img.id === null && !img.markedForDelete && !img.uploading && img.url
     );
     await Promise.all(
@@ -232,13 +331,13 @@ export default function AdminProductEditPage() {
       if (opt.stockQuantity < 0) { setError("재고는 0 이상이어야 합니다."); return; }
     }
 
-    if (editingImages.some((img) => img.uploading)) {
+    if (editingImages.some((img) => img.uploading) || detailEditingImages.some((img) => img.uploading)) {
       setError("이미지 업로드가 진행 중입니다. 잠시 후 다시 시도해주세요.");
       return;
     }
 
     // 삭제 마킹된 항목 S3에서 삭제 (성공/실패 무관하게 진행)
-    const toDeleteFromS3 = editingImages.filter(
+    const toDeleteFromS3 = [...editingImages, ...detailEditingImages].filter(
       (img) => img.markedForDelete && !img.uploading && img.url
     );
     await Promise.all(
@@ -249,14 +348,25 @@ export default function AdminProductEditPage() {
       )
     );
 
-    const images = editingImages
+    const galleryPayload = editingImages
       .filter((img) => !img.uploading && img.url && !img.markedForDelete)
       .map((img, i) => ({
         id: img.id,
         url: img.url,
         sortOrder: i,
         isThumbnail: i === 0,
+        detail: false,
       }));
+    const detailPayload = detailEditingImages
+      .filter((img) => !img.uploading && img.url && !img.markedForDelete)
+      .map((img, i) => ({
+        id: img.id,
+        url: img.url,
+        sortOrder: i,
+        isThumbnail: false,
+        detail: true,
+      }));
+    const images = [...galleryPayload, ...detailPayload];
 
     mutation.mutate({
       name: name.trim(),
@@ -541,6 +651,7 @@ export default function AdminProductEditPage() {
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
+                    multiple
                     onChange={handleFileSelect}
                     className="hidden"
                   />
@@ -602,6 +713,95 @@ export default function AdminProductEditPage() {
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
+                        className="w-[100px] h-[100px] border border-dashed border-[var(--border-color)] flex flex-col items-center justify-center text-[var(--text-muted)] hover:border-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+                      >
+                        <span className="text-2xl leading-none">+</span>
+                        <span className="text-[10px] mt-1">이미지 추가</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 상세 설명 이미지 관리 */}
+            {(() => {
+              const activeCount = detailEditingImages.filter(
+                (img) => !img.uploading && !img.markedForDelete
+              ).length;
+              return (
+                <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded p-6">
+                  <h2 className="text-sm font-light tracking-wider text-[var(--text-primary)] mb-1">
+                    상세 설명 이미지 ({activeCount}/{MAX_DETAIL_IMAGES})
+                  </h2>
+                  <p className="text-[11px] text-[var(--text-dim)] mb-4">
+                    상품 상세 페이지 하단에 추가한 순서대로 세로로 표시됩니다. (장당 최대 10MB)
+                  </p>
+                  <input
+                    ref={detailFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleDetailFileSelect}
+                    className="hidden"
+                  />
+                  <div className="flex flex-wrap gap-3">
+                    {detailEditingImages.map((img, idx) => (
+                      <div
+                        key={`${img.id ?? "new"}-${idx}`}
+                        className={`relative w-[100px] h-[100px] border border-[var(--border-color)] bg-[var(--input-bg)] ${
+                          img.markedForDelete ? "opacity-40" : ""
+                        }`}
+                      >
+                        {img.uploading ? (
+                          <div className="flex items-center justify-center w-full h-full">
+                            <span className="text-xs text-[var(--text-muted)] animate-pulse">
+                              업로드 중...
+                            </span>
+                          </div>
+                        ) : (
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={img.url}
+                              alt={`상세 이미지 ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            {img.markedForDelete ? (
+                              <button
+                                type="button"
+                                onClick={() => handleUndoRemoveDetailImage(idx)}
+                                title="삭제 취소"
+                                className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-black/60 text-white text-xs hover:bg-black/80 transition-colors"
+                              >
+                                ↺
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleMarkRemoveDetailImage(idx)}
+                                className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-black/60 text-white text-xs hover:bg-black/80 transition-colors"
+                              >
+                                ✕
+                              </button>
+                            )}
+                            {img.markedForDelete ? (
+                              <span className="absolute inset-0 flex items-center justify-center text-[10px] text-white bg-black/40 pointer-events-none">
+                                삭제 예정
+                              </span>
+                            ) : (
+                              <span className="absolute bottom-1 left-1 px-1.5 py-0.5 text-[10px] bg-black/60 text-white">
+                                {idx + 1}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    ))}
+                    {activeCount < MAX_DETAIL_IMAGES && (
+                      <button
+                        type="button"
+                        onClick={() => detailFileInputRef.current?.click()}
                         className="w-[100px] h-[100px] border border-dashed border-[var(--border-color)] flex flex-col items-center justify-center text-[var(--text-muted)] hover:border-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
                       >
                         <span className="text-2xl leading-none">+</span>

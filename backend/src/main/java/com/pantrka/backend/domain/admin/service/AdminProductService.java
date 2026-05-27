@@ -107,6 +107,7 @@ public class AdminProductService {
                             .url(dto.getUrl())
                             .sortOrder(dto.getSortOrder())
                             .isThumbnail(dto.isThumbnail())
+                            .isDetail(dto.isDetail())
                             .build())
                     .toList();
             productImageRepository.saveAll(images);
@@ -184,7 +185,7 @@ public class AdminProductService {
                 if (imgReq.getId() != null) {
                     for (ProductImage existing : product.getImages()) {
                         if (existing.getId().equals(imgReq.getId())) {
-                            existing.update(imgReq.getSortOrder(), imgReq.isThumbnail());
+                            existing.update(imgReq.getSortOrder(), imgReq.isThumbnail(), imgReq.isDetail());
                             break;
                         }
                     }
@@ -199,6 +200,7 @@ public class AdminProductService {
                             .url(imgReq.getUrl())
                             .sortOrder(imgReq.getSortOrder())
                             .isThumbnail(imgReq.isThumbnail())
+                            .isDetail(imgReq.isDetail())
                             .build();
                     productImageRepository.save(newImage);
                     product.getImages().add(newImage);

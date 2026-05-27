@@ -6,7 +6,6 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
-import java.util.Comparator;
 
 @Getter
 @Builder
@@ -20,13 +19,7 @@ public class WishlistResponse {
     private final LocalDateTime createdAt;
 
     public static WishlistResponse from(Wishlist wishlist) {
-        String thumbnail = wishlist.getProduct().getImages().stream()
-                .filter(ProductImage::isThumbnail)
-                .findFirst()
-                .or(() -> wishlist.getProduct().getImages().stream()
-                        .min(Comparator.comparingInt(ProductImage::getSortOrder)))
-                .map(ProductImage::getUrl)
-                .orElse(null);
+        String thumbnail = ProductImage.resolveThumbnailUrl(wishlist.getProduct().getImages());
 
         return WishlistResponse.builder()
                 .id(wishlist.getId())
