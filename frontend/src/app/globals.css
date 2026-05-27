@@ -10,7 +10,7 @@
   --footer-bg: #f5f5f5;
 
   /* 호버 드롭다운 (피그마 디자인 — 핑크/마젠타 그라데이션, 반투명) */
-  --header-yellow: #fce25c;
+  --header-yellow: #E9FA37;
   --header-yellow-hover: #fff27a;
   --header-pink-accent: #fa3757;
   --dropdown-pink-bg: linear-gradient(90deg, rgba(250, 55, 87, 0.55) 0%, rgba(251, 78, 96, 0.55) 21%, rgba(251, 111, 121, 0.55) 48%, rgba(255, 175, 191, 0.55) 100%);

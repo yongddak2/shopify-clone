@@ -72,7 +72,7 @@ export default function Header() {
     const handleScroll = () => {
       const isDesktop = window.innerWidth >= 768;
       const bannerHeight = isDesktop
-        ? Math.min(window.innerHeight * 0.8, 800)
+        ? window.innerHeight * 0.9
         : window.innerHeight * 0.5;
       setScrolled(window.scrollY >= bannerHeight);
     };
@@ -413,7 +413,7 @@ function ShopDropdownContent({ onItemClick }: { onItemClick: () => void }) {
       <Link
         href="/pntk/2026-hs"
         onClick={onItemClick}
-        className="block font-display font-bold tracking-tight text-[34px] lg:text-[44px] leading-none mb-8 italic"
+        className="block font-serif-display tracking-tight text-[34px] lg:text-[44px] leading-none mb-8"
         style={{
           color: "var(--header-yellow)",
           textShadow: "0 2px 8px rgba(0,0,0,0.25)",
@@ -428,7 +428,7 @@ function ShopDropdownContent({ onItemClick }: { onItemClick: () => void }) {
             <Link
               href={cat.href}
               onClick={onItemClick}
-              className="font-display font-bold tracking-tight text-[30px] lg:text-[40px] leading-none italic block hover:opacity-90 transition-opacity"
+              className="font-serif-display tracking-tight text-[30px] lg:text-[40px] leading-none block hover:opacity-90 transition-opacity"
               style={{
                 color: "var(--header-yellow)",
                 textShadow: "0 2px 8px rgba(0,0,0,0.25)",
@@ -471,7 +471,7 @@ function PntkDropdownContent({ onItemClick }: { onItemClick: () => void }) {
     <div className="h-full pt-28 pb-10 pl-10 lg:pl-16 pr-6 overflow-y-auto">
       {seasons.length === 0 ? (
         <p
-          className="font-display tracking-wide italic text-[18px] lg:text-[20px]"
+          className="font-serif-display tracking-wide text-[18px] lg:text-[20px]"
           style={{
             color: "var(--header-yellow)",
             textShadow: "0 2px 8px rgba(0,0,0,0.25)",
@@ -486,7 +486,7 @@ function PntkDropdownContent({ onItemClick }: { onItemClick: () => void }) {
               <Link
                 href={`/pntk/${season.slug}`}
                 onClick={onItemClick}
-                className="font-display font-bold tracking-tight text-[30px] lg:text-[40px] leading-none italic block hover:opacity-90 transition-opacity"
+                className="font-serif-display tracking-tight text-[30px] lg:text-[40px] leading-none block hover:opacity-90 transition-opacity"
                 style={{
                   color: "var(--header-yellow)",
                   textShadow: "0 2px 8px rgba(0,0,0,0.25)",
@@ -511,7 +511,7 @@ function InfoDropdownContent({ onItemClick }: { onItemClick: () => void }) {
             <Link
               href={link.href}
               onClick={onItemClick}
-              className="font-display font-bold tracking-tight text-[30px] lg:text-[40px] leading-none italic block hover:opacity-90 transition-opacity"
+              className="font-serif-display tracking-tight text-[30px] lg:text-[40px] leading-none block hover:opacity-90 transition-opacity"
               style={{
                 color: "var(--header-yellow)",
                 textShadow: "0 2px 8px rgba(0,0,0,0.25)",

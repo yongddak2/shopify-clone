@@ -215,7 +215,7 @@ function BannerSlider({ banners }: { banners: Banner[] }) {
 
   if (count === 0) {
     return (
-      <section className="relative h-[50vh] md:h-[80vh] max-h-[800px] bg-gradient-to-b from-[#1a1a1a] to-[#2a2a2a] flex items-center justify-center overflow-hidden">
+      <section className="relative h-[50vh] md:h-[90vh] bg-gradient-to-b from-[#1a1a1a] to-[#2a2a2a] flex items-center justify-center overflow-hidden">
         <BannerOverlay title={null} />
       </section>
     );
@@ -225,7 +225,7 @@ function BannerSlider({ banners }: { banners: Banner[] }) {
 
   return (
     <section
-      className="relative w-full h-[50vh] md:h-[80vh] max-h-[800px] overflow-hidden"
+      className="relative w-full h-[50vh] md:h-[90vh] overflow-hidden"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -252,22 +252,22 @@ function BannerSlider({ banners }: { banners: Banner[] }) {
         <>
           <button
             onClick={goPrev}
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/20 hover:bg-white/40 flex items-center justify-center transition-colors"
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2 text-white hover:text-white/70 transition-colors"
           >
-            <ChevronLeft className="w-5 h-5 text-white" />
+            <ChevronLeft className="w-[50px] h-[50px]" />
           </button>
           <button
             onClick={goNext}
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/20 hover:bg-white/40 flex items-center justify-center transition-colors"
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2 text-white hover:text-white/70 transition-colors"
           >
-            <ChevronRight className="w-5 h-5 text-white" />
+            <ChevronRight className="w-[50px] h-[50px]" />
           </button>
         </>
       )}
 
       {/* 인디케이터 (2개 이상일 때만) — 우측 하단, 큰 글씨와 같은 라인 */}
       {count > 1 && (
-        <div className="absolute bottom-12 right-10 md:bottom-20 md:right-16 z-20 flex gap-2.5">
+        <div className="absolute bottom-12 right-10 md:bottom-10 md:right-16 z-20 flex gap-2.5">
           {banners.map((_, idx) => (
             <button
               key={idx}
@@ -366,15 +366,16 @@ export default function Home() {
 
       {/* 신상품 섹션 */}
       <section className="w-full px-[3vw] pt-32 pb-16">
-        <div className="flex items-center justify-between mb-10">
-          <h2 className="text-2xl tracking-[0.2em] font-light text-[var(--text-primary)]">
+        <div className="relative flex items-center justify-center mb-10">
+          <h2 className="font-serif-display text-3xl md:text-4xl tracking-wide text-[var(--header-pink-accent)]">
             NEW ARRIVALS
           </h2>
           <Link
             href="/products?sort=createdAt,desc"
-            className="text-xs tracking-wider text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+            className="absolute right-0 -bottom-6 flex items-center gap-0.5 font-serif-display text-base tracking-wider text-[var(--header-pink-accent)] hover:opacity-70 transition-opacity"
           >
-            MORE VIEW &rsaquo;
+            more view
+            <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
         {useCarousel ? (
@@ -396,7 +397,7 @@ export default function Home() {
       {/* 메인 텍스트 섹션 (신상품 ↔ BEST 사이) */}
       {mainSubText && (
         <section className="w-full px-[3vw] py-8 md:py-12 lg:py-16">
-          <p className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-light tracking-tight text-[var(--text-primary)] leading-tight">
+          <p className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-serif-display tracking-tight text-[var(--header-pink-accent)] leading-tight">
             {mainSubText}
           </p>
         </section>
@@ -404,15 +405,16 @@ export default function Home() {
 
       {/* BEST 섹션 */}
       <section className="w-full px-[3vw] py-16">
-        <div className="flex items-center justify-between mb-10">
-          <h2 className="text-2xl tracking-[0.2em] font-light text-[var(--text-primary)]">
+        <div className="relative flex items-center justify-center mb-10">
+          <h2 className="font-serif-display text-3xl md:text-4xl tracking-wide text-[var(--header-pink-accent)]">
             BEST
           </h2>
           <Link
             href="/products?sort=sales"
-            className="text-xs tracking-wider text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+            className="absolute right-0 -bottom-6 flex items-center gap-0.5 font-serif-display text-base tracking-wider text-[var(--header-pink-accent)] hover:opacity-70 transition-opacity"
           >
-            MORE VIEW &rsaquo;
+            more view
+            <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
         <ProductGrid
