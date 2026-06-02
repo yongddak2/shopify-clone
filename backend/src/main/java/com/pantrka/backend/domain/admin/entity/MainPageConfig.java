@@ -25,6 +25,9 @@ public class MainPageConfig {
     @Column(length = 500)
     private String subText;
 
+    @Column(name = "about_image_url")
+    private String aboutImageUrl;
+
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
@@ -36,5 +39,9 @@ public class MainPageConfig {
 
     public void updateSubText(String subText) {
         this.subText = subText;
+    }
+
+    public void updateAboutImageUrl(String aboutImageUrl) {
+        this.aboutImageUrl = aboutImageUrl;
     }
 }

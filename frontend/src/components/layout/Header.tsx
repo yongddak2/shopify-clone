@@ -280,7 +280,7 @@ export default function Header() {
           onMouseEnter={() => openOrSwitch("ABOUT")}
           onMouseLeave={scheduleClose}
         >
-          <AboutDropdownContent />
+          <AboutDropdownContent onItemClick={() => setOpenMenu(null)} />
         </DropdownPanel>
 
         <DropdownPanel
@@ -443,19 +443,20 @@ function ShopDropdownContent({ onItemClick }: { onItemClick: () => void }) {
   );
 }
 
-function AboutDropdownContent() {
-  // 콘텐츠는 추후 사용자 전달 예정 — 패널 활성화만 구현
+function AboutDropdownContent({ onItemClick }: { onItemClick: () => void }) {
   return (
     <div className="h-full pt-28 pb-10 pl-10 lg:pl-16 pr-6">
-      <p
-        className="font-display tracking-wide italic text-[18px] lg:text-[20px]"
+      <Link
+        href="/about"
+        onClick={onItemClick}
+        className="font-serif-display tracking-tight text-[30px] lg:text-[40px] leading-none block hover:opacity-90 transition-opacity"
         style={{
           color: "var(--header-yellow)",
           textShadow: "0 2px 8px rgba(0,0,0,0.25)",
         }}
       >
-        준비 중
-      </p>
+        About PanTrKa
+      </Link>
     </div>
   );
 }

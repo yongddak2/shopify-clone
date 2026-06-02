@@ -24,9 +24,20 @@ public class BannerResponse {
                 .imageUrl(banner.getImageUrl())
                 .sortOrder(banner.getSortOrder())
                 .isActive(banner.isActive())
-                .linkUrl(banner.getLinkUrl())
+                .linkUrl(resolveLinkUrl(banner))
                 .title(banner.getTitle())
                 .createdAt(banner.getCreatedAt())
                 .build();
+    }
+
+    private static String resolveLinkUrl(Banner banner) {
+        if (banner.getProductId() != null) {
+            return "/products/" + banner.getProductId();
+        }
+        String raw = banner.getLinkUrl();
+        if (raw != null && !raw.isBlank()) {
+            return raw;
+        }
+        return null;
     }
 }

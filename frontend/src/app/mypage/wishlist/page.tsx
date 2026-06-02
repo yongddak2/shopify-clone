@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { getWishlists, toggleWishlist } from "@/lib/wishlist";
 import { useAuthStore } from "@/stores/authStore";
@@ -21,7 +20,6 @@ function formatDate(dateStr: string) {
 }
 
 export default function MypageWishlistPage() {
-  const router = useRouter();
   const { isLoggedIn } = useAuthStore();
 
   // 페이지 머무는 동안만 유지되는 "해제된 상품" 상태.
@@ -129,13 +127,6 @@ export default function MypageWishlistPage() {
                   }
                   strokeWidth={1.5}
                 />
-              </button>
-              {/* 장바구니 담기 */}
-              <button
-                onClick={() => router.push(`/products/${item.productId}`)}
-                className="mt-2 w-full py-2 text-xs border border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)] transition-colors"
-              >
-                장바구니 담기
               </button>
             </div>
           ))}

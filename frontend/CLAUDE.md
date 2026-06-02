@@ -21,6 +21,7 @@ src/
 │   │   ├── faq/page.tsx                  ← 카테고리 탭 + 아코디언(grid-rows 트릭 애니메이션)
 │   │   └── qa/page.tsx + new/ + [id]/edit/
 │   ├── pntk/page.tsx + [slug]/           ← 시즌 컬렉션 (4열 풀폭 + 시즌 탭 + PhotoLightbox)
+│   ├── about/page.tsx                    ← 풀스크린 ABOUT 이미지 (MainPageConfig.aboutImageUrl)
 │   ├── search/page.tsx                   ← 키워드/카테고리/가격 필터
 │   ├── products/
 │   │   ├── page.tsx                      ← 상품 목록 + 찜 하트
@@ -57,7 +58,7 @@ src/
 │       ├── coupons/
 │       │   ├── page.tsx                  ← CRUD + 🎁 웰컴 뱃지
 │       │   └── new/page.tsx              ← 웰컴 토글 체크박스
-│       ├── banners/page.tsx
+│       ├── banners/page.tsx + AboutImageSection.tsx
 │       ├── seasons/page.tsx + [id]/photos/  ← PNTK 시즌 CRUD + 사진 multipart 업로드/드래그 정렬
 │       └── requests/page.tsx             ← 반품/교환 관리 5탭
 ├── lib/

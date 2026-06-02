@@ -41,6 +41,9 @@ public class SecurityConfig {
                         // Public - Products, Categories & Banners
                         .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**", "/api/categories", "/api/banners", "/api/main-page-config").permitAll()
 
+                        // Public - Season Collections (PNTK)
+                        .requestMatchers(HttpMethod.GET, "/api/season-collections", "/api/season-collections/**").permitAll()
+
                         // Public - Notices & FAQ
                         .requestMatchers(HttpMethod.GET, "/api/notices", "/api/notices/**", "/api/faqs").permitAll()
 

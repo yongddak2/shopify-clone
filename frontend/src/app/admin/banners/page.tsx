@@ -12,14 +12,17 @@ import {
   uploadBannerImage,
   getAdminMainPageConfig,
   updateMainPageConfig,
+  getAdminProducts,
+  type BannerLinkInput,
 } from "@/lib/admin";
-import { Menu, Trash2, Pencil } from "lucide-react";
+import { Menu, Trash2, Pencil, X, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   invalidateBannerRelated,
   invalidateMainPageConfigRelated,
 } from "@/lib/queryInvalidator";
-import type { Banner } from "@/types";
+import type { AdminBanner, LinkedProduct, AdminProduct } from "@/types";
 import NewArrivalsSection from "./NewArrivalsSection";
+import AboutImageSection from "./AboutImageSection";
 import {
   DndContext,
   PointerSensor,
@@ -43,27 +46,63 @@ const ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const TITLE_MAX = 100;
 const MAIN_TEXT_MAX = 500;
+const LINK_URL_MAX = 500;
+
+type LinkMode = "none" | "product" | "url";
+
+// 모달에서 선택한 상품 메타 (검색 결과 → 모달 → 저장 전 임시 보관용).
+// 저장 후 백엔드 응답 LinkedProduct와 동일 구조라 그대로 재사용.
+type SelectedProduct = LinkedProduct;
+
+function isValidLinkUrl(url: string) {
+  return (
+    url.startsWith("/") ||
+    url.startsWith("http://") ||
+    url.startsWith("https://")
+  );
+}
+
+function productMetaFromAdmin(p: AdminProduct): SelectedProduct {
+  return {
+    id: p.id,
+    name: p.name,
+    thumbnailUrl: p.thumbnailUrl,
+    status: p.status as SelectedProduct["status"],
+    deleted: p.deletedAt != null,
+  };
+}
+
+function isProductInvalid(p: SelectedProduct | null) {
+  if (!p) return false;
+  return p.deleted || p.status !== "ACTIVE";
+}
 
 export default function AdminBannersPage() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<Banner | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminBanner | null>(null);
 
   // 등록 모달용 임시 상태 (파일 보관 + 미리보기 URL)
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
 
   // 수정 모달용
-  const [editTarget, setEditTarget] = useState<Banner | null>(null);
+  const [editTarget, setEditTarget] = useState<AdminBanner | null>(null);
 
-  // 모달 공통 input
+  // 모달 공통 입력
   const [titleInput, setTitleInput] = useState("");
+  const [linkMode, setLinkMode] = useState<LinkMode>("none");
+  const [selectedProduct, setSelectedProduct] = useState<SelectedProduct | null>(null);
+  const [linkUrlInput, setLinkUrlInput] = useState("");
+
+  // 상품 검색 모달
+  const [productSearchOpen, setProductSearchOpen] = useState(false);
 
   const isModalOpen = pendingFile !== null || editTarget !== null;
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error: bannersError } = useQuery({
     queryKey: ["admin", "banners"],
     queryFn: getBanners,
   });
@@ -73,7 +112,7 @@ export default function AdminBannersPage() {
     () => [...banners].sort((a, b) => a.sortOrder - b.sortOrder),
     [banners]
   );
-  const [localOrder, setLocalOrder] = useState<Banner[] | null>(null);
+  const [localOrder, setLocalOrder] = useState<AdminBanner[] | null>(null);
   const sorted = localOrder ?? serverSorted;
 
   useEffect(() => {
@@ -141,24 +180,43 @@ export default function AdminBannersPage() {
     };
   }, [pendingPreviewUrl]);
 
+  const extractErrorMessage = (err: unknown, fallback: string): string => {
+    const maybe = err as { response?: { data?: { message?: string } } };
+    return maybe?.response?.data?.message ?? fallback;
+  };
+
   const createMutation = useMutation({
-    mutationFn: ({ imageUrl, title }: { imageUrl: string; title: string }) =>
-      createBanner(imageUrl, banners.length + 1, title),
+    mutationFn: ({
+      imageUrl,
+      title,
+      link,
+    }: {
+      imageUrl: string;
+      title: string;
+      link: BannerLinkInput;
+    }) => createBanner(imageUrl, banners.length + 1, title, link),
     onSuccess: () => {
       invalidateBannerRelated(queryClient);
       closeModal();
     },
-    onError: () => setError("배너 추가에 실패했습니다."),
+    onError: (err) => setError(extractErrorMessage(err, "배너 추가에 실패했습니다.")),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, title }: { id: number; title: string }) =>
-      updateBanner(id, title),
+    mutationFn: ({
+      id,
+      title,
+      link,
+    }: {
+      id: number;
+      title: string;
+      link: BannerLinkInput;
+    }) => updateBanner(id, title, link),
     onSuccess: () => {
       invalidateBannerRelated(queryClient);
       closeModal();
     },
-    onError: () => setError("수정에 실패했습니다."),
+    onError: (err) => setError(extractErrorMessage(err, "수정에 실패했습니다.")),
   });
 
   const orderMutation = useMutation({
@@ -204,17 +262,32 @@ export default function AdminBannersPage() {
       return;
     }
 
-    // 모달 열고 미리보기 + title 입력
     if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
     setPendingFile(file);
     setPendingPreviewUrl(URL.createObjectURL(file));
     setTitleInput("");
+    setLinkMode("none");
+    setSelectedProduct(null);
+    setLinkUrlInput("");
     setError("");
   };
 
-  const startEdit = (banner: Banner) => {
+  const startEdit = (banner: AdminBanner) => {
     setEditTarget(banner);
     setTitleInput(banner.title ?? "");
+    if (banner.productId != null) {
+      setLinkMode("product");
+      setSelectedProduct(banner.linkedProduct);
+      setLinkUrlInput("");
+    } else if (banner.linkUrl != null && banner.linkUrl !== "") {
+      setLinkMode("url");
+      setSelectedProduct(null);
+      setLinkUrlInput(banner.linkUrl);
+    } else {
+      setLinkMode("none");
+      setSelectedProduct(null);
+      setLinkUrlInput("");
+    }
     setError("");
   };
 
@@ -224,7 +297,42 @@ export default function AdminBannersPage() {
     setPendingPreviewUrl(null);
     setEditTarget(null);
     setTitleInput("");
+    setLinkMode("none");
+    setSelectedProduct(null);
+    setLinkUrlInput("");
     setError("");
+  };
+
+  // 라디오 모드 변경 시 잔존 값 초기화
+  const handleModeChange = (mode: LinkMode) => {
+    setLinkMode(mode);
+    if (mode !== "product") setSelectedProduct(null);
+    if (mode !== "url") setLinkUrlInput("");
+  };
+
+  // 모드 → 백엔드 페이로드
+  const buildLinkPayload = (): BannerLinkInput | null => {
+    if (linkMode === "none") {
+      return { productId: null, linkUrl: null };
+    }
+    if (linkMode === "product") {
+      if (!selectedProduct) {
+        setError("연결할 상품을 선택해주세요.");
+        return null;
+      }
+      return { productId: selectedProduct.id, linkUrl: null };
+    }
+    // url
+    const trimmed = linkUrlInput.trim();
+    if (!trimmed) {
+      setError("URL을 입력해주세요.");
+      return null;
+    }
+    if (!isValidLinkUrl(trimmed)) {
+      setError("URL은 / 또는 http(s)://로 시작해야 합니다.");
+      return null;
+    }
+    return { productId: null, linkUrl: trimmed };
   };
 
   const handleCreateSubmit = async () => {
@@ -234,13 +342,22 @@ export default function AdminBannersPage() {
       setError("제목을 입력해주세요.");
       return;
     }
+    const link = buildLinkPayload();
+    if (!link) return;
 
     setUploading(true);
+    let url: string;
     try {
-      const url = await uploadBannerImage(pendingFile);
-      await createMutation.mutateAsync({ imageUrl: url, title: trimmed });
+      url = await uploadBannerImage(pendingFile);
     } catch {
       setError("이미지 업로드에 실패했습니다.");
+      setUploading(false);
+      return;
+    }
+    try {
+      await createMutation.mutateAsync({ imageUrl: url, title: trimmed, link });
+    } catch {
+      // onError에서 setError 처리됨
     } finally {
       setUploading(false);
     }
@@ -253,7 +370,9 @@ export default function AdminBannersPage() {
       setError("제목을 입력해주세요.");
       return;
     }
-    updateMutation.mutate({ id: editTarget.id, title: trimmed });
+    const link = buildLinkPayload();
+    if (!link) return;
+    updateMutation.mutate({ id: editTarget.id, title: trimmed, link });
   };
 
   return (
@@ -294,6 +413,9 @@ export default function AdminBannersPage() {
         </button>
       </div>
 
+      {/* ABOUT 페이지 이미지 카드 */}
+      <AboutImageSection />
+
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-xl font-light tracking-[0.15em] text-[var(--text-primary)]">
           배너 관리
@@ -306,6 +428,11 @@ export default function AdminBannersPage() {
       {/* 에러 (모달 외부) */}
       {!isModalOpen && error && (
         <p className="text-sm text-red-600 mb-4">{error}</p>
+      )}
+      {bannersError && (
+        <p className="text-sm text-red-600 mb-4">
+          배너 목록 로드 실패: {(bannersError as Error).message}
+        </p>
       )}
 
       {/* 배너 추가 */}
@@ -378,7 +505,7 @@ export default function AdminBannersPage() {
             className="absolute inset-0 bg-[var(--overlay-bg)]"
             onClick={closeModal}
           />
-          <div className="relative bg-[var(--card-bg)] border border-[var(--border-color)] p-8 max-w-md w-full mx-6">
+          <div className="relative bg-[var(--card-bg)] border border-[var(--border-color)] p-8 max-w-md w-full mx-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-sm tracking-wider text-[var(--text-primary)] mb-6">
               {pendingFile ? "배너 등록" : "배너 수정"}
             </h2>
@@ -404,9 +531,113 @@ export default function AdminBannersPage() {
               placeholder="예: Find Your Style"
               className="w-full px-3 py-2.5 mb-2 bg-[var(--input-bg)] border border-[var(--border-color)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-secondary)]"
             />
-            <p className="text-[10px] text-[var(--text-dim)] mb-4">
+            <p className="text-[10px] text-[var(--text-dim)] mb-5">
               {titleInput.length} / {TITLE_MAX}
             </p>
+
+            {/* 링크 설정 — 라디오 3분기 */}
+            <label className="block text-xs tracking-wider text-[var(--text-muted)] mb-2">
+              클릭 시 이동
+            </label>
+            <div className="flex gap-2 mb-4">
+              {([
+                { value: "none", label: "연결 없음" },
+                { value: "product", label: "상품 연결" },
+                { value: "url", label: "URL 직접 입력" },
+              ] as { value: LinkMode; label: string }[]).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => handleModeChange(opt.value)}
+                  className={`flex-1 py-2 text-xs border transition-colors ${
+                    linkMode === opt.value
+                      ? "bg-[var(--text-primary)] text-[var(--btn-primary-text)] border-[var(--text-primary)]"
+                      : "border-[var(--border-color)] text-[var(--text-muted)] hover:border-[var(--text-muted)]"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* 상품 연결 */}
+            {linkMode === "product" && (
+              <div className="mb-5">
+                {selectedProduct ? (
+                  <div
+                    className={`flex items-center gap-3 p-3 border ${
+                      isProductInvalid(selectedProduct)
+                        ? "border-red-400 bg-red-50"
+                        : "border-[var(--border-color)] bg-[var(--input-bg)]"
+                    }`}
+                  >
+                    <div className="w-14 h-14 bg-[var(--section-bg)] flex-shrink-0 overflow-hidden">
+                      {selectedProduct.thumbnailUrl ? (
+                        <img
+                          src={selectedProduct.thumbnailUrl}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      ) : null}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-[var(--text-primary)] truncate">
+                        {selectedProduct.name}
+                      </p>
+                      {isProductInvalid(selectedProduct) && (
+                        <p className="text-[10px] text-red-600 flex items-center gap-1 mt-1">
+                          <AlertTriangle className="w-3 h-3" />
+                          {selectedProduct.deleted
+                            ? "삭제된 상품"
+                            : selectedProduct.status === "INACTIVE"
+                              ? "비활성 상품"
+                              : "품절 상품"}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setProductSearchOpen(true)}
+                      className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] underline flex-shrink-0"
+                    >
+                      변경
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setProductSearchOpen(true)}
+                    className="w-full py-3 text-xs border border-dashed border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--text-muted)] transition-colors"
+                  >
+                    + 상품 선택
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* URL 입력 */}
+            {linkMode === "url" && (
+              <div className="mb-5">
+                <input
+                  type="text"
+                  value={linkUrlInput}
+                  onChange={(e) => setLinkUrlInput(e.target.value)}
+                  maxLength={LINK_URL_MAX}
+                  placeholder="/pntk/season-name 또는 https://..."
+                  className="w-full px-3 py-2.5 bg-[var(--input-bg)] border border-[var(--border-color)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-secondary)]"
+                />
+                <p className="text-[10px] text-[var(--text-dim)] mt-1">
+                  내부 경로(/로 시작) 또는 외부 URL(http/https)
+                </p>
+              </div>
+            )}
+
+            {/* 연결 없음 안내 */}
+            {linkMode === "none" && (
+              <p className="text-[11px] text-[var(--text-dim)] mb-5">
+                연결이 없는 배너는 클릭해도 이동하지 않습니다.
+              </p>
+            )}
 
             {error && <p className="text-xs text-red-600 mb-4">{error}</p>}
 
@@ -434,6 +665,17 @@ export default function AdminBannersPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 상품 검색 모달 (배너 모달 위 z-index) */}
+      {productSearchOpen && (
+        <ProductSearchModal
+          onSelect={(product) => {
+            setSelectedProduct(product);
+            setProductSearchOpen(false);
+          }}
+          onClose={() => setProductSearchOpen(false)}
+        />
       )}
 
       {/* NEW ARRIVALS 큐레이션 섹션 */}
@@ -479,7 +721,7 @@ function SortableBannerRow({
   onEdit,
   onDelete,
 }: {
-  banner: Banner;
+  banner: AdminBanner;
   index: number;
   onToggle: () => void;
   onEdit: () => void;
@@ -496,6 +738,8 @@ function SortableBannerRow({
     boxShadow: isDragging ? "0 12px 28px rgba(0,0,0,0.18)" : undefined,
   };
 
+  const linkedProductInvalid = isProductInvalid(banner.linkedProduct);
+
   return (
     <div
       ref={setNodeRef}
@@ -506,7 +750,7 @@ function SortableBannerRow({
         {index + 1}
       </span>
 
-      <div className="w-[200px] h-[100px] bg-[var(--section-bg)] flex-shrink-0 overflow-hidden">
+      <div className="w-[160px] h-[90px] bg-[var(--section-bg)] flex-shrink-0 overflow-hidden">
         <img
           src={banner.imageUrl}
           alt={`배너 ${index + 1}`}
@@ -520,10 +764,39 @@ function SortableBannerRow({
             <span className="text-[var(--text-dim)] italic">(제목 없음)</span>
           )}
         </p>
-        <p className="text-xs text-[var(--text-muted)] truncate mb-1">
-          {banner.imageUrl}
-        </p>
-        <p className="text-xs text-[var(--text-dim)]">
+        {/* 연결 정보 */}
+        {banner.linkedProduct ? (
+          <div
+            className={`flex items-center gap-2 mb-1 ${
+              linkedProductInvalid ? "text-red-600" : "text-[var(--text-muted)]"
+            }`}
+          >
+            {linkedProductInvalid && <AlertTriangle className="w-3 h-3 flex-shrink-0" />}
+            <span className="text-[11px] truncate">
+              → {banner.linkedProduct.name}
+              {linkedProductInvalid && (
+                <span className="ml-1">
+                  (
+                  {banner.linkedProduct.deleted
+                    ? "삭제됨"
+                    : banner.linkedProduct.status === "INACTIVE"
+                      ? "비활성"
+                      : "품절"}
+                  )
+                </span>
+              )}
+            </span>
+          </div>
+        ) : banner.linkUrl ? (
+          <p className="text-[11px] text-[var(--text-muted)] truncate mb-1">
+            → {banner.linkUrl}
+          </p>
+        ) : (
+          <p className="text-[11px] text-[var(--text-dim)] italic mb-1">
+            연결 없음
+          </p>
+        )}
+        <p className="text-[10px] text-[var(--text-dim)]">
           {new Date(banner.createdAt).toLocaleDateString("ko-KR")}
         </p>
       </div>
@@ -568,6 +841,152 @@ function SortableBannerRow({
       >
         <Menu className="w-5 h-5" />
       </button>
+    </div>
+  );
+}
+
+function ProductSearchModal({
+  onSelect,
+  onClose,
+}: {
+  onSelect: (product: SelectedProduct) => void;
+  onClose: () => void;
+}) {
+  const [keyword, setKeyword] = useState("");
+  const [submittedKeyword, setSubmittedKeyword] = useState("");
+  const [page, setPage] = useState(0);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin", "productSearch", submittedKeyword, page],
+    queryFn: () => getAdminProducts(page, submittedKeyword),
+  });
+
+  const items = data?.data?.content ?? [];
+  const totalPages = data?.data?.totalPages ?? 0;
+
+  const handleSearch = () => {
+    setPage(0);
+    setSubmittedKeyword(keyword.trim());
+  };
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center">
+      <div className="absolute inset-0 bg-[var(--overlay-bg)]" onClick={onClose} />
+      <div className="relative bg-[var(--card-bg)] border border-[var(--border-color)] w-full max-w-2xl mx-6 max-h-[85vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-color)]">
+          <h3 className="text-sm tracking-wider text-[var(--text-primary)]">
+            연결할 상품 선택
+          </h3>
+          <button
+            onClick={onClose}
+            className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="px-6 py-4 border-b border-[var(--border-color)]">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSearch();
+              }}
+              placeholder="상품명 검색"
+              className="flex-1 px-3 py-2 bg-[var(--input-bg)] border border-[var(--border-color)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-secondary)]"
+            />
+            <button
+              onClick={handleSearch}
+              className="px-5 py-2 text-xs bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] transition-colors"
+            >
+              검색
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          {isLoading ? (
+            <div className="grid grid-cols-2 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-[88px] bg-[var(--skeleton)] animate-pulse"
+                />
+              ))}
+            </div>
+          ) : items.length === 0 ? (
+            <p className="text-center py-10 text-sm text-[var(--text-muted)]">
+              검색 결과가 없습니다.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {items.map((p) => {
+                const meta = productMetaFromAdmin(p);
+                const invalid = isProductInvalid(meta);
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => onSelect(meta)}
+                    className="flex items-center gap-3 p-3 border border-[var(--border-color)] hover:border-[var(--text-muted)] transition-colors text-left"
+                  >
+                    <div className="w-14 h-14 bg-[var(--section-bg)] flex-shrink-0 overflow-hidden">
+                      {p.thumbnailUrl ? (
+                        <img
+                          src={p.thumbnailUrl}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      ) : null}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-[var(--text-primary)] truncate">
+                        {p.name}
+                      </p>
+                      <p className="text-[10px] text-[var(--text-muted)]">
+                        {p.basePrice.toLocaleString("ko-KR")}원
+                      </p>
+                      {invalid && (
+                        <p className="text-[10px] text-red-600 flex items-center gap-1 mt-1">
+                          <AlertTriangle className="w-3 h-3" />
+                          {meta.deleted
+                            ? "삭제됨"
+                            : meta.status === "INACTIVE"
+                              ? "비활성"
+                              : "품절"}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-3 px-6 py-3 border-t border-[var(--border-color)]">
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+              className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-30"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-xs text-[var(--text-muted)]">
+              {page + 1} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1}
+              className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-30"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

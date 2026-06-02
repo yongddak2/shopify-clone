@@ -80,11 +80,12 @@ npx tsc --noEmit     # 타입 체크
 - **회원 강제 탈퇴**: `DELETE /api/admin/users/{id}` = 소프트 삭제(`deletedAt` 세팅). 본인 변경/탈퇴 차단. 주문/리뷰 등 데이터 보존 + 로그인은 자동 차단(`findByEmailAndDeletedAtIsNull`)
 - **비밀번호**: 8자+영문+숫자+특수문자 / 변경 30일 제한(`passwordChangedAt`) / 소셜 로그인 차단
 - **비밀번호 찾기**: Redis 코드 3분 → verified 키 10분 → 재발송 30초 이중 방어
-- **배너**: 최대 5개, sortOrder, isActive, title (필수, VARCHAR 100)
+- **배너**: 최대 5개, sortOrder, isActive, title (필수, VARCHAR 100). 링크: productId 또는 linkUrl 중 하나만(상호 배타) — 공개 응답에서 `/products/{productId}` 또는 raw URL로 직렬화. 메인 슬라이드 클릭 시 동일 창 라우팅
+- **ABOUT 페이지**: 풀스크린 단일 이미지. `MainPageConfig.aboutImageUrl`(S3 about/). 어드민 배너 관리 페이지에서 업로드/제거. `PUT /api/admin/main-page-config/about-image` 별도 엔드포인트
 - **시즌 컬렉션(PNTK)**: 이름은 영문/숫자/공백만, slug 자동 생성(kebab-case, 중복 시 -2/-3). 사진 한 장 10MB. 헤더 PNTK 클릭 → `/pntk` → 첫 활성 시즌(sortOrder 최상단)으로 redirect. `/pntk/[slug]` 상단에 시즌 탭 네비
 - **썸네일**: `isThumbnail=true` 우선, sortOrder 최소값 fallback
   - 적용 대상: ProductSummaryResponse, CartItemResponse, WishlistResponse, OrderItemResponse
-- **이미지 S3 경로**: products/(5MB) / reviews/(5MB) / return-requests/(20MB) / banners/ / season-collections/(10MB)
+- **이미지 S3 경로**: products/(5MB) / reviews/(5MB) / return-requests/(20MB) / banners/ / season-collections/(10MB) / about/(10MB)
 
 ---
 

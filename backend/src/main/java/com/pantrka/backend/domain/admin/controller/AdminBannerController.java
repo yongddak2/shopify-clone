@@ -1,8 +1,8 @@
 package com.pantrka.backend.domain.admin.controller;
 
+import com.pantrka.backend.domain.admin.dto.AdminBannerResponse;
 import com.pantrka.backend.domain.admin.dto.BannerCreateRequest;
 import com.pantrka.backend.domain.admin.dto.BannerOrderRequest;
-import com.pantrka.backend.domain.admin.dto.BannerResponse;
 import com.pantrka.backend.domain.admin.dto.BannerUpdateRequest;
 import com.pantrka.backend.domain.admin.service.AdminBannerService;
 import com.pantrka.backend.global.common.ApiResponse;
@@ -24,15 +24,15 @@ public class AdminBannerController {
     private final AdminBannerService adminBannerService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<BannerResponse>>> getBanners() {
-        List<BannerResponse> response = adminBannerService.getBanners();
+    public ResponseEntity<ApiResponse<List<AdminBannerResponse>>> getBanners() {
+        List<AdminBannerResponse> response = adminBannerService.getBanners();
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<BannerResponse>> createBanner(
+    public ResponseEntity<ApiResponse<AdminBannerResponse>> createBanner(
             @Valid @RequestBody BannerCreateRequest request) {
-        BannerResponse response = adminBannerService.createBanner(request);
+        AdminBannerResponse response = adminBannerService.createBanner(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response));
     }
@@ -45,16 +45,16 @@ public class AdminBannerController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<BannerResponse>> updateBanner(
+    public ResponseEntity<ApiResponse<AdminBannerResponse>> updateBanner(
             @PathVariable Long id,
             @Valid @RequestBody BannerUpdateRequest request) {
-        BannerResponse response = adminBannerService.updateBanner(id, request);
+        AdminBannerResponse response = adminBannerService.updateBanner(id, request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PatchMapping("/{id}/toggle")
-    public ResponseEntity<ApiResponse<BannerResponse>> toggleBannerActive(@PathVariable Long id) {
-        BannerResponse response = adminBannerService.toggleBannerActive(id);
+    public ResponseEntity<ApiResponse<AdminBannerResponse>> toggleBannerActive(@PathVariable Long id) {
+        AdminBannerResponse response = adminBannerService.toggleBannerActive(id);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

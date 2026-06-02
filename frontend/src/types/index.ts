@@ -382,7 +382,7 @@ export interface AdminCoupon {
   validDays: number | null;
 }
 
-// 배너
+// 배너 (공개)
 export interface Banner {
   id: number;
   imageUrl: string;
@@ -393,9 +393,31 @@ export interface Banner {
   createdAt: string;
 }
 
+// 배너 (어드민) — 연결 상품 메타 + 원본 입력값 포함
+export interface AdminBanner {
+  id: number;
+  imageUrl: string;
+  sortOrder: number;
+  active: boolean;
+  title: string | null;
+  createdAt: string;
+  productId: number | null;
+  linkUrl: string | null;
+  linkedProduct: LinkedProduct | null;
+}
+
+export interface LinkedProduct {
+  id: number;
+  name: string;
+  thumbnailUrl: string | null;
+  status: "ACTIVE" | "SOLDOUT" | "INACTIVE";
+  deleted: boolean;
+}
+
 // 메인 페이지 설정
 export interface MainPageConfig {
   subText: string | null;
+  aboutImageUrl: string | null;
 }
 
 // 메인 페이지 NEW ARRIVALS 큐레이션 (어드민)

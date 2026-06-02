@@ -29,6 +29,9 @@ public class Banner {
     @Column(nullable = false)
     private boolean isActive = true;
 
+    @Column(name = "product_id")
+    private Long productId;
+
     private String linkUrl;
 
     @Column(length = 100)
@@ -41,9 +44,10 @@ public class Banner {
     private LocalDateTime updatedAt;
 
     @Builder
-    public Banner(String imageUrl, int sortOrder, String linkUrl, String title) {
+    public Banner(String imageUrl, int sortOrder, Long productId, String linkUrl, String title) {
         this.imageUrl = imageUrl;
         this.sortOrder = sortOrder;
+        this.productId = productId;
         this.linkUrl = linkUrl;
         this.title = title;
         this.isActive = true;
@@ -59,5 +63,10 @@ public class Banner {
 
     public void updateTitle(String title) {
         this.title = title;
+    }
+
+    public void updateLink(Long productId, String linkUrl) {
+        this.productId = productId;
+        this.linkUrl = linkUrl;
     }
 }

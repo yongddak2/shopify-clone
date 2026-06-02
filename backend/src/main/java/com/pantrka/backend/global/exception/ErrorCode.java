@@ -77,6 +77,8 @@ public enum ErrorCode {
     // Banner
     BANNER_NOT_FOUND(HttpStatus.NOT_FOUND, "배너를 찾을 수 없습니다."),
     BANNER_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "배너는 최대 5개까지 등록 가능합니다."),
+    BANNER_LINK_CONFLICT(HttpStatus.BAD_REQUEST, "연결 상품과 URL 중 하나만 지정할 수 있습니다."),
+    BANNER_LINK_URL_INVALID(HttpStatus.BAD_REQUEST, "링크 URL은 / 또는 http(s)://로 시작해야 합니다."),
 
     // Main Page New Arrival
     NEW_ARRIVAL_NOT_FOUND(HttpStatus.NOT_FOUND, "등록된 상품을 찾을 수 없습니다."),

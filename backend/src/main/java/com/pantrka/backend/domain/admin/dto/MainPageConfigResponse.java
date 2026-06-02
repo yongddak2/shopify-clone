@@ -9,10 +9,12 @@ import lombok.Getter;
 public class MainPageConfigResponse {
 
     private String subText;
+    private String aboutImageUrl;
 
     public static MainPageConfigResponse from(MainPageConfig config) {
         return MainPageConfigResponse.builder()
                 .subText(config.getSubText())
+                .aboutImageUrl(config.getAboutImageUrl())
                 .build();
     }
 }

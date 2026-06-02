@@ -123,7 +123,19 @@ function ProductGrid({
   );
 }
 
-function BannerOverlay({ title }: { title: string | null }) {
+function BannerOverlay({
+  title,
+  linkUrl,
+}: {
+  title: string | null;
+  linkUrl: string | null;
+}) {
+  const targetUrl = linkUrl ?? "/products";
+  const isExternal =
+    targetUrl.startsWith("http://") || targetUrl.startsWith("https://");
+  const buttonClass =
+    "inline-block pointer-events-auto rounded-full bg-white text-black text-xs md:text-sm tracking-[0.1em] px-8 py-3 hover:bg-white/85 transition-colors";
+
   return (
     <div className="absolute inset-0 z-10 pointer-events-none">
       {/* 좌측 하단 가독성 위한 그라데이션 */}
@@ -136,18 +148,30 @@ function BannerOverlay({ title }: { title: string | null }) {
         >
           {title ?? "Find Your Style"}
         </h1>
-        <Link
-          href="/products"
-          className="inline-block pointer-events-auto rounded-full bg-white text-black text-xs md:text-sm tracking-[0.1em] px-8 py-3 hover:bg-white/85 transition-colors"
-        >
-          shop now
-        </Link>
+        {isExternal ? (
+          <a
+            href={targetUrl}
+            onClick={(e) => e.stopPropagation()}
+            className={buttonClass}
+          >
+            shop now
+          </a>
+        ) : (
+          <Link
+            href={targetUrl}
+            onClick={(e) => e.stopPropagation()}
+            className={buttonClass}
+          >
+            shop now
+          </Link>
+        )}
       </div>
     </div>
   );
 }
 
 function BannerSlider({ banners }: { banners: Banner[] }) {
+  const router = useRouter();
   const count = banners.length;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -216,18 +240,34 @@ function BannerSlider({ banners }: { banners: Banner[] }) {
   if (count === 0) {
     return (
       <section className="relative h-[50vh] md:h-[90vh] bg-gradient-to-b from-[#1a1a1a] to-[#2a2a2a] flex items-center justify-center overflow-hidden">
-        <BannerOverlay title={null} />
+        <BannerOverlay title={null} linkUrl={null} />
       </section>
     );
   }
 
   const currentTitle = banners[currentIndex]?.title ?? null;
+  const currentLinkUrl = banners[currentIndex]?.linkUrl ?? null;
+
+  const handleSlideClick = () => {
+    if (!currentLinkUrl) return;
+    if (
+      currentLinkUrl.startsWith("http://") ||
+      currentLinkUrl.startsWith("https://")
+    ) {
+      window.location.href = currentLinkUrl;
+    } else {
+      router.push(currentLinkUrl);
+    }
+  };
 
   return (
     <section
-      className="relative w-full h-[50vh] md:h-[90vh] overflow-hidden"
+      className={`relative w-full h-[50vh] md:h-[90vh] overflow-hidden ${
+        currentLinkUrl ? "cursor-pointer" : ""
+      }`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={handleSlideClick}
     >
       {/* 배너 이미지 (absolute 겹침, fade) */}
       {banners.map((banner, idx) => (
@@ -245,19 +285,25 @@ function BannerSlider({ banners }: { banners: Banner[] }) {
       ))}
 
       {/* 오버레이: 현재 슬라이드 title + Shop Now */}
-      <BannerOverlay title={currentTitle} />
+      <BannerOverlay title={currentTitle} linkUrl={currentLinkUrl} />
 
       {/* 좌우 화살표 (2개 이상일 때만) */}
       {count > 1 && (
         <>
           <button
-            onClick={goPrev}
+            onClick={(e) => {
+              e.stopPropagation();
+              goPrev();
+            }}
             className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2 text-white hover:text-white/70 transition-colors"
           >
             <ChevronLeft className="w-[50px] h-[50px]" />
           </button>
           <button
-            onClick={goNext}
+            onClick={(e) => {
+              e.stopPropagation();
+              goNext();
+            }}
             className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2 text-white hover:text-white/70 transition-colors"
           >
             <ChevronRight className="w-[50px] h-[50px]" />
@@ -271,7 +317,10 @@ function BannerSlider({ banners }: { banners: Banner[] }) {
           {banners.map((_, idx) => (
             <button
               key={idx}
-              onClick={() => goTo(idx)}
+              onClick={(e) => {
+                e.stopPropagation();
+                goTo(idx);
+              }}
               className={`w-3 h-3 rounded-full transition-colors ${
                 idx === currentIndex ? "bg-white" : "bg-white/40"
               }`}

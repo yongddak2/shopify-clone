@@ -1,5 +1,6 @@
 package com.pantrka.backend.domain.admin.controller;
 
+import com.pantrka.backend.domain.admin.dto.AboutImageUpdateRequest;
 import com.pantrka.backend.domain.admin.dto.MainPageConfigResponse;
 import com.pantrka.backend.domain.admin.dto.MainPageConfigUpdateRequest;
 import com.pantrka.backend.domain.admin.service.MainPageConfigService;
@@ -31,5 +32,11 @@ public class AdminMainPageConfigController {
     public ResponseEntity<ApiResponse<MainPageConfigResponse>> updateConfig(
             @Valid @RequestBody MainPageConfigUpdateRequest request) {
         return ResponseEntity.ok(ApiResponse.success(mainPageConfigService.updateConfig(request)));
+    }
+
+    @PutMapping("/about-image")
+    public ResponseEntity<ApiResponse<MainPageConfigResponse>> updateAboutImage(
+            @RequestBody AboutImageUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(mainPageConfigService.updateAboutImage(request)));
     }
 }

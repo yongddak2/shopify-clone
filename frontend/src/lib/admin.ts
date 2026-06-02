@@ -10,6 +10,7 @@ import type {
   CreateCouponRequest,
   Category,
   Banner,
+  AdminBanner,
   MainPageConfig,
   NewArrivalEntry,
   Product,
@@ -261,22 +262,36 @@ export async function deleteCoupon(id: number) {
 
 // 배너 관리
 export async function getBanners() {
-  const res = await api.get<ApiResponse<Banner[]>>("/api/admin/banners");
+  const res = await api.get<ApiResponse<AdminBanner[]>>("/api/admin/banners");
   return res.data;
 }
 
-export async function createBanner(imageUrl: string, sortOrder: number, title: string) {
-  const res = await api.post<ApiResponse<Banner>>("/api/admin/banners", {
+export interface BannerLinkInput {
+  productId: number | null;
+  linkUrl: string | null;
+}
+
+export async function createBanner(
+  imageUrl: string,
+  sortOrder: number,
+  title: string,
+  link: BannerLinkInput
+) {
+  const res = await api.post<ApiResponse<AdminBanner>>("/api/admin/banners", {
     imageUrl,
     sortOrder,
     title,
+    productId: link.productId,
+    linkUrl: link.linkUrl,
   });
   return res.data;
 }
 
-export async function updateBanner(id: number, title: string) {
-  const res = await api.put<ApiResponse<Banner>>(`/api/admin/banners/${id}`, {
+export async function updateBanner(id: number, title: string, link: BannerLinkInput) {
+  const res = await api.put<ApiResponse<AdminBanner>>(`/api/admin/banners/${id}`, {
     title,
+    productId: link.productId,
+    linkUrl: link.linkUrl,
   });
   return res.data;
 }
@@ -289,7 +304,7 @@ export async function updateBannerOrder(
 }
 
 export async function toggleBannerActive(id: number) {
-  const res = await api.patch<ApiResponse<Banner>>(
+  const res = await api.patch<ApiResponse<AdminBanner>>(
     `/api/admin/banners/${id}/toggle`
   );
   return res.data;
@@ -309,6 +324,26 @@ export async function uploadBannerImage(file: File): Promise<string> {
     headers: { "Content-Type": "multipart/form-data" },
   });
   return res.data.data;
+}
+
+// ABOUT 이미지 업로드 (directory: about)
+export async function uploadAboutImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("directory", "about");
+  const res = await api.post<ApiResponse<string>>("/api/admin/images", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data.data;
+}
+
+// ABOUT 이미지 URL 설정 (null → 제거)
+export async function updateAboutImage(imageUrl: string | null) {
+  const res = await api.put<ApiResponse<MainPageConfig>>(
+    "/api/admin/main-page-config/about-image",
+    { imageUrl }
+  );
+  return res.data;
 }
 
 // 공개 배너 조회

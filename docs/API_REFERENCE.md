@@ -100,13 +100,13 @@ PanTrKa 전체 REST API 목록. 공통 응답은 `ApiResponse` (`{success, messa
 
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
-| GET | /api/banners | 활성 배너 목록 (공개) |
+| GET | /api/banners | 활성 배너 목록 (공개, linkUrl = `/products/{productId}` 또는 raw URL 또는 null) |
 
 ## Main Page Config (메인 페이지 설정)
 
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
-| GET | /api/main-page-config | 메인 텍스트 조회 (공개) |
+| GET | /api/main-page-config | 메인 텍스트 + ABOUT 이미지 URL 조회 (공개) |
 | GET | /api/main-page/new-arrivals | 메인 NEW ARRIVALS 큐레이션 상품 목록 (공개, 비활성·삭제 자동 필터링) |
 
 ## Return/Exchange Images
@@ -186,13 +186,14 @@ PanTrKa 전체 REST API 목록. 공통 응답은 `ApiResponse` (`{success, messa
 | POST | /api/admin/coupons | 쿠폰 생성 |
 | PATCH | /api/admin/coupons/{id} | 쿠폰 수정 (name / totalQuantity / 날짜 / isWelcome / validDays) |
 | DELETE | /api/admin/coupons/{id} | 쿠폰 삭제 (issuedQuantity > 0 시 차단) |
-| GET | /api/admin/banners | 배너 목록 |
-| POST | /api/admin/banners | 배너 추가 (최대 5개) |
-| PUT | /api/admin/banners/{id} | 배너 수정 |
+| GET | /api/admin/banners | 배너 목록 (linkedProduct 메타 + raw productId/linkUrl 포함) |
+| POST | /api/admin/banners | 배너 추가 (최대 5개, productId·linkUrl 상호배타) |
+| PUT | /api/admin/banners/{id} | 배너 수정 (title + productId/linkUrl, 상호배타) |
 | PATCH | /api/admin/banners/{id} | 배너 순서/활성화 토글 |
 | DELETE | /api/admin/banners/{id} | 배너 삭제 (S3 연동) |
-| GET | /api/admin/main-page-config | 메인 페이지 텍스트 조회 |
+| GET | /api/admin/main-page-config | 메인 페이지 텍스트 + aboutImageUrl 조회 |
 | PUT | /api/admin/main-page-config | 메인 페이지 텍스트 갱신 |
+| PUT | /api/admin/main-page-config/about-image | ABOUT 페이지 이미지 URL 설정 (`{imageUrl: string \| null}`) — null 또는 빈 문자열 시 기존 S3 파일 삭제 |
 | GET | /api/admin/main-page/new-arrivals | NEW ARRIVALS 큐레이션 목록 |
 | POST | /api/admin/main-page/new-arrivals | NEW ARRIVALS 일괄 추가 (최대 10개, 중복 차단) |
 | PUT | /api/admin/main-page/new-arrivals | NEW ARRIVALS 전체 교체 (productIds 순서대로) |
