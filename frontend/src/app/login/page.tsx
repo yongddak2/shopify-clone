@@ -4,7 +4,32 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { login } from "@/lib/auth";
+import { startSocialLogin, type SocialProvider } from "@/lib/oauth";
 import Button from "@/components/common/Button";
+
+// 각사 브랜드 가이드라인 고정 색상 (테마 변수 대상 아님)
+const SOCIAL_BUTTONS: {
+  provider: SocialProvider;
+  label: string;
+  className: string;
+}[] = [
+  {
+    provider: "kakao",
+    label: "카카오로 시작하기",
+    className: "bg-[#FEE500] text-[#191600] hover:brightness-95",
+  },
+  {
+    provider: "naver",
+    label: "네이버로 시작하기",
+    className: "bg-[#03C75A] text-white hover:brightness-95",
+  },
+  {
+    provider: "google",
+    label: "구글로 시작하기",
+    className:
+      "bg-white text-[#3c4043] border border-[var(--border-color)] hover:bg-[var(--card-bg)]",
+  },
+];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,6 +44,15 @@ export default function LoginPage() {
       return "올바른 이메일 형식이 아닙니다";
     if (!password.trim()) return "비밀번호를 입력해주세요";
     return null;
+  };
+
+  const handleSocialLogin = (provider: SocialProvider) => {
+    setError("");
+    try {
+      startSocialLogin(provider);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "소셜 로그인에 실패했습니다.");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -115,6 +149,30 @@ export default function LoginPage() {
             </div>
           </div>
         </form>
+
+        {/* 소셜 로그인 */}
+        <div className="mt-8">
+          <div className="flex items-center gap-4">
+            <div className="flex-1 h-px bg-[var(--border-color)]" />
+            <span className="text-xs tracking-wider text-[var(--text-dim)]">
+              또는
+            </span>
+            <div className="flex-1 h-px bg-[var(--border-color)]" />
+          </div>
+
+          <div className="mt-6 space-y-3">
+            {SOCIAL_BUTTONS.map(({ provider, label, className }) => (
+              <button
+                key={provider}
+                type="button"
+                onClick={() => handleSocialLogin(provider)}
+                className={`w-full py-3 text-sm rounded-sm transition-all ${className}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <p className="text-center text-sm text-[var(--text-muted)] mt-8">
           계정이 없으신가요?{" "}

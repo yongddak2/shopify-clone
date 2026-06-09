@@ -2,6 +2,7 @@ import api from "./api";
 import { useAuthStore } from "@/stores/authStore";
 import { getMyInfo } from "./user";
 import type { ApiResponse, LoginResponse } from "@/types";
+import type { SocialProvider } from "./oauth";
 
 export async function signup(
   email: string,
@@ -27,6 +28,29 @@ export async function login(email: string, password: string) {
   useAuthStore.getState().setTokens(accessToken, refreshToken);
 
   // 로그인 후 사용자 정보(role 포함)를 가져와서 저장
+  try {
+    const userRes = await getMyInfo();
+    useAuthStore.getState().setUser(userRes.data);
+  } catch (err) {
+    console.error("사용자 정보 조회 실패:", err);
+  }
+
+  return res.data;
+}
+
+export async function socialLogin(
+  provider: SocialProvider,
+  code: string,
+  redirectUri: string,
+  state: string | null
+) {
+  const res = await api.post<ApiResponse<LoginResponse>>(
+    `/api/auth/oauth/${provider}`,
+    { code, redirectUri, state }
+  );
+  const { accessToken, refreshToken } = res.data.data;
+  useAuthStore.getState().setTokens(accessToken, refreshToken);
+
   try {
     const userRes = await getMyInfo();
     useAuthStore.getState().setUser(userRes.data);

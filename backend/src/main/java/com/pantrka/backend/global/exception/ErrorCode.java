@@ -110,6 +110,13 @@ public enum ErrorCode {
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
 
+    // OAuth (소셜 로그인)
+    OAUTH_PROVIDER_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, "지원하지 않는 소셜 로그인 제공자입니다."),
+    OAUTH_NOT_CONFIGURED(HttpStatus.INTERNAL_SERVER_ERROR, "소셜 로그인 설정이 완료되지 않았습니다."),
+    OAUTH_TOKEN_FAILED(HttpStatus.BAD_GATEWAY, "소셜 로그인 인증에 실패했습니다."),
+    OAUTH_USER_INFO_FAILED(HttpStatus.BAD_GATEWAY, "소셜 계정 정보를 가져오지 못했습니다."),
+    OAUTH_EMAIL_REQUIRED(HttpStatus.BAD_REQUEST, "소셜 계정의 이메일 제공에 동의해야 로그인할 수 있습니다."),
+
     // Password Reset
     EMAIL_NOT_FOUND(HttpStatus.NOT_FOUND, "가입되지 않은 이메일입니다."),
     INVALID_RESET_CODE(HttpStatus.BAD_REQUEST, "인증번호가 일치하지 않거나 만료되었습니다."),

@@ -36,6 +36,7 @@ public class AuthService {
     private final StringRedisTemplate redisTemplate;
     private final CouponRepository couponRepository;
     private final MemberCouponRepository memberCouponRepository;
+    private final OAuthClient oAuthClient;
 
     private static final String PASSWORD_PATTERN = "^(?=.*[a-zA-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?]).{8,}$";
 
@@ -97,6 +98,32 @@ public class AuthService {
         }
 
         return generateAndStoreTokens(member);
+    }
+
+    @Transactional
+    public TokenResponse oauthLogin(Provider provider, OAuthLoginRequest request) {
+        OAuthUserInfo userInfo = oAuthClient.fetchUserInfo(provider, request);
+
+        Member member = memberRepository.findByEmailAndDeletedAtIsNull(userInfo.email())
+                .orElseGet(() -> registerOAuthMember(provider, userInfo));
+
+        return generateAndStoreTokens(member);
+    }
+
+    private Member registerOAuthMember(Provider provider, OAuthUserInfo userInfo) {
+        Member member = Member.builder()
+                .email(userInfo.email())
+                .password(null)
+                .name(userInfo.name())
+                .phone(null)
+                .role(Role.USER)
+                .provider(provider)
+                .providerId(userInfo.providerId())
+                .build();
+
+        memberRepository.save(member);
+        issueWelcomeCouponSafely(member);
+        return member;
     }
 
     public TokenResponse refresh(String refreshToken) {
