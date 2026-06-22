@@ -83,7 +83,7 @@ export default function CartPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["cart"],
     queryFn: getCart,
-    enabled: mounted && isLoggedIn(),
+    enabled: mounted,
   });
 
   const updateMutation = useMutation({
@@ -193,6 +193,13 @@ export default function CartPage() {
       setOrderError("재고가 부족한 상품은 주문할 수 없습니다.");
       return;
     }
+    // 주문은 로그인 필수 — 비회원은 로그인 유도 (로그인 시 장바구니가 서버로 병합됨)
+    if (!isLoggedIn()) {
+      if (confirm("주문하려면 로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?")) {
+        router.push("/login");
+      }
+      return;
+    }
     setOrderError("");
     beginCheckout(ids);
     router.push("/order");
@@ -215,20 +222,6 @@ export default function CartPage() {
             </div>
           ))}
         </div>
-      </div>
-    );
-  }
-
-  if (!isLoggedIn()) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
-        <p className="text-sm text-[var(--text-muted)]">로그인이 필요합니다.</p>
-        <Link
-          href="/login"
-          className="text-sm text-[var(--text-primary)] underline underline-offset-4"
-        >
-          로그인하기
-        </Link>
       </div>
     );
   }

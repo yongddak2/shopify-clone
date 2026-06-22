@@ -3,6 +3,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { getMyInfo } from "./user";
 import type { ApiResponse, LoginResponse } from "@/types";
 import type { SocialProvider } from "./oauth";
+import { mergeGuestCartToServer } from "./cart";
 
 export async function signup(
   email: string,
@@ -31,6 +32,7 @@ export async function login(email: string, password: string) {
   try {
     const userRes = await getMyInfo();
     useAuthStore.getState().setUser(userRes.data);
+    await mergeGuestCartToServer();
   } catch (err) {
     console.error("사용자 정보 조회 실패:", err);
   }
@@ -54,6 +56,7 @@ export async function socialLogin(
   try {
     const userRes = await getMyInfo();
     useAuthStore.getState().setUser(userRes.data);
+    await mergeGuestCartToServer();
   } catch (err) {
     console.error("사용자 정보 조회 실패:", err);
   }
