@@ -40,8 +40,11 @@ public class ProductService {
         };
 
         Pageable pageable = PageRequest.of(page, size, sorting);
-        return productRepository.findActiveProducts(ProductStatus.ACTIVE, categoryId, pageable)
-                .map(ProductSummaryResponse::from);
+        Page<Product> products = productRepository.findActiveProducts(ProductStatus.ACTIVE, categoryId, pageable);
+        if (!products.isEmpty()) {
+            productRepository.fetchImages(products.getContent());
+        }
+        return products.map(ProductSummaryResponse::from);
     }
 
     @Transactional
@@ -71,8 +74,12 @@ public class ProductService {
                 ? collectCategoryIds(categoryId)
                 : Collections.emptyList();
 
-        return productRepository.searchProducts(keyword, filterCategory, categoryIds, minPrice, maxPrice, pageable)
-                .map(ProductSummaryResponse::from);
+        Page<Product> products = productRepository.searchProducts(
+                keyword, filterCategory, categoryIds, minPrice, maxPrice, pageable);
+        if (!products.isEmpty()) {
+            productRepository.fetchImages(products.getContent());
+        }
+        return products.map(ProductSummaryResponse::from);
     }
 
     private List<Long> collectCategoryIds(Long categoryId) {

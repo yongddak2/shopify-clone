@@ -17,14 +17,18 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     Optional<Product> findByIdAndDeletedAtIsNull(Long id);
 
-    @EntityGraph(attributePaths = {"images"})
+    // 페이징 쿼리에는 컬렉션 fetch join 금지 — @EntityGraph(images) + Pageable 은 메모리 페이징(HHH000104)을
+    // 유발해 페이지 간 상품 중복/잘못된 totalPages 가 됨. 이미지는 fetchImages 로 동일 영속성 컨텍스트에서 별도 로드.
     @Query("SELECT p FROM Product p WHERE p.status = :status AND p.deletedAt IS NULL " +
             "AND (:categoryId IS NULL OR p.category.id = :categoryId)")
     Page<Product> findActiveProducts(@Param("status") ProductStatus status,
                                      @Param("categoryId") Long categoryId,
                                      Pageable pageable);
 
-    @EntityGraph(attributePaths = {"images"})
+    // 페이징으로 추린 상품들의 이미지를 한 번에 로드해 1차 캐시(영속성 컨텍스트)의 동일 엔티티에 채움 → N+1 회피
+    @Query("SELECT p FROM Product p LEFT JOIN FETCH p.images WHERE p IN :products")
+    List<Product> fetchImages(@Param("products") List<Product> products);
+
     @Query("SELECT p FROM Product p WHERE p.status = 'ACTIVE' AND p.deletedAt IS NULL " +
             "AND (LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "     OR LOWER(p.description) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
