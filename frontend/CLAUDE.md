@@ -9,8 +9,9 @@
 ```
 src/
 ├── app/
-│   ├── layout.tsx                        ← 루트 레이아웃 (Header/Footer/Providers)
-│   ├── page.tsx                          ← 메인 (배너 슬라이더 + NEW ARRIVALS + BEST)
+│   ├── layout.tsx                        ← 루트 레이아웃 (Header/Footer/Providers, 폰트는 globals.css SUIT)
+│   ├── page.tsx                          ← 메인 서버 컴포넌트 (dynamic, 5종 prefetch) → HomeContent.tsx
+│   ├── HomeContent.tsx                   ← 메인 클라이언트 (배너 슬라이더 + NEW + BEST + Instagram, initialData 주입)
 │   ├── login/page.tsx
 │   ├── signup/page.tsx                   ← 약관 동의 3종
 │   ├── forgot-password/page.tsx          ← 비밀번호 찾기 3단계
@@ -24,14 +25,15 @@ src/
 │   ├── about/page.tsx                    ← 풀스크린 ABOUT 이미지 (MainPageConfig.aboutImageUrl)
 │   ├── search/page.tsx                   ← 키워드/카테고리/가격 필터
 │   ├── products/
-│   │   ├── page.tsx                      ← 상품 목록 + 찜 하트
+│   │   ├── page.tsx                      ← 서버 컴포넌트 (dynamic, ?category= 이름 기반 prefetch) → ProductsContent
+│   │   ├── ProductsContent.tsx           ← 클라이언트 (카테고리/정렬 URL 기반 + 로드실패 재시도 UI, Suspense)
 │   │   └── [id]/
 │   │       ├── page.tsx                  ← 서버 컴포넌트 (params await)
 │   │       ├── ProductDetailClient.tsx   ← 옵션 드롭다운 + 장바구니 + 찜
 │   │       └── ReviewSection.tsx         ← 리뷰 목록/좋아요/페이지네이션
 │   ├── cart/page.tsx                     ← 재고 초과 처리
-│   ├── order/page.tsx                    ← 쿠폰 적용 + 카카오 주소 API
-│   ├── payment/success/page.tsx          ← 결제 완료 (장바구니 캐시 무효화 여기서만)
+│   ├── order/page.tsx                    ← 쿠폰 적용 + 카카오 주소 API + NICE 결제창 + PENDING 주문 재사용(checkoutSession)
+│   ├── payment/success/page.tsx          ← 결제 완료 (쿼리파라미터만 읽음, confirm 호출 없음 / 장바구니 캐시 무효화 여기서만)
 │   ├── payment/fail/page.tsx             ← Suspense로 감싸야 빌드 통과
 │   ├── mypage/
 │   │   ├── layout.tsx                    ← 사이드메뉴 + 대시보드 카드
@@ -58,18 +60,18 @@ src/
 │       ├── coupons/
 │       │   ├── page.tsx                  ← CRUD + 🎁 웰컴 뱃지
 │       │   └── new/page.tsx              ← 웰컴 토글 체크박스
-│       ├── banners/page.tsx + AboutImageSection.tsx
+│       ├── banners/page.tsx + AboutImageSection.tsx + InstagramSection.tsx
 │       ├── seasons/page.tsx + [id]/photos/  ← PNTK 시즌 CRUD + 사진 multipart 업로드/드래그 정렬
 │       └── requests/page.tsx             ← 반품/교환 관리 5탭
 ├── lib/
-│   ├── api.ts            ← axios 인스턴스, 401 자동 재발급
+│   ├── api.ts            ← axios 인스턴스(baseURL=NEXT_PUBLIC_API_BASE_URL, prod 필수), 401 자동 재발급. 서버 prefetch는 INTERNAL_API_BASE_URL
 │   ├── auth.ts           ← signup/login/logout/refresh/비밀번호찾기
 │   ├── product.ts        ← getProducts/getProductDetail/getCategories/searchProducts
 │   ├── cart.ts           ← getCart/addToCart/updateCartQuantity/removeCartItem
 │   ├── order.ts          ← getOrders/getOrderDetail/createOrder/cancelOrder/confirmOrder
 │   ├── user.ts           ← getMyInfo/주소 CRUD/changePassword
-│   ├── payment.ts        ← confirmPayment (orderNumber 기반)
-│   ├── admin.ts          ← 상품/주문/회원/쿠폰/배너/재고/반품교환 + getDashboard + getAdminUserDetail/updateRole/updateMemo/withdraw
+│   ├── checkoutSession.ts ← sessionStorage 헬퍼 (beginCheckout/readPendingCheckout/savePendingCheckout/clearCheckoutSession). PENDING 주문 재사용
+│   ├── admin.ts          ← 상품/주문(+updateOrderShipping)/회원/쿠폰/배너/재고/반품교환 + getDashboard + getAdminUserDetail/updateRole/updateMemo/withdraw + updateInstagramSection/uploadInstagramImage
 │   ├── wishlist.ts       ← getWishlists/toggleWishlist
 │   ├── coupon.ts         ← getMyCoupons/getAvailableCoupons/issueCoupon
 │   ├── review.ts         ← getProductReviews/getMyReviews/createReview/deleteReview/toggleLike/uploadImage
@@ -88,6 +90,7 @@ src/
 - 인라인 `style={{ backgroundColor: "..." }}` 도 동일 규칙. 정규식 검색 회피의 함정이라 특히 주의
 - 입력/카드/드롭다운 등 — `var(--input-bg)` / `var(--card-bg)` / `var(--border-color)` / `var(--text-secondary)` 사용
 - 선택 강조는 `bg-[var(--text-primary)] text-[var(--btn-primary-text)]` (invert 효과)
+- **폰트**: `globals.css` `@font-face` **SUIT 단일 패밀리**(9 weight, jsdelivr CDN). `--font-sans/display/serif-display` 모두 SUIT. next/font(Geist·Oswald·Abril)는 layout.tsx에서 제거됨
 
 ---
 
@@ -163,6 +166,7 @@ thumbnailUrl: string   ← images 배열 아님. product.images[0] 사용 금지
 couponName, couponDiscountAmount   ← 쿠폰 할인 표시
 returnRequested, exchangeRequested ← 반품/교환 버튼 분기
 confirmedAt: string | null         ← 구매확정 여부 판단
+carrier, trackingNumber: string|null ← 운송장 표시
 ```
 
 ### 어드민 주문 (AdminOrder)
@@ -170,6 +174,7 @@ confirmedAt: string | null         ← 구매확정 여부 판단
 totalAmount, finalAmount       ← 상품구매금액 vs 실결제금액 분리 표시
 paymentMethod: CARD/TRANSFER/VIRTUAL | null  ← 결제 전이면 null, 한글 매핑 필요
 memberName                     ← 주문자 컬럼에 #ID와 함께 표시
+carrier, trackingNumber: string|null  ← 운송장 (PATCH /api/admin/orders/{id}/shipping)
 ```
 
 ### 주문 상태 한글 매핑
@@ -187,9 +192,16 @@ EXCHANGE_REQUESTED→ 교환신청
 
 ---
 
-## 결제 흐름 (중요)
+## 결제 흐름 (중요) — NICE페이먼츠
 
-주문 생성 → 토스 `requestPayment()` → `/payment/success` → `POST /api/payments/confirm` (orderNumber 기반) → 쿠폰 사용처리 → `invalidateAfterPayment()`
+1. cart/상품상세에서 `beginCheckout(cartItemIds)` (sessionStorage 저장)
+2. `/order`에서 `createOrder`(PENDING 생성) + `savePendingCheckout`
+3. `window.AUTHNICE.requestPay({ clientId, orderId, amount, returnUrl: ${API_BASE_URL}/api/payments/nice/callback, ... })` → NICE 인증창 (스크립트 `https://pay.nicepay.co.kr/v1/js/`)
+4. NICE가 **백엔드로 form POST** → 백엔드 `confirmNicePayment`(서명·금액 검증 + 승인 API) → `303` 리다이렉트
+5. 성공 → `/payment/success?orderId&orderNumber&amount` (프론트는 **confirm 호출 없이** 쿼리만 읽어 표시 + `invalidateAfterPayment` + `clearCheckoutSession`) / 실패 → `/payment/fail?code&message`
+
+- **PENDING 주문 재사용**: 결제창 닫고 재진입 시 `readPendingCheckout`로 복원 → `getOrderDetail`로 여전히 PENDING인지 확인 후 NICE만 재호출(아니면 세션 정리). 버튼 라벨 "결제 다시 시도하기"
+- env: `NEXT_PUBLIC_NICEPAY_CLIENT_KEY`, `NEXT_PUBLIC_API_BASE_URL` 필수 (구 `NEXT_PUBLIC_TOSS_CLIENT_KEY` 제거)
 
 **장바구니 캐시 무효화는 반드시 `payment/success`에서만.**
 order 페이지에서 무효화하면 빈 장바구니 감지 → 결제창 차단됨.

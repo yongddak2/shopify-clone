@@ -9,7 +9,7 @@
 ```
 src/main/java/com/pantrka/backend/
 ├── global/
-│   ├── config/       ← SecurityConfig, JwtProvider, TossPaymentsConfig
+│   ├── config/       ← SecurityConfig, JwtProvider, NicePaymentsConfig, NicePaymentsProperties
 │   ├── filter/       ← JwtAuthenticationFilter
 │   ├── exception/    ← ErrorCode, BusinessException, GlobalExceptionHandler
 │   └── common/       ← ApiResponse
@@ -17,7 +17,7 @@ src/main/java/com/pantrka/backend/
 │   ├── auth/         ← controller, service, repository, entity, dto
 │   ├── product/      ← controller, service, repository, entity, dto
 │   ├── order/        ← controller, service, repository, entity, dto
-│   │                    (PaymentService, ReturnExchangeService 포함)
+│   │                    (PaymentService, NicePaymentsClient, ReturnExchangeService 포함)
 │   ├── admin/        ← controller, service
 │   │                    AdminDashboardService / AdminMemberService / MainPageConfigService 포함
 │   │                    (대시보드/상품/주문/회원/쿠폰/배너/재고/반품교환 관리)
@@ -25,7 +25,7 @@ src/main/java/com/pantrka/backend/
 │   ├── wishlist/     ← controller, service, repository, entity, dto
 │   └── coupon/       ← controller, service, repository, entity, dto
 └── infra/
-    ├── s3/           ← S3Config, S3Service (uploadFile/deleteFile)
+    ├── s3/           ← S3Config, S3Service (uploadFile/deleteFile/getFile), PublicImageController (GET /api/images/** 공개 프록시)
     ├── email/        ← EmailService (Gmail SMTP, @Async, OrderEmailContext 스냅샷)
     └── redis/
 ```
@@ -107,7 +107,13 @@ RETURN_EXCHANGE_REQUEST: id, order_item_id(FK), member_id(FK),
                          desired_option_value_id(FK nullable),
                          status(REQUESTED/APPROVED/REJECTED/COMPLETED),
                          image_urls, created_at, updated_at
+
+MAIN_PAGE_CONFIG: id(싱글턴 =1), sub_text(VARCHAR 500),
+                  about_image_url, instagram_handle(VARCHAR 100),
+                  instagram_image_url_1~3(VARCHAR 1000),
+                  instagram_link_url_1~3(VARCHAR 500), updated_at
 ```
+> PAYMENT 스키마는 변경 없음 — `payment_key(UK)`에 NICE `tid` 저장.
 
 ---
 
@@ -116,13 +122,19 @@ RETURN_EXCHANGE_REQUEST: id, order_item_id(FK), member_id(FK),
 ```
 PostgreSQL: localhost:5432 / DB=shopdb / user=shop / pw=shop1234
 Redis: localhost:6379 / pw=redis1234
-S3: 버킷=yong-byeong-shop-images / 리전=ap-southeast-2
+S3: 리전=ap-southeast-2 / public-base-url=${APP_PUBLIC_BASE_URL:http://localhost:8080}
+    버킷: 로컬 yong-byeong-shop-images / 운영 pantrka-images-862121602931-ap-southeast-2-an (불일치 주의)
+    AWS 키 비어있으면 DefaultCredentialsProvider(IAM Role) 폴백
 Gmail: happywe2931@gmail.com
 JPA: ddl-auto=update, open-in-view=false
 Multipart: max-file-size=20MB, max-request-size=20MB
 JWT: access 30분 / refresh 7일
-TossPayments: confirm-url = https://api.tosspayments.com/v1/payments/confirm
+NICE Payments: api-base-url=https://sandbox-api.nicepay.co.kr
+    승인 POST /v1/payments/{tid} · 취소 POST /v1/payments/{tid}/cancel (Basic Auth = Base64(clientKey:secretKey))
+    설정 prefix: nice.payments.{client-key,secret-key,api-base-url,frontend-base-url}
+CORS: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000} (쉼표 구분, http(s)·경로없는 origin만 통과, 와일드카드 거부)
 ```
+> `application.yml`은 gitignore(시크릿). `application-example.yml` 삭제됨 → 환경 템플릿은 `application-test-server.yml` + `.env.server.example`. `test-server` 프로파일은 Swagger 비활성·`forward-headers-strategy=framework`.
 
 ---
 
@@ -153,12 +165,16 @@ locked.decreaseStock(quantity); // 또는 increaseStock / updateStockQuantity
 
 ---
 
-## 테스트 (27개)
+## 테스트 (33개)
 
 - BackendApplicationTests (1): 컨텍스트 로드
 - AuthServiceTest (5): 회원가입(웰컴 쿠폰 자동 발급 분기 포함)/로그인 성공·실패
 - OrderServiceTest (8): 주문 생성/취소/배송비/구매확정
-- PaymentServiceTest (7): 결제 승인/실패 시나리오
+- PaymentServiceTest (3): **NICE 결제** — 서명·금액 검증 후 승인 / 잘못된 인증 서명 거부(`NICEPAY_SIGNATURE_INVALID`) / 금액 불일치 거부(`PAYMENT_AMOUNT_MISMATCH`). (구 토스 7개 → 재작성)
+- SecurityConfigTest (3): CORS origin 검증·정규화 / 와일드카드·경로 포함 URL 거부 / 빈 리스트 거부
+- AdminOrderServiceTest (3): 운송장 carrier·tracking 둘 다 필수(하나만 → `MISSING_TRACKING_INFO`, 이메일 미발송) / SHIPPED 주문 운송장 사후수정 / 미배송 상태 수정 거부(`SHIPPING_UPDATE_NOT_ALLOWED`)
+- AdminBannerServiceTest (1): S3 삭제 실패해도 배너 DB 레코드 삭제(blank AWS 자격증명 환경 대응)
+- MainPageConfigServiceTest (3): 인스타 3개 저장(handle `@` 제거) / 부분 입력 거부 / instagram.com 외 링크 거부
 - OrderConcurrencyTest (3): **Service 레벨 동시성** — 동시 주문(재고 정합성) / 취소+신규 주문 동시(lost update 방어) / 관리자 재고 수정+사용자 주문 동시
   - 위치: `backend/src/test/java/com/pantrka/backend/domain/order/service/OrderConcurrencyTest.java`
 - OrderApiConcurrencyTest (3): **HTTP API 레벨 통합 동시성** — 동일 옵션 동시 주문 / 관리자 재고 수정+사용자 주문 / 인증·권한 검증
