@@ -115,8 +115,8 @@ public class MainPageConfigService {
         if ((imageUrl == null) != (linkUrl == null)) {
             throw invalidInstagram("각 이미지에 Instagram 링크를 함께 입력해주세요.");
         }
-        if (imageUrl != null && !isHttpsUrl(imageUrl)) {
-            throw invalidInstagram("이미지는 HTTPS URL이어야 합니다.");
+        if (imageUrl != null && !isHttpUrl(imageUrl)) {
+            throw invalidInstagram("이미지 URL이 올바르지 않습니다.");
         }
         if (linkUrl != null && !isInstagramUrl(linkUrl)) {
             throw invalidInstagram("링크는 Instagram HTTPS 주소여야 합니다.");
@@ -124,10 +124,12 @@ public class MainPageConfigService {
         return new NormalizedItem(imageUrl, linkUrl);
     }
 
-    private boolean isHttpsUrl(String value) {
+    private boolean isHttpUrl(String value) {
         try {
             URI uri = URI.create(value);
-            return "https".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null;
+            String scheme = uri.getScheme();
+            return ("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme))
+                    && uri.getHost() != null;
         } catch (IllegalArgumentException e) {
             return false;
         }
