@@ -135,11 +135,12 @@ export default function CartPage() {
 
   const hasOverStock = items.some((i) => i.quantity > i.stockQuantity);
 
-  const toggleCheck = (id: number) => {
+  // 상품(그룹) 단위 토글 — 이미지 왼쪽 체크박스용. 그룹 내 선택 가능 항목 전체를 켜고/끔
+  const toggleGroup = (selectableIds: number[], allOn: boolean) => {
     setCheckedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (allOn) selectableIds.forEach((id) => next.delete(id));
+      else selectableIds.forEach((id) => next.add(id));
       return next;
     });
   };
@@ -208,7 +209,7 @@ export default function CartPage() {
   if (!mounted) {
     return (
       <div className="max-w-4xl mx-auto px-6 lg:px-10 py-12">
-        <h1 className="text-2xl tracking-[0.2em] font-light text-center mb-12 text-[var(--text-primary)]">
+        <h1 className="text-2xl tracking-[0.2em] font-light text-center mb-12 text-[var(--header-pink-accent)]">
           CART
         </h1>
         <div className="space-y-6">
@@ -228,7 +229,7 @@ export default function CartPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-6 lg:px-10 py-12">
-      <h1 className="text-2xl tracking-[0.2em] font-light text-center mb-12 text-[var(--text-primary)]">
+      <h1 className="text-2xl tracking-[0.2em] font-light text-center mb-12 text-[var(--header-pink-accent)]">
         CART
       </h1>
 
@@ -296,6 +297,12 @@ export default function CartPage() {
           <div className="space-y-6 mb-12">
             {groups.map((group) => {
               const groupOverStock = group.items.some((i) => i.quantity > i.stockQuantity);
+              const groupSelectableIds = group.items
+                .filter((i) => i.quantity <= i.stockQuantity)
+                .map((i) => i.id);
+              const groupChecked =
+                groupSelectableIds.length > 0 &&
+                groupSelectableIds.every((id) => checkedIds.has(id));
               return (
               <div
                 key={group.productId}
@@ -303,6 +310,17 @@ export default function CartPage() {
                   groupOverStock ? "opacity-40 grayscale" : ""
                 }`}
               >
+                {/* 체크박스 — 이미지 왼쪽, 상품 단위 */}
+                <div className="flex items-center flex-shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={groupChecked}
+                    onChange={() => toggleGroup(groupSelectableIds, groupChecked)}
+                    disabled={groupSelectableIds.length === 0}
+                    className="w-4 h-4 accent-[var(--text-primary)] disabled:opacity-40 disabled:cursor-not-allowed"
+                  />
+                </div>
+
                 {/* 썸네일 이미지 */}
                 <div className="w-24 h-32 bg-[var(--card-bg)] flex-shrink-0 overflow-hidden">
                   {group.thumbnailUrl ? (
@@ -332,15 +350,6 @@ export default function CartPage() {
                       return (
                       <div key={item.id} className="space-y-1">
                         <div className="flex items-center gap-2">
-                          {/* 체크박스 */}
-                          <input
-                            type="checkbox"
-                            checked={checkedIds.has(item.id) && !isOverStock}
-                            onChange={() => toggleCheck(item.id)}
-                            disabled={isOverStock}
-                            className="w-4 h-4 accent-[var(--text-primary)] flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                          />
-
                           {/* 옵션값 */}
                           <span className="text-xs text-[var(--text-muted)] min-w-[3rem] flex-shrink-0">
                             {item.optionValue}

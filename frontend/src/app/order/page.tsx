@@ -1011,7 +1011,7 @@ export default function OrderPage() {
           )}
 
           <Button type="submit" fullWidth loading={orderMutation.isPending}>
-            {pendingCheckout ? "결제 다시 시도하기" : "결제하기"}
+            결제하기
           </Button>
         </form>
       )}

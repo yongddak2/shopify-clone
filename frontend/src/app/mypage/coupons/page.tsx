@@ -152,7 +152,7 @@ export default function MypageCouponsPage() {
                         {coupon.name}
                       </span>
                     </div>
-                    <p className="text-base font-medium text-[var(--badge-blue-text)] mb-1">
+                    <p className="text-base font-medium text-[var(--header-pink-accent)] mb-1">
                       {discountLabel(coupon)}
                     </p>
                     <div className="flex items-center gap-4 text-xs text-[var(--text-muted)]">
@@ -167,7 +167,7 @@ export default function MypageCouponsPage() {
                     className={`shrink-0 px-4 py-2 text-xs tracking-wider whitespace-nowrap transition-colors ${
                       btn.disabled
                         ? "bg-[var(--badge-gray-bg)] text-[var(--badge-gray-text)] cursor-not-allowed"
-                        : "border border-[var(--text-primary)] text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-primary)]"
+                        : "border border-[var(--header-pink-accent)] text-[var(--header-pink-accent)] hover:bg-[var(--header-pink-accent)] hover:text-white"
                     }`}
                   >
                     {btn.label}
@@ -270,7 +270,7 @@ export default function MypageCouponsPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-base font-medium text-[var(--badge-blue-text)]">
+                    <p className="text-base font-medium text-[var(--header-pink-accent)]">
                       {discountLabel(coupon)}
                     </p>
                   </div>

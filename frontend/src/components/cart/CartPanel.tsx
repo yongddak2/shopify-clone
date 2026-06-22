@@ -54,10 +54,13 @@ export default function CartPanel() {
 
   return (
     <div className="fixed inset-0 z-[100]">
-      <div className="absolute inset-0 bg-black/40" onClick={close} />
-      <aside className="absolute right-0 top-0 h-full w-full max-w-[400px] bg-[var(--background)] shadow-2xl flex flex-col">
+      <div
+        className="absolute inset-0 bg-black/40 animate-[cartFadeIn_0.2s_ease-out]"
+        onClick={close}
+      />
+      <aside className="absolute right-0 top-0 h-full w-full max-w-[400px] bg-[var(--background)] shadow-2xl flex flex-col animate-[cartSlideIn_0.2s_ease-out]">
         <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border-color)]">
-          <h2 className="text-sm tracking-[0.2em] text-[var(--text-primary)]">CART</h2>
+          <h2 className="text-sm tracking-[0.2em] text-[var(--header-pink-accent)]">CART</h2>
           <button onClick={close} aria-label="닫기">
             <X className="w-5 h-5 text-[var(--text-muted)]" />
           </button>
@@ -106,7 +109,7 @@ export default function CartPanel() {
           <button
             onClick={handleCheckout}
             disabled={items.length === 0}
-            className="w-full py-3.5 bg-[var(--text-primary)] text-[var(--btn-primary-text)] text-sm tracking-wider disabled:opacity-50"
+            className="w-full py-3.5 bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] text-sm tracking-wider transition-colors hover:bg-[var(--btn-primary-hover)] disabled:opacity-50"
           >
             바로 구매하기
           </button>

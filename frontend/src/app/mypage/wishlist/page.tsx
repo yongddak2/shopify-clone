@@ -93,7 +93,7 @@ export default function MypageWishlistPage() {
           {items.map((item) => (
             <div key={item.id} className="group relative">
               <Link href={`/products/${item.productId}`}>
-                <div className="aspect-[3/4] bg-[var(--card-bg)] mb-4 overflow-hidden">
+                <div className="relative aspect-[3/4] bg-[var(--card-bg)] mb-4 overflow-hidden">
                   {item.thumbnailUrl ? (
                     <img
                       src={item.thumbnailUrl}
@@ -103,6 +103,24 @@ export default function MypageWishlistPage() {
                   ) : (
                     <div className="w-full h-full bg-[var(--section-bg)] group-hover:scale-105 transition-transform duration-500" />
                   )}
+                  {/* 하트 토글 (즉시 제거되지 않음 — 새로고침 시 사라짐) */}
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleToggle(item.productId);
+                    }}
+                    className="absolute bottom-2 right-2 w-8 h-8 flex items-center justify-center transition-transform hover:scale-110 active:scale-90"
+                  >
+                    <Heart
+                      className={
+                        toggledOff.has(item.productId)
+                          ? "w-7 h-7 text-[var(--header-pink-accent)]"
+                          : "w-7 h-7 text-[var(--header-pink-accent)] fill-[var(--header-pink-accent)]"
+                      }
+                      strokeWidth={1.5}
+                    />
+                  </button>
                 </div>
                 <p className="text-sm text-[var(--text-secondary)] mb-1 truncate">
                   {item.productName}
@@ -114,20 +132,6 @@ export default function MypageWishlistPage() {
                   {formatDate(item.createdAt)} 찜
                 </p>
               </Link>
-              {/* 하트 토글 (즉시 제거되지 않음 — 새로고침 시 사라짐) */}
-              <button
-                onClick={() => handleToggle(item.productId)}
-                className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-black/60 transition-colors"
-              >
-                <Heart
-                  className={
-                    toggledOff.has(item.productId)
-                      ? "w-4 h-4 text-white"
-                      : "w-4 h-4 text-red-400 fill-red-400"
-                  }
-                  strokeWidth={1.5}
-                />
-              </button>
             </div>
           ))}
         </div>

@@ -22,6 +22,22 @@ function formatPrice(price: number) {
   return price.toLocaleString("ko-KR");
 }
 
+// 사이즈 정렬 순서 (S, M, L …). 목록에 없는 값은 뒤로(숫자 사이즈는 숫자 오름차순)
+const SIZE_ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL", "FREE"];
+function sizeRank(size: string) {
+  const index = SIZE_ORDER.indexOf(size.trim().toUpperCase());
+  return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+}
+function compareSize(a: string, b: string) {
+  const ra = sizeRank(a);
+  const rb = sizeRank(b);
+  if (ra !== rb) return ra - rb;
+  const na = Number(a);
+  const nb = Number(b);
+  if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+  return a.localeCompare(b);
+}
+
 // 배송/교환·반품 공통 안내 (모든 상품 동일). 출시 전 교환·반품 주소 반드시 수정 필요.
 const DELIVERY_RETURNS_TEXT = `교환 및 반품 주소
  - 이부분 반드시 출시 전에 수정하셔야 합니다!!!!!
@@ -141,7 +157,8 @@ export default function ProductDetailClient({ id }: { id: string }) {
     if (optionMode !== 'combo' || !selectedColor) return [];
     return optionValues
       .filter((v) => v.value.split('-').slice(1).join('-') === selectedColor)
-      .map((v) => v.value.split('-')[0]);
+      .map((v) => v.value.split('-')[0])
+      .sort(compareSize);
   }, [optionMode, optionValues, selectedColor]);
 
   // FREE 옵션이면 자동 선택

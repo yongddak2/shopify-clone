@@ -97,13 +97,13 @@
   --section-bg: #f5f5f5;
   --input-bg: #f5f5f5;
 
-  /* 버튼 */
-  --btn-primary-bg: #141414;
+  /* 버튼 (헤더 핑크 통일) */
+  --btn-primary-bg: #fa3757;
   --btn-primary-text: #ffffff;
-  --btn-primary-hover: #404040;
+  --btn-primary-hover: #e0264a;
   --btn-outline-border: #d4d4d4;
   --btn-outline-text: #141414;
-  --btn-outline-hover-bg: #141414;
+  --btn-outline-hover-bg: #fa3757;
   --btn-outline-hover-text: #ffffff;
 
   /* 오버레이 */
@@ -151,6 +151,24 @@ body {
   scrollbar-width: none;
   &::-webkit-scrollbar {
     display: none;
+  }
+}
+
+/* 장바구니 사이드 레이어 슬라이드 인 (우측에서 빠르게) */
+@keyframes cartSlideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes cartFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 

@@ -7,7 +7,7 @@ import QuickAddPanel from "@/components/cart/QuickAddPanel";
 import CartPanel from "@/components/cart/CartPanel";
 
 export const metadata: Metadata = {
-  title: "PanTrKa | 의류 쇼핑몰",
+  title: "PanTrKa",
   description: "미니멀 의류 쇼핑몰",
 };
 
