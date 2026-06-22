@@ -7,8 +7,6 @@ const MENU = [
   { href: "/info/notice", label: "NOTICE" },
   { href: "/info/faq", label: "FAQ" },
   { href: "/info/qa", label: "Q&A" },
-  { href: "/terms", label: "이용약관" },
-  { href: "/privacy", label: "개인정보처리방침" },
 ];
 
 export default function InfoSidebar() {

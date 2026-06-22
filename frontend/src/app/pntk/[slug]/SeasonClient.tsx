@@ -59,8 +59,8 @@ export default function SeasonClient({ slug }: { slug: string }) {
                     href={`/pntk/${s.slug}`}
                     className={`text-xs tracking-[0.2em] whitespace-nowrap transition-colors ${
                       active
-                        ? "text-[var(--text-primary)] font-medium border-b-2 border-[var(--text-primary)] pb-1"
-                        : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                        ? "text-[var(--header-pink-accent)] font-medium border-b-2 border-[var(--header-pink-accent)] pb-1"
+                        : "text-[var(--header-pink-accent)] hover:opacity-70"
                     }`}
                   >
                     {s.name}
@@ -73,14 +73,9 @@ export default function SeasonClient({ slug }: { slug: string }) {
       )}
 
       <header className="px-6 md:px-10 py-12 text-center">
-        <h1 className="text-2xl md:text-3xl tracking-[0.25em] font-light text-[var(--text-primary)]">
+        <h1 className="text-2xl md:text-3xl tracking-[0.25em] font-light text-[var(--header-pink-accent)]">
           {data.name}
         </h1>
-        {data.images.length > 0 && (
-          <p className="mt-3 text-[11px] tracking-[0.2em] text-[var(--text-dim)]">
-            {data.images.length} PHOTOS
-          </p>
-        )}
       </header>
 
       {data.images.length === 0 ? (

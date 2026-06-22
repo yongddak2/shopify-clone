@@ -34,6 +34,7 @@ desktop.ini
 
 # ─── Docker ────────────────────────────────────
 docker/data/
+compose.local.yml
 
 # ─── Logs ──────────────────────────────────────
 *.log
