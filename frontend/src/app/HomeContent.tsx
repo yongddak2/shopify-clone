@@ -13,8 +13,7 @@ import {
 } from "@/lib/admin";
 import { invalidateWishlistRelated } from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
-import { Heart, ShoppingBag, ChevronLeft, ChevronRight } from "lucide-react";
-import { useCartPanelStore } from "@/stores/cartPanelStore";
+import { Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import type {
   ApiResponse,
   Banner,
@@ -43,7 +42,6 @@ function ProductGrid({
   onWishlistClick: (e: React.MouseEvent, id: number) => void;
   isLoading: boolean;
 }) {
-  const openQuickAdd = useCartPanelStore((s) => s.openQuickAdd);
   if (isLoading) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-2 gap-y-10">
@@ -93,20 +91,6 @@ function ProductGrid({
                 </div>
               )}
               <div className="absolute bottom-2 right-2 flex flex-col gap-1.5">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    openQuickAdd(product.id);
-                  }}
-                  className="w-8 h-8 flex items-center justify-center transition-transform hover:scale-110 active:scale-90"
-                  aria-label="장바구니 담기"
-                >
-                  <ShoppingBag
-                    className="w-7 h-7 text-[var(--header-pink-accent)]"
-                    strokeWidth={1.5}
-                  />
-                </button>
                 <button
                   onClick={(e) => onWishlistClick(e, product.id)}
                   className="w-8 h-8 flex items-center justify-center transition-transform hover:scale-110 active:scale-90"
@@ -525,12 +509,12 @@ export default function HomeContent({
       {instagramHandle && instagramItems.length === 3 && (
         <section className="w-full pt-12 md:pt-20">
           <div className="pb-10 text-center md:pb-14">
-            <p className="mb-1 text-sm text-[var(--text-muted)]">
-              @{instagramHandle}
-            </p>
-            <h2 className="text-2xl font-medium tracking-tight text-[var(--text-primary)] md:text-3xl">
+            <h2 className="font-serif-display text-2xl font-medium tracking-wide text-[var(--header-pink-accent)] md:text-3xl">
               Instagram
             </h2>
+            <p className="mt-1 font-serif-display text-lg font-medium tracking-wide text-[var(--header-pink-accent)] md:text-xl">
+              @{instagramHandle}
+            </p>
           </div>
           <div className="grid w-full grid-cols-3 gap-px bg-white">
             {instagramItems.map((item, index) => (

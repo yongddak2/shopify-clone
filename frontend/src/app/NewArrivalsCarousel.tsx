@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Heart, ShoppingBag, ChevronLeft, ChevronRight } from "lucide-react";
-import { useCartPanelStore } from "@/stores/cartPanelStore";
+import { Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Product } from "@/types";
 
 const AUTO_INTERVAL_MS = 3500;
@@ -197,7 +196,6 @@ export function ProductCard({
   wishlistIds: Set<number>;
   onWishlistClick: (e: React.MouseEvent, id: number) => void;
 }) {
-  const openQuickAdd = useCartPanelStore((s) => s.openQuickAdd);
   const isSoldOut = product.status === "SOLDOUT";
   const hasDiscount = product.discountRate > 0;
   const finalPrice = hasDiscount
@@ -225,20 +223,6 @@ export function ProductCard({
           </div>
         )}
         <div className="absolute bottom-2 right-2 flex flex-col gap-1.5">
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              openQuickAdd(product.id);
-            }}
-            className="w-8 h-8 flex items-center justify-center transition-transform hover:scale-110 active:scale-90"
-            aria-label="장바구니 담기"
-          >
-            <ShoppingBag
-              className="w-7 h-7 text-[var(--header-pink-accent)]"
-              strokeWidth={1.5}
-            />
-          </button>
           <button
             onClick={(e) => onWishlistClick(e, product.id)}
             className="w-8 h-8 flex items-center justify-center transition-transform hover:scale-110 active:scale-90"

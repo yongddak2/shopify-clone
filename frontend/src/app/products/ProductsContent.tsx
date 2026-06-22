@@ -8,8 +8,7 @@ import { getProducts, getCategories } from "@/lib/product";
 import { getWishlists, toggleWishlist } from "@/lib/wishlist";
 import { invalidateWishlistRelated } from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
-import { Heart, ShoppingBag } from "lucide-react";
-import { useCartPanelStore } from "@/stores/cartPanelStore";
+import { Heart } from "lucide-react";
 import type { ApiResponse, Category, PageResponse, Product } from "@/types";
 
 function formatPrice(price: number) {
@@ -39,7 +38,6 @@ export default function ProductsContent({
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const openQuickAdd = useCartPanelStore((s) => s.openQuickAdd);
   const { isLoggedIn } = useAuthStore();
   const [page, setPage] = useState(0);
   const [sort, setSort] = useState(() => {
@@ -70,10 +68,19 @@ export default function ProductsContent({
     setPage(0);
   };
 
+  // SSR prefetch(initialProducts)는 첫 렌더의 page/sort/category 조합에만 유효.
+  // 모든 쿼리에 주입하면 페이지 전환 시에도 0페이지 데이터가 "신선한 초기데이터"로 간주돼
+  // (전역 staleTime 60초) refetch가 안 일어나 페이지가 안 넘어감.
+  const [initialQueryKey] = useState(() =>
+    JSON.stringify({ page, categoryId, sort })
+  );
+  const currentQueryKey = JSON.stringify({ page, categoryId, sort });
+
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["products", { page, categoryId, sort }],
     queryFn: () => getProducts({ page, size: 12, categoryId, sort }),
-    initialData: initialProducts,
+    initialData:
+      currentQueryKey === initialQueryKey ? initialProducts : undefined,
   });
 
   const { data: wishlistData } = useQuery({
@@ -230,20 +237,6 @@ export default function ProductsContent({
                     </div>
                   )}
                   <div className="absolute bottom-2 right-2 flex flex-col gap-1.5">
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        openQuickAdd(product.id);
-                      }}
-                      className="w-8 h-8 flex items-center justify-center transition-transform hover:scale-110 active:scale-90"
-                      aria-label="장바구니 담기"
-                    >
-                      <ShoppingBag
-                        className="w-7 h-7 text-[var(--header-pink-accent)]"
-                        strokeWidth={1.5}
-                      />
-                    </button>
                     <button
                       onClick={(e) => handleWishlistClick(e, product.id)}
                       className="w-8 h-8 flex items-center justify-center transition-transform hover:scale-110 active:scale-90"
