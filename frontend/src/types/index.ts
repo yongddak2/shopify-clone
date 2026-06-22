@@ -112,6 +112,8 @@ export interface OrderResponse {
   phone: string;
   address: string;
   memo: string;
+  carrier: string | null;
+  trackingNumber: string | null;
   createdAt: string;
   confirmedAt: string | null;
   couponName: string | null;
@@ -282,6 +284,8 @@ export interface AdminOrder {
   phone: string;
   address: string;
   memo: string;
+  carrier: string | null;
+  trackingNumber: string | null;
   totalAmount: number;
   discountAmount: number;
   deliveryFee: number;
@@ -418,6 +422,13 @@ export interface LinkedProduct {
 export interface MainPageConfig {
   subText: string | null;
   aboutImageUrl: string | null;
+  instagramHandle: string | null;
+  instagramItems: InstagramItem[];
+}
+
+export interface InstagramItem {
+  imageUrl: string | null;
+  linkUrl: string | null;
 }
 
 // 메인 페이지 NEW ARRIVALS 큐레이션 (어드민)

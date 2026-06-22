@@ -23,6 +23,7 @@ import {
 import type { AdminBanner, LinkedProduct, AdminProduct } from "@/types";
 import NewArrivalsSection from "./NewArrivalsSection";
 import AboutImageSection from "./AboutImageSection";
+import InstagramSection from "./InstagramSection";
 import {
   DndContext,
   PointerSensor,
@@ -415,6 +416,8 @@ export default function AdminBannersPage() {
 
       {/* ABOUT 페이지 이미지 카드 */}
       <AboutImageSection />
+
+      <InstagramSection />
 
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-xl font-light tracking-[0.15em] text-[var(--text-primary)]">

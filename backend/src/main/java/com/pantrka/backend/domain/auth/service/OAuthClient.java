@@ -53,7 +53,7 @@ public class OAuthClient {
         form.add("client_secret", reg.getClientSecret());
         form.add("code", request.getCode());
         form.add("redirect_uri", request.getRedirectUri());
-        if (StringUtils.hasText(request.getState())) {
+        if (provider == Provider.NAVER && StringUtils.hasText(request.getState())) {
             form.add("state", request.getState());
         }
 
@@ -111,6 +111,9 @@ public class OAuthClient {
                 providerId = node.path("id").asText(null);
                 email = node.path("email").asText(null);
                 name = node.path("name").asText(null);
+                if (!node.path("verified_email").asBoolean(false)) {
+                    throw new BusinessException(ErrorCode.OAUTH_EMAIL_REQUIRED);
+                }
             }
             case NAVER -> {
                 JsonNode response = node.path("response");

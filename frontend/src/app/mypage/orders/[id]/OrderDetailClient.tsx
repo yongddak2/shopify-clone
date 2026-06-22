@@ -168,6 +168,18 @@ export default function OrderDetailClient({ id }: { id: string }) {
               {statusLabel}
             </span>
           </div>
+          {order.carrier && order.trackingNumber && (
+            <>
+              <div className="flex">
+                <span className="w-20 text-[var(--text-muted)] flex-shrink-0">택배사</span>
+                <span className="text-[var(--text-secondary)]">{order.carrier}</span>
+              </div>
+              <div className="flex">
+                <span className="w-20 text-[var(--text-muted)] flex-shrink-0">운송장</span>
+                <span className="font-mono text-[var(--text-secondary)]">{order.trackingNumber}</span>
+              </div>
+            </>
+          )}
           <div className="flex">
             <span className="w-20 text-[var(--text-muted)] flex-shrink-0">수령인</span>
             <span className="text-[var(--text-secondary)]">{order.recipient}</span>

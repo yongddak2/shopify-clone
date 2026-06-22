@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -83,20 +83,11 @@ function MypageOrdersContent() {
   const queryClient = useQueryClient();
   const { isLoggedIn } = useAuthStore();
   const [page, setPage] = useState(0);
-  const [activeTab, setActiveTab] = useState(() => {
-    const tab = searchParams.get("tab");
-    if (tab && TABS.some((t) => t.key === tab)) return tab;
-    return "all";
-  });
+  const requestedTab = searchParams.get("tab");
+  const activeTab = requestedTab && TABS.some((tab) => tab.key === requestedTab)
+    ? requestedTab
+    : "all";
   const [period, setPeriod] = useState("3m");
-
-  // URL tab 파라미터 변경 시 동기화
-  useEffect(() => {
-    const tab = searchParams.get("tab");
-    if (tab && TABS.some((t) => t.key === tab)) {
-      setActiveTab(tab);
-    }
-  }, [searchParams]);
 
   const [cancelTarget, setCancelTarget] = useState<number | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<number | null>(null);
@@ -186,7 +177,7 @@ function MypageOrdersContent() {
               <button
                 key={tab.key}
                 onClick={() => {
-                  setActiveTab(tab.key);
+                  router.replace(tab.key === "all" ? "/mypage/orders" : `/mypage/orders?tab=${tab.key}`);
                   setPage(0);
                 }}
                 className={`px-4 py-3 text-xs tracking-wider whitespace-nowrap transition-colors ${
@@ -335,6 +326,15 @@ function MypageOrdersContent() {
                     );
                   })}
                 </div>
+
+                {order.carrier && order.trackingNumber && (
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-1 px-5 py-3 border-t border-[var(--border-color)] text-xs bg-[var(--section-bg)]">
+                    <span className="font-medium text-[var(--text-secondary)]">택배현황</span>
+                    <span className="text-[var(--text-muted)]">{STATUS_LABELS[order.status] ?? order.status}</span>
+                    <span className="text-[var(--text-muted)]">{order.carrier}</span>
+                    <span className="font-mono text-[var(--text-secondary)]">{order.trackingNumber}</span>
+                  </div>
+                )}
 
                 {/* 주문 푸터: 결제 금액 + 액션 */}
                 <div className="flex items-center justify-between px-5 py-3 border-t border-[var(--border-color)] bg-[var(--card-bg)]">

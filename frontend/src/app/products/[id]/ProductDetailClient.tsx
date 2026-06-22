@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProductDetail } from "@/lib/product";
 import { addToCart, getCart } from "@/lib/cart";
+import { beginCheckout } from "@/lib/checkoutSession";
 import { getWishlists, toggleWishlist } from "@/lib/wishlist";
 import {
   invalidateCartRelated,
@@ -238,7 +239,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
         setCartError("주문 정보를 불러오지 못했습니다.");
         return;
       }
-      sessionStorage.setItem("orderCartItemIds", JSON.stringify([target.id]));
+      beginCheckout([target.id]);
       invalidateCartRelated(queryClient);
       router.push("/order");
     } catch {

@@ -9,9 +9,14 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.core.ResponseBytes;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.UUID;
 
 @Service
@@ -25,6 +30,9 @@ public class S3Service {
 
     @Value("${cloud.aws.s3.region}")
     private String region;
+
+    @Value("${cloud.aws.s3.public-base-url}")
+    private String publicBaseUrl;
 
     public String uploadFile(MultipartFile file) {
         return uploadFile(file, "products");
@@ -44,22 +52,38 @@ public class S3Service {
 
             s3Client.putObject(putObjectRequest,
                     RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
-        } catch (IOException e) {
+        } catch (IOException | S3Exception e) {
             throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED);
         }
 
-        return String.format("https://%s.s3.%s.amazonaws.com/%s", bucket, region, key);
+        return publicBaseUrl + "/api/images/" + key;
     }
 
     public void deleteFile(String imageUrl) {
-        String key = extractKey(imageUrl);
+        S3ObjectLocation location = extractLocation(imageUrl);
 
         DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
-                .bucket(bucket)
-                .key(key)
+                .bucket(location.bucket())
+                .key(location.key())
                 .build();
 
         s3Client.deleteObject(deleteObjectRequest);
+    }
+
+    public StoredImage getFile(String key) {
+        try {
+            ResponseBytes<GetObjectResponse> object = s3Client.getObjectAsBytes(
+                    GetObjectRequest.builder()
+                            .bucket(bucket)
+                            .key(key)
+                            .build());
+            return new StoredImage(
+                    object.asByteArray(),
+                    object.response().contentType(),
+                    object.response().contentLength());
+        } catch (S3Exception e) {
+            throw new BusinessException(ErrorCode.IMAGE_NOT_FOUND);
+        }
     }
 
     private String extractExtension(String filename) {
@@ -69,8 +93,34 @@ public class S3Service {
         return filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
     }
 
-    private String extractKey(String imageUrl) {
-        String prefix = String.format("https://%s.s3.%s.amazonaws.com/", bucket, region);
-        return imageUrl.substring(prefix.length());
+    private S3ObjectLocation extractLocation(String imageUrl) {
+        try {
+            URI uri = URI.create(imageUrl);
+            String publicPrefix = "/api/images/";
+            if (uri.getPath() != null && uri.getPath().startsWith(publicPrefix)) {
+                String key = uri.getPath().substring(publicPrefix.length());
+                if (key.isBlank()) throw new IllegalArgumentException("Invalid image URL");
+                return new S3ObjectLocation(bucket, key);
+            }
+            String host = uri.getHost();
+            String suffix = ".s3." + region + ".amazonaws.com";
+            if (host == null || !host.endsWith(suffix)) {
+                throw new IllegalArgumentException("Unsupported S3 URL");
+            }
+            String sourceBucket = host.substring(0, host.length() - suffix.length());
+            String key = uri.getPath().replaceFirst("^/", "");
+            if (sourceBucket.isBlank() || key.isBlank()) {
+                throw new IllegalArgumentException("Invalid S3 URL");
+            }
+            return new S3ObjectLocation(sourceBucket, key);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "올바른 S3 이미지 URL이 아닙니다.");
+        }
+    }
+
+    private record S3ObjectLocation(String bucket, String key) {
+    }
+
+    public record StoredImage(byte[] bytes, String contentType, long contentLength) {
     }
 }

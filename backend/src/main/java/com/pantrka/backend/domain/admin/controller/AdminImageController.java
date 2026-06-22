@@ -22,13 +22,19 @@ public class AdminImageController {
     private final S3Service s3Service;
 
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "jpeg", "png", "gif", "webp");
+    private static final Set<String> ALLOWED_DIRECTORIES = Set.of("products", "banners", "about", "instagram");
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB (갤러리/대표 이미지)
     private static final long MAX_DETAIL_FILE_SIZE = 10 * 1024 * 1024; // 10MB (상세 설명 이미지)
 
     @PostMapping
-    public ResponseEntity<ApiResponse<String>> uploadImage(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<ApiResponse<String>> uploadImage(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "directory", defaultValue = "products") String directory) {
         validateFile(file, MAX_FILE_SIZE);
-        String imageUrl = s3Service.uploadFile(file);
+        if (!ALLOWED_DIRECTORIES.contains(directory)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+        String imageUrl = s3Service.uploadFile(file, directory);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(imageUrl));
     }

@@ -44,7 +44,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findTopBySales(Pageable pageable);
 
     @Query("SELECT p FROM Product p " +
-            "WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "WHERE p.deletedAt IS NULL " +
+            "AND LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "AND (:categoryId IS NULL OR p.category.id = :categoryId)")
     Page<Product> findAdminProducts(@Param("keyword") String keyword,
                                     @Param("categoryId") Long categoryId,

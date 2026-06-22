@@ -3,71 +3,58 @@ package com.pantrka.backend.domain.order.service;
 import com.pantrka.backend.domain.auth.entity.Member;
 import com.pantrka.backend.domain.auth.entity.Provider;
 import com.pantrka.backend.domain.auth.entity.Role;
-import com.pantrka.backend.domain.order.dto.PaymentConfirmRequest;
-import com.pantrka.backend.domain.order.entity.*;
 import com.pantrka.backend.domain.coupon.repository.MemberCouponRepository;
+import com.pantrka.backend.domain.order.dto.NicePaymentApiResponse;
+import com.pantrka.backend.domain.order.dto.NicePaymentCallbackRequest;
+import com.pantrka.backend.domain.order.entity.Order;
+import com.pantrka.backend.domain.order.entity.OrderStatus;
+import com.pantrka.backend.domain.order.entity.Payment;
 import com.pantrka.backend.domain.order.repository.OrderItemRepository;
 import com.pantrka.backend.domain.order.repository.OrderRepository;
 import com.pantrka.backend.domain.order.repository.PaymentRepository;
-import com.pantrka.backend.global.config.TossPaymentsProperties;
+import com.pantrka.backend.global.config.NicePaymentsProperties;
 import com.pantrka.backend.global.exception.BusinessException;
 import com.pantrka.backend.global.exception.ErrorCode;
 import com.pantrka.backend.infra.email.EmailService;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTest {
 
-    @Mock
-    private PaymentRepository paymentRepository;
+    @Mock PaymentRepository paymentRepository;
+    @Mock OrderRepository orderRepository;
+    @Mock OrderItemRepository orderItemRepository;
+    @Mock MemberCouponRepository memberCouponRepository;
+    @Mock NicePaymentsClient nicePaymentsClient;
+    @Mock NicePaymentsProperties niceProperties;
+    @Mock EmailService emailService;
 
-    @Mock
-    private OrderRepository orderRepository;
+    @InjectMocks PaymentService paymentService;
 
-    @Mock
-    private OrderItemRepository orderItemRepository;
-
-    @Mock
-    private MemberCouponRepository memberCouponRepository;
-
-    @Mock
-    private RestTemplate tossRestTemplate;
-
-    @Mock
-    private TossPaymentsProperties tossProperties;
-
-    @Mock
-    private EmailService emailService;
-
-    @InjectMocks
-    private PaymentService paymentService;
-
-    private Member member;
     private Order order;
 
     @BeforeEach
     void setUp() {
-        member = Member.builder()
+        Member member = Member.builder()
                 .email("test@test.com")
                 .password("encoded")
                 .name("테스트")
@@ -75,7 +62,6 @@ class PaymentServiceTest {
                 .provider(Provider.LOCAL)
                 .build();
         ReflectionTestUtils.setField(member, "id", 1L);
-
         order = Order.builder()
                 .member(member)
                 .orderNumber("ORD-123")
@@ -88,143 +74,86 @@ class PaymentServiceTest {
         ReflectionTestUtils.setField(order, "id", 1L);
     }
 
-    private PaymentConfirmRequest createRequest(String orderNumber, BigDecimal amount) {
-        PaymentConfirmRequest request = new PaymentConfirmRequest();
-        ReflectionTestUtils.setField(request, "paymentKey", "toss_pay_key_123");
-        ReflectionTestUtils.setField(request, "orderNumber", orderNumber);
-        ReflectionTestUtils.setField(request, "amount", amount);
-        return request;
-    }
-
-    private void mockTossApiSuccess() {
-        given(tossProperties.getSecretKey()).willReturn("test_secret_key");
-        given(tossProperties.getConfirmUrl()).willReturn("https://api.tosspayments.com/v1/payments/confirm");
-        given(tossRestTemplate.exchange(anyString(), eq(HttpMethod.POST), any(), eq(String.class)))
-                .willReturn(ResponseEntity.ok("{}"));
-    }
-
     @Test
-    @DisplayName("결제_승인_성공")
-    void 결제_승인_성공() {
-        // given
-        PaymentConfirmRequest request = createRequest("ORD-123", new BigDecimal("50000"));
-
-        given(orderRepository.findByOrderNumber("ORD-123")).willReturn(Optional.of(order));
+    void confirmsNicePaymentAfterSignatureAndAmountValidation() {
+        NicePaymentCallbackRequest callback = callback("50000", validSignature("50000"));
+        NicePaymentApiResponse approved = approvedResponse();
+        given(niceProperties.getClientKey()).willReturn("client");
+        given(niceProperties.getSecretKey()).willReturn("secret");
+        given(orderRepository.findByOrderNumberForUpdate("ORD-123")).willReturn(Optional.of(order));
         given(paymentRepository.findByOrderId(1L)).willReturn(Optional.empty());
-        mockTossApiSuccess();
+        given(nicePaymentsClient.approve("NICE-TID", new BigDecimal("50000"))).willReturn(approved);
+        given(orderItemRepository.findByOrderId(1L)).willReturn(List.of());
         given(paymentRepository.save(any(Payment.class))).willAnswer(invocation -> {
             Payment payment = invocation.getArgument(0);
             ReflectionTestUtils.setField(payment, "id", 1L);
             return payment;
         });
-        given(orderItemRepository.findByOrderId(1L)).willReturn(java.util.List.of());
 
-        // when
-        var response = paymentService.confirmPayment(1L, request);
+        var response = paymentService.confirmNicePayment(callback);
 
-        // then
-        assertThat(response).isNotNull();
-        verify(paymentRepository).save(any(Payment.class));
+        assertThat(response.getPaymentKey()).isEqualTo("NICE-TID");
         assertThat(order.getStatus()).isEqualTo(OrderStatus.PAID);
+        verify(paymentRepository).save(any(Payment.class));
     }
 
     @Test
-    @DisplayName("존재하지_않는_주문_예외")
-    void 존재하지_않는_주문_예외() {
-        // given
-        PaymentConfirmRequest request = createRequest("ORD-999", new BigDecimal("50000"));
-        given(orderRepository.findByOrderNumber("ORD-999")).willReturn(Optional.empty());
+    void rejectsInvalidAuthenticationSignature() {
+        given(niceProperties.getClientKey()).willReturn("client");
+        given(niceProperties.getSecretKey()).willReturn("secret");
 
-        // when & then
-        assertThatThrownBy(() -> paymentService.confirmPayment(1L, request))
+        assertThatThrownBy(() -> paymentService.confirmNicePayment(callback("50000", "bad")))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.ORDER_NOT_FOUND);
+                .isEqualTo(ErrorCode.NICEPAY_SIGNATURE_INVALID);
     }
 
     @Test
-    @DisplayName("다른_사용자_주문_결제_시_예외")
-    void 다른_사용자_주문_결제_시_예외() {
-        // given
-        PaymentConfirmRequest request = createRequest("ORD-123", new BigDecimal("50000"));
-        given(orderRepository.findByOrderNumber("ORD-123")).willReturn(Optional.of(order));
-
-        // when & then: memberId 2L != order.member.id 1L
-        assertThatThrownBy(() -> paymentService.confirmPayment(2L, request))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.ORDER_FORBIDDEN);
-    }
-
-    @Test
-    @DisplayName("PENDING_아닌_상태_결제_시_예외")
-    void PENDING_아닌_상태_결제_시_예외() {
-        // given
-        order.updateStatus(OrderStatus.PAID);
-        PaymentConfirmRequest request = createRequest("ORD-123", new BigDecimal("50000"));
-        given(orderRepository.findByOrderNumber("ORD-123")).willReturn(Optional.of(order));
-
-        // when & then
-        assertThatThrownBy(() -> paymentService.confirmPayment(1L, request))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.ORDER_NOT_PENDING);
-    }
-
-    @Test
-    @DisplayName("이미_결제된_주문_예외")
-    void 이미_결제된_주문_예외() {
-        // given
-        Payment existingPayment = Payment.builder()
-                .order(order)
-                .paymentKey("existing_key")
-                .method(PaymentMethod.CARD)
-                .amount(new BigDecimal("50000"))
-                .status(PaymentStatus.DONE)
-                .build();
-
-        PaymentConfirmRequest request = createRequest("ORD-123", new BigDecimal("50000"));
-        given(orderRepository.findByOrderNumber("ORD-123")).willReturn(Optional.of(order));
-        given(paymentRepository.findByOrderId(1L)).willReturn(Optional.of(existingPayment));
-
-        // when & then
-        assertThatThrownBy(() -> paymentService.confirmPayment(1L, request))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.PAYMENT_ALREADY_PROCESSED);
-    }
-
-    @Test
-    @DisplayName("금액_불일치_예외")
-    void 금액_불일치_예외() {
-        // given
-        PaymentConfirmRequest request = createRequest("ORD-123", new BigDecimal("99999"));
-        given(orderRepository.findByOrderNumber("ORD-123")).willReturn(Optional.of(order));
+    void rejectsAmountMismatchBeforeApproval() {
+        given(niceProperties.getClientKey()).willReturn("client");
+        given(niceProperties.getSecretKey()).willReturn("secret");
+        given(orderRepository.findByOrderNumberForUpdate("ORD-123")).willReturn(Optional.of(order));
         given(paymentRepository.findByOrderId(1L)).willReturn(Optional.empty());
 
-        // when & then
-        assertThatThrownBy(() -> paymentService.confirmPayment(1L, request))
+        assertThatThrownBy(() -> paymentService.confirmNicePayment(
+                callback("40000", validSignature("40000"))))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.PAYMENT_AMOUNT_MISMATCH);
     }
 
-    @Test
-    @DisplayName("토스_API_실패_시_예외")
-    void 토스_API_실패_시_예외() {
-        // given
-        PaymentConfirmRequest request = createRequest("ORD-123", new BigDecimal("50000"));
-        given(orderRepository.findByOrderNumber("ORD-123")).willReturn(Optional.of(order));
-        given(paymentRepository.findByOrderId(1L)).willReturn(Optional.empty());
-        given(tossProperties.getSecretKey()).willReturn("test_secret_key");
-        given(tossProperties.getConfirmUrl()).willReturn("https://api.tosspayments.com/v1/payments/confirm");
-        given(tossRestTemplate.exchange(anyString(), eq(HttpMethod.POST), any(), eq(String.class)))
-                .willThrow(new RestClientException("Connection refused"));
+    private NicePaymentCallbackRequest callback(String amount, String signature) {
+        NicePaymentCallbackRequest request = new NicePaymentCallbackRequest();
+        request.setAuthResultCode("0000");
+        request.setAuthResultMsg("인증 성공");
+        request.setTid("NICE-TID");
+        request.setClientId("client");
+        request.setOrderId("ORD-123");
+        request.setAmount(new BigDecimal(amount));
+        request.setAuthToken("AUTH-TOKEN");
+        request.setSignature(signature);
+        return request;
+    }
 
-        // when & then
-        assertThatThrownBy(() -> paymentService.confirmPayment(1L, request))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.TOSS_API_FAILED);
+    private NicePaymentApiResponse approvedResponse() {
+        NicePaymentApiResponse response = new NicePaymentApiResponse();
+        ReflectionTestUtils.setField(response, "resultCode", "0000");
+        ReflectionTestUtils.setField(response, "resultMsg", "정상");
+        ReflectionTestUtils.setField(response, "tid", "NICE-TID");
+        ReflectionTestUtils.setField(response, "orderId", "ORD-123");
+        ReflectionTestUtils.setField(response, "status", "paid");
+        ReflectionTestUtils.setField(response, "payMethod", "card");
+        ReflectionTestUtils.setField(response, "amount", new BigDecimal("50000"));
+        return response;
+    }
+
+    private String validSignature(String amount) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(("AUTH-TOKEN" + "client" + amount + "secret")
+                            .getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
     }
 }

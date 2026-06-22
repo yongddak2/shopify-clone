@@ -36,6 +36,7 @@ public class ReturnExchangeService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final ProductOptionValueRepository productOptionValueRepository;
+    private final PaymentService paymentService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -161,6 +162,10 @@ public class ReturnExchangeService {
 
         if (request.getStatus() != RequestStatus.APPROVED) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST_STATUS);
+        }
+
+        if (request.getType() == ReasonType.RETURN) {
+            paymentService.cancelPaidOrder(request.getOrder(), "반품 환불");
         }
 
         // 교환(EXCHANGE)만 재고 복구. 반품(RETURN)은 환불 처리이므로 재고 변동 없음.

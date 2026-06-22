@@ -26,10 +26,10 @@ function PaymentFailContent() {
       )}
       <div className="flex gap-3 justify-center">
         <button
-          onClick={() => router.replace("/cart")}
+          onClick={() => router.replace("/order")}
           className="px-6 py-3 text-sm border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-primary)] transition-colors"
         >
-          장바구니로 돌아가기
+          결제 다시 시도하기
         </button>
         <button
           onClick={() => router.replace("/orders")}

@@ -5,7 +5,14 @@ import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCart } from "@/lib/cart";
-import { createOrder } from "@/lib/order";
+import { createOrder, getOrderDetail } from "@/lib/order";
+import {
+  clearCheckoutSession,
+  readCheckoutCartItemIds,
+  readPendingCheckout,
+  savePendingCheckout,
+  type PendingCheckout,
+} from "@/lib/checkoutSession";
 import {
   getMyAddresses,
   addMyAddress,
@@ -25,25 +32,25 @@ declare global {
         oncomplete: (data: { zonecode: string; address: string }) => void;
       }) => { open: () => void };
     };
-    TossPayments: (clientKey: string) => {
-      requestPayment: (
-        method: string,
-        options: {
-          amount: number;
-          orderId: string;
-          orderName: string;
-          successUrl: string;
-          failUrl: string;
-          customerName?: string;
-        }
-      ) => Promise<void>;
+    AUTHNICE: {
+      requestPay: (options: {
+        clientId: string;
+        method: string;
+        orderId: string;
+        amount: number;
+        goodsName: string;
+        returnUrl: string;
+        buyerName?: string;
+        buyerTel?: string;
+        returnCharSet?: string;
+        fnError?: (result: { errorMsg?: string }) => void;
+      }) => void;
     };
   }
 }
 
-const TOSS_CLIENT_KEY =
-  process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY ||
-  "test_ck_26DlbXAaV0BmZlD9Bbdn8qY50Q9R";
+const NICEPAY_CLIENT_KEY = process.env.NEXT_PUBLIC_NICEPAY_CLIENT_KEY ?? "";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
 function formatPrice(price: number) {
   return price.toLocaleString("ko-KR");
@@ -544,22 +551,20 @@ export default function OrderPage() {
     null
   );
   const [selectedCartIds, setSelectedCartIds] = useState<number[] | null>(null);
+  const [pendingCheckout, setPendingCheckout] = useState<PendingCheckout | null>(null);
+  const [checkoutRestored, setCheckoutRestored] = useState(false);
   const [selectedCouponId, setSelectedCouponId] = useState<number | null>(null);
 
-  // sessionStorage에서 선택된 cartItemIds 읽기
+  // 결제 완료 전에는 선택 상품과 생성된 PENDING 주문을 재시도할 수 있게 유지한다.
   useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem("orderCartItemIds");
-      if (stored) {
-        const ids = JSON.parse(stored) as number[];
-        if (Array.isArray(ids) && ids.length > 0) {
-          setSelectedCartIds(ids);
-        }
-        sessionStorage.removeItem("orderCartItemIds");
-      }
-    } catch {
-      // ignore
+    const restoredPending = readPendingCheckout();
+    const restoredIds = readCheckoutCartItemIds() ?? restoredPending?.cartItemIds ?? null;
+    setSelectedCartIds(restoredIds);
+    setPendingCheckout(restoredPending);
+    if (restoredPending) {
+      setSelectedCouponId(restoredPending.memberCouponId);
     }
+    setCheckoutRestored(true);
   }, []);
 
   useEffect(() => {
@@ -587,15 +592,15 @@ export default function OrderPage() {
   });
 
   useEffect(() => {
-    if (!cartLoading && cartData) {
+    if (checkoutRestored && !cartLoading && cartData) {
       const filtered = selectedCartIds
         ? cartData.data.filter((item: CartItem) => selectedCartIds.includes(item.id))
         : cartData.data;
-      if (filtered.length === 0) {
+      if (filtered.length === 0 && !pendingCheckout) {
         router.replace("/cart");
       }
     }
-  }, [cartLoading, cartData, selectedCartIds, router]);
+  }, [checkoutRestored, cartLoading, cartData, selectedCartIds, pendingCheckout, router]);
 
   // 기본 배송지 자동 입력
   useEffect(() => {
@@ -624,7 +629,16 @@ export default function OrderPage() {
 
   const orderMutation = useMutation({
     mutationFn: async () => {
-      return createOrder({
+      if (pendingCheckout) {
+        const currentOrder = await getOrderDetail(pendingCheckout.orderId);
+        if (currentOrder.data.status === "PENDING") return pendingCheckout;
+
+        clearCheckoutSession();
+        setPendingCheckout(null);
+        throw new Error("CHECKOUT_NOT_PENDING");
+      }
+
+      const response = await createOrder({
         cartItemIds: items.map((item) => item.id),
         recipient: form.recipient,
         phone: form.phone,
@@ -632,49 +646,63 @@ export default function OrderPage() {
         memo: actualMemo,
         memberCouponId: selectedCouponId,
       });
+      const firstProductName = items[0]?.productName ?? "상품";
+      const checkout: PendingCheckout = {
+        orderId: response.data.id,
+        cartItemIds: items.map((item) => item.id),
+        items,
+        orderNumber: response.data.orderNumber,
+        finalAmount: response.data.finalAmount,
+        orderName: items.length > 1
+          ? `${firstProductName} 외 ${items.length - 1}건`
+          : firstProductName,
+        customerName: form.recipient,
+        memberCouponId: selectedCouponId,
+      };
+      savePendingCheckout(checkout);
+      setPendingCheckout(checkout);
+      return checkout;
     },
-    onSuccess: async (data) => {
-      const { orderNumber, finalAmount } = data.data;
-
-      if (!window.TossPayments) {
+    onSuccess: async (checkout) => {
+      if (!window.AUTHNICE) {
         setError("결제 모듈을 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
         return;
       }
-
-      const tossPayments = window.TossPayments(TOSS_CLIENT_KEY);
-      const origin = window.location.origin;
-
-      const firstProductName =
-        items.length > 0 ? items[0].productName : "상품";
-      const orderName =
-        items.length > 1
-          ? `${firstProductName} 외 ${items.length - 1}건`
-          : firstProductName;
-
-      try {
-        await tossPayments.requestPayment("카드", {
-          amount: finalAmount,
-          orderId: orderNumber,
-          orderName,
-          successUrl: `${origin}/payment/success`,
-          failUrl: `${origin}/payment/fail`,
-          customerName: form.recipient,
-        });
-      } catch {
-        // 사용자가 결제창을 닫은 경우 등
+      if (!NICEPAY_CLIENT_KEY || !API_BASE_URL) {
+        setError("NICE Payments 결제 설정이 필요합니다.");
+        return;
       }
+
+      window.AUTHNICE.requestPay({
+        clientId: NICEPAY_CLIENT_KEY,
+        method: "card",
+        orderId: checkout.orderNumber,
+        amount: checkout.finalAmount,
+        goodsName: checkout.orderName,
+        returnUrl: `${API_BASE_URL}/api/payments/nice/callback`,
+        buyerName: checkout.customerName,
+        buyerTel: form.phone.replace(/\D/g, ""),
+        returnCharSet: "utf-8",
+        fnError: (result) => {
+          setError(result.errorMsg || "결제창을 열지 못했습니다.");
+        },
+      });
     },
-    onError: () => {
-      setError("주문 생성에 실패했습니다. 다시 시도해주세요.");
+    onError: (mutationError) => {
+      setError(
+        mutationError instanceof Error && mutationError.message === "CHECKOUT_NOT_PENDING"
+          ? "이미 결제가 종료된 주문입니다. 상품을 다시 선택해주세요."
+          : "주문 생성에 실패했습니다. 다시 시도해주세요."
+      );
     },
   });
 
   if (!isLoggedIn()) return null;
 
   const allCartItems = cartData?.data ?? [];
-  const items = selectedCartIds
+  const items = pendingCheckout?.items ?? (selectedCartIds
     ? allCartItems.filter((item) => selectedCartIds.includes(item.id))
-    : allCartItems;
+    : allCartItems);
   const groups = useMemo(() => groupByProduct(items), [items]); // eslint-disable-line react-hooks/exhaustive-deps
   const addresses = addressData?.data ?? [];
   const defaultAddr = addresses.find((a) => a.defaultAddress) ?? null;
@@ -707,17 +735,21 @@ export default function OrderPage() {
     return Math.min(discount, totalAmount);
   }, [selectedCoupon, totalAmount]);
 
-  const finalAmount = totalAmount - couponDiscount + deliveryFee;
+  const calculatedFinalAmount = totalAmount - couponDiscount + deliveryFee;
+  const finalAmount = pendingCheckout?.finalAmount ?? calculatedFinalAmount;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     if (
-      !form.recipient.trim() ||
-      !form.phone.trim() ||
-      !form.address.trim() ||
-      !form.addressDetail.trim()
+      !pendingCheckout &&
+      (
+        !form.recipient.trim() ||
+        !form.phone.trim() ||
+        !form.address.trim() ||
+        !form.addressDetail.trim()
+      )
     ) {
       setError("배송 정보를 모두 입력해주세요.");
       return;
@@ -737,14 +769,14 @@ export default function OrderPage() {
         strategy="lazyOnload"
       />
       <Script
-        src="https://js.tosspayments.com/v1/payment"
+        src="https://pay.nicepay.co.kr/v1/js/"
         strategy="lazyOnload"
       />
       <h1 className="text-2xl tracking-[0.2em] font-light text-center mb-12 text-[var(--text-primary)]">
         ORDER
       </h1>
 
-      {cartLoading ? (
+      {cartLoading || !checkoutRestored ? (
         <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <div
@@ -979,7 +1011,7 @@ export default function OrderPage() {
           )}
 
           <Button type="submit" fullWidth loading={orderMutation.isPending}>
-            결제하기
+            {pendingCheckout ? "결제 다시 시도하기" : "결제하기"}
           </Button>
         </form>
       )}

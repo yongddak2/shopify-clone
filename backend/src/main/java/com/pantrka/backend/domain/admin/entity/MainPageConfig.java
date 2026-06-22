@@ -28,6 +28,27 @@ public class MainPageConfig {
     @Column(name = "about_image_url")
     private String aboutImageUrl;
 
+    @Column(name = "instagram_handle", length = 100)
+    private String instagramHandle;
+
+    @Column(name = "instagram_image_url_1", length = 1000)
+    private String instagramImageUrl1;
+
+    @Column(name = "instagram_link_url_1", length = 500)
+    private String instagramLinkUrl1;
+
+    @Column(name = "instagram_image_url_2", length = 1000)
+    private String instagramImageUrl2;
+
+    @Column(name = "instagram_link_url_2", length = 500)
+    private String instagramLinkUrl2;
+
+    @Column(name = "instagram_image_url_3", length = 1000)
+    private String instagramImageUrl3;
+
+    @Column(name = "instagram_link_url_3", length = 500)
+    private String instagramLinkUrl3;
+
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
@@ -43,5 +64,22 @@ public class MainPageConfig {
 
     public void updateAboutImageUrl(String aboutImageUrl) {
         this.aboutImageUrl = aboutImageUrl;
+    }
+
+    public void updateInstagram(
+            String handle,
+            String imageUrl1,
+            String linkUrl1,
+            String imageUrl2,
+            String linkUrl2,
+            String imageUrl3,
+            String linkUrl3) {
+        this.instagramHandle = handle;
+        this.instagramImageUrl1 = imageUrl1;
+        this.instagramLinkUrl1 = linkUrl1;
+        this.instagramImageUrl2 = imageUrl2;
+        this.instagramLinkUrl2 = linkUrl2;
+        this.instagramImageUrl3 = imageUrl3;
+        this.instagramLinkUrl3 = linkUrl3;
     }
 }

@@ -12,6 +12,7 @@ backend/bin/
 *.iml
 *.iws
 .vscode/
+.codegraph/
 *.swp
 *.swo
 
@@ -24,6 +25,7 @@ frontend/out/
 .env
 .env.local
 .env.*.local
+.env.server
 
 # ─── OS ────────────────────────────────────────
 .DS_Store

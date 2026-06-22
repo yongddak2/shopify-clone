@@ -1,0 +1,9 @@
+tunnel: 0f23f676-a20c-472e-92a1-06b4dd30dbe1
+credentials-file: /etc/cloudflared/credentials/0f23f676-a20c-472e-92a1-06b4dd30dbe1.json
+
+ingress:
+  - hostname: pantrka.com
+    service: http://gateway:8080
+  - hostname: www.pantrka.com
+    service: http://gateway:8080
+  - service: http_status:404

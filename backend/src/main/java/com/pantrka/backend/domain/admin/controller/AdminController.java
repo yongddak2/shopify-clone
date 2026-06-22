@@ -108,6 +108,14 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
+    @PatchMapping("/orders/{id}/shipping")
+    public ResponseEntity<ApiResponse<Void>> updateOrderShipping(
+            @PathVariable Long id,
+            @Valid @RequestBody AdminShippingUpdateRequest request) {
+        adminOrderService.updateOrderShipping(id, request);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
     // ── 회원 관리 ──
 
     @GetMapping("/users")

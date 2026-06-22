@@ -1,0 +1,106 @@
+name: pantrka-test
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:?Set DB_NAME in .env.server}
+      POSTGRES_USER: ${DB_USERNAME:?Set DB_USERNAME in .env.server}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env.server}
+    volumes:
+      - postgres_server_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [private]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env.server}"]
+    volumes:
+      - redis_server_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env.server}
+    networks: [private]
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: test-server
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:?Set DB_NAME in .env.server}
+      DB_USERNAME: ${DB_USERNAME:?Set DB_USERNAME in .env.server}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env.server}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env.server}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env.server}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      AWS_ACCESS_KEY: ${AWS_ACCESS_KEY:-}
+      AWS_SECRET_KEY: ${AWS_SECRET_KEY:-}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-pantrka-images-862121602931-ap-southeast-2-an}
+      AWS_S3_REGION: ${AWS_S3_REGION:-ap-southeast-2}
+      APP_PUBLIC_BASE_URL: https://pantrka.com
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      NICEPAY_CLIENT_KEY: ${NICEPAY_CLIENT_KEY:-}
+      NICEPAY_SECRET_KEY: ${NICEPAY_SECRET_KEY:-}
+      NICEPAY_API_BASE_URL: ${NICEPAY_API_BASE_URL:-https://sandbox-api.nicepay.co.kr}
+      APP_FRONTEND_BASE_URL: https://pantrka.com
+      APP_CORS_ALLOWED_ORIGINS: https://pantrka.com,https://www.pantrka.com
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [private]
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: https://pantrka.com
+        NEXT_PUBLIC_KAKAO_CLIENT_ID: ${NEXT_PUBLIC_KAKAO_CLIENT_ID:-}
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
+        NEXT_PUBLIC_NAVER_CLIENT_ID: ${NEXT_PUBLIC_NAVER_CLIENT_ID:-}
+        NEXT_PUBLIC_NICEPAY_CLIENT_KEY: ${NEXT_PUBLIC_NICEPAY_CLIENT_KEY:-}
+    restart: unless-stopped
+    environment:
+      INTERNAL_API_BASE_URL: http://backend:8080
+    depends_on: [backend]
+    networks: [private]
+
+  gateway:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8088:8080"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on: [backend, frontend]
+    networks: [private]
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: ["tunnel", "--config", "/etc/cloudflared/config.yml", "--no-autoupdate", "run"]
+    volumes:
+      - ./deploy/cloudflared.yml:/etc/cloudflared/config.yml:ro
+      - ${USERPROFILE}/.cloudflared:/etc/cloudflared/credentials:ro
+    depends_on: [gateway]
+    networks: [private]
+
+networks:
+  private:
+
+volumes:
+  postgres_server_data:
+  redis_server_data:

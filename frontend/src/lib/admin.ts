@@ -12,6 +12,7 @@ import type {
   Banner,
   AdminBanner,
   MainPageConfig,
+  InstagramItem,
   NewArrivalEntry,
   Product,
   ReturnExchangeRequest,
@@ -183,6 +184,17 @@ export async function updateOrderStatus(
   return res.data;
 }
 
+export async function updateOrderShipping(
+  id: number,
+  shipping: { carrier: string; trackingNumber: string }
+) {
+  const res = await api.patch<ApiResponse<null>>(
+    `/api/admin/orders/${id}/shipping`,
+    shipping
+  );
+  return res.data;
+}
+
 // 회원 관리
 export async function getAdminUsers(page = 0, filter?: string) {
   const params: Record<string, string | number> = { page, size: 20, sort: "id,desc" };
@@ -342,6 +354,27 @@ export async function updateAboutImage(imageUrl: string | null) {
   const res = await api.put<ApiResponse<MainPageConfig>>(
     "/api/admin/main-page-config/about-image",
     { imageUrl }
+  );
+  return res.data;
+}
+
+export async function uploadInstagramImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("directory", "instagram");
+  const res = await api.post<ApiResponse<string>>("/api/admin/images", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data.data;
+}
+
+export async function updateInstagramSection(
+  handle: string | null,
+  items: InstagramItem[]
+) {
+  const res = await api.put<ApiResponse<MainPageConfig>>(
+    "/api/admin/main-page-config/instagram",
+    { handle, items }
   );
   return res.data;
 }

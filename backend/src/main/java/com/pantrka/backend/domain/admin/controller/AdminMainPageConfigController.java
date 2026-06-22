@@ -3,6 +3,7 @@ package com.pantrka.backend.domain.admin.controller;
 import com.pantrka.backend.domain.admin.dto.AboutImageUpdateRequest;
 import com.pantrka.backend.domain.admin.dto.MainPageConfigResponse;
 import com.pantrka.backend.domain.admin.dto.MainPageConfigUpdateRequest;
+import com.pantrka.backend.domain.admin.dto.InstagramSectionUpdateRequest;
 import com.pantrka.backend.domain.admin.service.MainPageConfigService;
 import com.pantrka.backend.global.common.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -38,5 +39,11 @@ public class AdminMainPageConfigController {
     public ResponseEntity<ApiResponse<MainPageConfigResponse>> updateAboutImage(
             @RequestBody AboutImageUpdateRequest request) {
         return ResponseEntity.ok(ApiResponse.success(mainPageConfigService.updateAboutImage(request)));
+    }
+
+    @PutMapping("/instagram")
+    public ResponseEntity<ApiResponse<MainPageConfigResponse>> updateInstagram(
+            @Valid @RequestBody InstagramSectionUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(mainPageConfigService.updateInstagram(request)));
     }
 }

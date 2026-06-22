@@ -64,8 +64,7 @@ export default function AdminProductsPage() {
     },
   });
 
-  const allProducts = data?.data?.content ?? [];
-  const products = allProducts.filter((p) => p.deletedAt === null);
+  const products = data?.data?.content ?? [];
   const totalPages = data?.data?.totalPages ?? 0;
 
   return (

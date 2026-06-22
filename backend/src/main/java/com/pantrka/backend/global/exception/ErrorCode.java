@@ -41,13 +41,19 @@ public enum ErrorCode {
     ORDER_NOT_DELIVERED(HttpStatus.BAD_REQUEST, "배송 완료 상태에서만 구매 확정이 가능합니다."),
     ORDER_ALREADY_CONFIRMED(HttpStatus.BAD_REQUEST, "이미 구매 확정된 주문입니다."),
     MISSING_TRACKING_INFO(HttpStatus.BAD_REQUEST, "배송사와 운송장 번호는 필수입니다."),
+    SHIPPING_UPDATE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "배송중 또는 배송완료 주문만 운송장 정보를 수정할 수 있습니다."),
 
     // Payment
     PAYMENT_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "결제에 실패했습니다."),
     PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "결제 금액이 주문 금액과 일치하지 않습니다."),
     ORDER_NOT_PENDING(HttpStatus.BAD_REQUEST, "결제 대기 상태가 아닌 주문입니다."),
     PAYMENT_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, "이미 처리된 결제입니다."),
-    TOSS_API_FAILED(HttpStatus.BAD_GATEWAY, "토스페이먼츠 API 호출에 실패했습니다."),
+    NICEPAY_API_FAILED(HttpStatus.BAD_GATEWAY, "NICE Payments API 호출에 실패했습니다."),
+    NICEPAY_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, "NICE Payments 결제 설정이 필요합니다."),
+    NICEPAY_AUTH_FAILED(HttpStatus.BAD_REQUEST, "NICE Payments 인증 결과가 올바르지 않습니다."),
+    NICEPAY_SIGNATURE_INVALID(HttpStatus.BAD_REQUEST, "NICE Payments 결제 정보 검증에 실패했습니다."),
+    PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "결제 정보를 찾을 수 없습니다."),
+    PAYMENT_NOT_COMPLETED(HttpStatus.BAD_REQUEST, "완료된 결제만 취소할 수 있습니다."),
 
     // Coupon
     COUPON_NOT_FOUND(HttpStatus.NOT_FOUND, "쿠폰을 찾을 수 없습니다."),
@@ -89,6 +95,7 @@ public enum ErrorCode {
     INVALID_FILE_TYPE(HttpStatus.BAD_REQUEST, "허용되지 않는 파일 형식입니다."),
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드에 실패했습니다."),
     FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "파일 크기 제한을 초과했습니다."),
+    IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "이미지를 찾을 수 없습니다."),
 
     // Return/Exchange
     RETURN_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "반품/교환 요청을 찾을 수 없습니다."),

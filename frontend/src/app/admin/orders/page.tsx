@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, Fragment } from "react";
+import { useState, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { getAdminOrders, updateOrderStatus } from "@/lib/admin";
+import { getAdminOrders, updateOrderShipping, updateOrderStatus } from "@/lib/admin";
 import { invalidateOrderRelated } from "@/lib/queryInvalidator";
 import { Info, X } from "lucide-react";
 import type { AdminOrder, PaymentMethod } from "@/types";
@@ -120,17 +120,21 @@ export default function AdminOrdersPage() {
     order: AdminOrder;
     newStatus: string;
   } | null>(null);
+  const [shippingEdit, setShippingEdit] = useState<AdminOrder | null>(null);
   const [carrier, setCarrier] = useState(CARRIERS[0]);
   const [trackingNumber, setTrackingNumber] = useState("");
   const [statusError, setStatusError] = useState("");
+  const [shippingError, setShippingError] = useState("");
   const [guideOpen, setGuideOpen] = useState(false);
 
-  useEffect(() => {
-    if (statusChange?.newStatus === "SHIPPED") {
+  const openStatusChange = (order: AdminOrder, newStatus: string) => {
+    if (newStatus === "SHIPPED") {
       setCarrier(CARRIERS[0]);
       setTrackingNumber("");
     }
-  }, [statusChange?.order.id, statusChange?.newStatus]);
+    setStatusChange({ order, newStatus });
+    setStatusError("");
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "orders", { page, pageSize, statusFilter, startDate, endDate, searchType, appliedKeyword }],
@@ -198,6 +202,44 @@ export default function AdminOrdersPage() {
       setStatusError(message);
     },
   });
+
+  const shippingMutation = useMutation({
+    mutationFn: ({ id, carrier: nextCarrier, trackingNumber: nextTrackingNumber }: {
+      id: number;
+      carrier: string;
+      trackingNumber: string;
+    }) => updateOrderShipping(id, {
+      carrier: nextCarrier,
+      trackingNumber: nextTrackingNumber,
+    }),
+    onSuccess: () => {
+      invalidateOrderRelated(queryClient);
+      setShippingEdit(null);
+      setShippingError("");
+    },
+    onError: (err: unknown) => {
+      const message =
+        (err as { response?: { data?: { error?: { message?: string } } } })
+          ?.response?.data?.error?.message ?? "운송장 수정에 실패했습니다.";
+      setShippingError(message);
+    },
+  });
+
+  const openShippingEdit = (order: AdminOrder) => {
+    setShippingEdit(order);
+    setCarrier(order.carrier ?? CARRIERS[0]);
+    setTrackingNumber(order.trackingNumber ?? "");
+    setShippingError("");
+  };
+
+  const handleShippingUpdate = () => {
+    if (!shippingEdit || !carrier.trim() || !trackingNumber.trim()) return;
+    shippingMutation.mutate({
+      id: shippingEdit.id,
+      carrier: carrier.trim(),
+      trackingNumber: trackingNumber.trim(),
+    });
+  };
 
   const isShipped = statusChange?.newStatus === "SHIPPED";
   const confirmDisabled =
@@ -417,8 +459,7 @@ export default function AdminOrdersPage() {
                           value=""
                           onChange={(e) => {
                             if (e.target.value) {
-                              setStatusChange({ order: o, newStatus: e.target.value });
-                              setStatusError("");
+                              openStatusChange(o, e.target.value);
                             }
                           }}
                           className="bg-[var(--input-bg)] border border-[var(--border-color)] text-xs text-[var(--text-secondary)] px-2 py-1 focus:outline-none"
@@ -451,6 +492,19 @@ export default function AdminOrdersPage() {
                                 <p>연락처: {o.phone}</p>
                                 <p>주소: {o.address}</p>
                                 {o.memo && <p>메모: {o.memo}</p>}
+                                {(o.status === "SHIPPED" || o.status === "DELIVERED") && (
+                                  <div className="mt-3 pt-3 border-t border-[var(--border-color)] space-y-1">
+                                    <p>택배사: {o.carrier || "미등록"}</p>
+                                    <p>운송장번호: {o.trackingNumber || "미등록"}</p>
+                                    <button
+                                      type="button"
+                                      onClick={() => openShippingEdit(o)}
+                                      className="mt-2 px-3 py-1.5 border border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)] transition-colors"
+                                    >
+                                      운송장 수정
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -538,6 +592,56 @@ export default function AdminOrdersPage() {
                 disabled={confirmDisabled}
               >
                 {statusMutation.isPending ? "변경 중..." : "확인"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {shippingEdit && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div className="absolute inset-0 bg-[var(--overlay-bg)]" onClick={() => setShippingEdit(null)} />
+          <div className="relative bg-[var(--card-bg)] border border-[var(--border-color)] px-8 py-8 w-full max-w-md mx-6">
+            <p className="text-sm text-[var(--text-secondary)] mb-2 text-center">운송장 정보 수정</p>
+            <p className="text-xs text-[var(--text-muted)] mb-6 text-center">{shippingEdit.orderNumber}</p>
+            {shippingError && (
+              <p className="text-xs text-red-600 mb-4 text-center">{shippingError}</p>
+            )}
+            <div className="mb-8 space-y-4">
+              <div>
+                <label className="block text-xs text-[var(--text-muted)] tracking-wider mb-2">배송사</label>
+                <select
+                  value={carrier}
+                  onChange={(e) => setCarrier(e.target.value)}
+                  className="w-full bg-[var(--input-bg)] border border-[var(--border-color)] text-sm text-[var(--text-secondary)] px-3 py-2 focus:outline-none"
+                >
+                  {CARRIERS.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--text-muted)] tracking-wider mb-2">운송장번호</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={trackingNumber}
+                  onChange={(e) => setTrackingNumber(e.target.value.replace(/\D/g, ""))}
+                  className="w-full bg-[var(--input-bg)] border border-[var(--border-color)] text-sm text-[var(--text-secondary)] px-3 py-2 focus:outline-none"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShippingEdit(null)}
+                className="flex-1 py-3 text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+              >취소</button>
+              <button
+                type="button"
+                onClick={handleShippingUpdate}
+                disabled={shippingMutation.isPending || !carrier.trim() || !trackingNumber.trim()}
+                className="flex-1 py-3 text-sm bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {shippingMutation.isPending ? "수정 중..." : "수정"}
               </button>
             </div>
           </div>

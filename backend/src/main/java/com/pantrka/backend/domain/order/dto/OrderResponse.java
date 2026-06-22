@@ -25,6 +25,8 @@ public class OrderResponse {
     private final String phone;
     private final String address;
     private final String memo;
+    private final String carrier;
+    private final String trackingNumber;
     private final LocalDateTime createdAt;
     private final LocalDateTime confirmedAt;
     private final List<OrderItemResponse> orderItems;
@@ -62,6 +64,8 @@ public class OrderResponse {
                 .phone(order.getPhone())
                 .address(order.getAddress())
                 .memo(order.getMemo())
+                .carrier(order.getCarrier())
+                .trackingNumber(order.getTrackingNumber())
                 .createdAt(order.getCreatedAt())
                 .confirmedAt(order.getConfirmedAt())
                 .orderItems(orderItems)

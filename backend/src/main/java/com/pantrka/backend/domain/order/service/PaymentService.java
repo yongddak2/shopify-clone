@@ -1,27 +1,33 @@
 package com.pantrka.backend.domain.order.service;
 
 import com.pantrka.backend.domain.coupon.repository.MemberCouponRepository;
-import com.pantrka.backend.domain.order.dto.PaymentConfirmRequest;
+import com.pantrka.backend.domain.order.dto.NicePaymentApiResponse;
+import com.pantrka.backend.domain.order.dto.NicePaymentCallbackRequest;
 import com.pantrka.backend.domain.order.dto.PaymentResponse;
-import com.pantrka.backend.domain.order.entity.*;
+import com.pantrka.backend.domain.order.entity.Order;
+import com.pantrka.backend.domain.order.entity.OrderItem;
+import com.pantrka.backend.domain.order.entity.OrderStatus;
+import com.pantrka.backend.domain.order.entity.Payment;
+import com.pantrka.backend.domain.order.entity.PaymentMethod;
+import com.pantrka.backend.domain.order.entity.PaymentStatus;
 import com.pantrka.backend.domain.order.repository.OrderItemRepository;
 import com.pantrka.backend.domain.order.repository.OrderRepository;
 import com.pantrka.backend.domain.order.repository.PaymentRepository;
-import com.pantrka.backend.global.config.TossPaymentsProperties;
+import com.pantrka.backend.global.config.NicePaymentsProperties;
 import com.pantrka.backend.global.exception.BusinessException;
 import com.pantrka.backend.global.exception.ErrorCode;
 import com.pantrka.backend.infra.email.EmailService;
 import com.pantrka.backend.infra.email.OrderEmailContext;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @Transactional(readOnly = true)
@@ -32,105 +38,167 @@ public class PaymentService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final MemberCouponRepository memberCouponRepository;
-    private final RestTemplate tossRestTemplate;
-    private final TossPaymentsProperties tossProperties;
+    private final NicePaymentsClient nicePaymentsClient;
+    private final NicePaymentsProperties niceProperties;
     private final EmailService emailService;
 
     @Transactional
-    public PaymentResponse confirmPayment(Long memberId, PaymentConfirmRequest request) {
-        // 1. 주문 조회 (orderNumber로 조회, memberCoupon fetch join)
-        Order order = orderRepository.findByOrderNumber(request.getOrderNumber())
+    public PaymentResponse confirmNicePayment(NicePaymentCallbackRequest request) {
+        validateAuthenticationResult(request);
+
+        Order order = orderRepository.findByOrderNumberForUpdate(request.getOrderId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
-        // 2. 주문자 본인 확인
-        if (!order.getMember().getId().equals(memberId)) {
-            throw new BusinessException(ErrorCode.ORDER_FORBIDDEN);
+        Payment existing = paymentRepository.findByOrderId(order.getId()).orElse(null);
+        if (existing != null && existing.getStatus() == PaymentStatus.DONE) {
+            if (existing.getPaymentKey().equals(request.getTid())) {
+                return PaymentResponse.from(existing);
+            }
+            throw new BusinessException(ErrorCode.PAYMENT_ALREADY_PROCESSED);
         }
-
-        // 3. 주문 상태 확인 (PENDING만 결제 가능)
         if (order.getStatus() != OrderStatus.PENDING) {
             throw new BusinessException(ErrorCode.ORDER_NOT_PENDING);
         }
-
-        // 4. 이미 결제된 주문인지 확인
-        paymentRepository.findByOrderId(order.getId()).ifPresent(p -> {
-            if (p.getStatus() == PaymentStatus.DONE) {
-                throw new BusinessException(ErrorCode.PAYMENT_ALREADY_PROCESSED);
-            }
-        });
-
-        // 5. 금액 일치 확인
-        if (request.getAmount().compareTo(order.getFinalAmount()) != 0) {
+        if (request.getAmount() == null
+                || request.getAmount().compareTo(order.getFinalAmount()) != 0) {
             throw new BusinessException(ErrorCode.PAYMENT_AMOUNT_MISMATCH);
         }
 
-        // 6. 토스페이먼츠 confirm API 호출
-        callTossConfirmApi(request.getPaymentKey(), order.getOrderNumber(), request.getAmount());
-
-        // 7. Payment 엔티티 생성 및 저장
-        Payment payment = Payment.builder()
-                .order(order)
-                .paymentKey(request.getPaymentKey())
-                .method(PaymentMethod.CARD)
-                .amount(request.getAmount())
-                .status(PaymentStatus.READY)
-                .build();
-
-        payment.confirmPayment(request.getPaymentKey(), PaymentMethod.CARD);
-        paymentRepository.save(payment);
-
-        // 8. 주문 상태를 PAID로 변경
-        order.updateStatus(OrderStatus.PAID);
-
-        // 8-1. 쿠폰 사용 처리
-        if (order.getMemberCoupon() != null) {
-            order.getMemberCoupon().markUsed();
-            memberCouponRepository.save(order.getMemberCoupon());
-        }
-
-        // 9. 판매량 증가
-        List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
-        for (OrderItem orderItem : orderItems) {
-            orderItem.getProduct().increaseSalesCount(orderItem.getQuantity());
-        }
-
-        // 10. 결제 완료 이메일 발송 (비동기, 실패해도 흐름 유지)
-        emailService.sendPaymentConfirmEmail(OrderEmailContext.from(order, orderItems));
-
-        return PaymentResponse.from(payment);
-    }
-
-    private void callTossConfirmApi(String paymentKey, String orderNumber, java.math.BigDecimal amount) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        String encodedKey = Base64.getEncoder()
-                .encodeToString((tossProperties.getSecretKey() + ":").getBytes(StandardCharsets.UTF_8));
-        headers.set("Authorization", "Basic " + encodedKey);
-
-        Map<String, Object> body = Map.of(
-                "paymentKey", paymentKey,
-                "orderId", orderNumber,
-                "amount", amount
-        );
-
-        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+        NicePaymentApiResponse approved = nicePaymentsClient.approve(
+                request.getTid(), request.getAmount());
+        validateApprovalResponse(approved, order, request.getTid());
 
         try {
-            ResponseEntity<String> response = tossRestTemplate.exchange(
-                    tossProperties.getConfirmUrl(),
-                    HttpMethod.POST,
-                    requestEntity,
-                    String.class
-            );
+            Payment payment = existing != null
+                    ? existing
+                    : Payment.builder()
+                    .order(order)
+                    .paymentKey(request.getTid())
+                    .method(toPaymentMethod(approved.getPayMethod()))
+                    .amount(request.getAmount())
+                    .status(PaymentStatus.READY)
+                    .build();
 
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new BusinessException(ErrorCode.TOSS_API_FAILED);
+            payment.confirmPayment(request.getTid(), toPaymentMethod(approved.getPayMethod()));
+            paymentRepository.save(payment);
+            order.updateStatus(OrderStatus.PAID);
+
+            if (order.getMemberCoupon() != null) {
+                order.getMemberCoupon().markUsed();
+                memberCouponRepository.save(order.getMemberCoupon());
             }
-        } catch (BusinessException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new BusinessException(ErrorCode.TOSS_API_FAILED);
+
+            List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
+            for (OrderItem orderItem : orderItems) {
+                orderItem.getProduct().increaseSalesCount(orderItem.getQuantity());
+            }
+            emailService.sendPaymentConfirmEmail(OrderEmailContext.from(order, orderItems));
+            return PaymentResponse.from(payment);
+        } catch (RuntimeException localFailure) {
+            try {
+                nicePaymentsClient.cancel(
+                        request.getTid(), order.getOrderNumber(), "승인 후 주문 처리 실패");
+            } catch (RuntimeException ignored) {
+                localFailure.addSuppressed(ignored);
+            }
+            throw localFailure;
         }
+    }
+
+    @Transactional
+    public void cancelPaidOrder(Order order, String reason) {
+        Payment payment = paymentRepository.findByOrderId(order.getId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_NOT_FOUND));
+
+        if (payment.getStatus() == PaymentStatus.CANCELLED) {
+            return;
+        }
+        if (payment.getStatus() != PaymentStatus.DONE) {
+            throw new BusinessException(ErrorCode.PAYMENT_NOT_COMPLETED);
+        }
+
+        NicePaymentApiResponse cancelled = nicePaymentsClient.cancel(
+                payment.getPaymentKey(), order.getOrderNumber(), reason);
+        if (!"cancelled".equalsIgnoreCase(cancelled.getStatus())
+                && !"partialCancelled".equalsIgnoreCase(cancelled.getStatus())) {
+            throw new BusinessException(ErrorCode.NICEPAY_API_FAILED);
+        }
+        payment.cancelPayment();
+    }
+
+    private void validateAuthenticationResult(NicePaymentCallbackRequest request) {
+        if (!"0000".equals(request.getAuthResultCode())
+                || isBlank(request.getTid())
+                || isBlank(request.getAuthToken())
+                || isBlank(request.getSignature())
+                || isBlank(request.getOrderId())
+                || request.getAmount() == null
+                || isBlank(niceProperties.getClientKey())
+                || isBlank(niceProperties.getSecretKey())) {
+            throw new BusinessException(
+                    ErrorCode.NICEPAY_AUTH_FAILED,
+                    isBlank(request.getAuthResultMsg())
+                            ? ErrorCode.NICEPAY_AUTH_FAILED.getMessage()
+                            : request.getAuthResultMsg());
+        }
+        if (!niceProperties.getClientKey().equals(request.getClientId())) {
+            throw new BusinessException(ErrorCode.NICEPAY_SIGNATURE_INVALID);
+        }
+        String expected = sha256(
+                request.getAuthToken()
+                        + request.getClientId()
+                        + request.getAmount().toPlainString()
+                        + niceProperties.getSecretKey());
+        if (!MessageDigest.isEqual(
+                expected.getBytes(StandardCharsets.US_ASCII),
+                request.getSignature().toLowerCase().getBytes(StandardCharsets.US_ASCII))) {
+            throw new BusinessException(ErrorCode.NICEPAY_SIGNATURE_INVALID);
+        }
+    }
+
+    private void validateApprovalResponse(
+            NicePaymentApiResponse response, Order order, String expectedTid) {
+        if (!"paid".equalsIgnoreCase(response.getStatus())
+                || !order.getOrderNumber().equals(response.getOrderId())
+                || response.getAmount() == null
+                || response.getAmount().compareTo(order.getFinalAmount()) != 0
+                || !expectedTid.equals(response.getTid())) {
+            throw new BusinessException(ErrorCode.NICEPAY_API_FAILED);
+        }
+        if (!isBlank(response.getSignature()) && !isBlank(response.getEdiDate())) {
+            String expected = sha256(
+                    response.getTid()
+                            + response.getAmount().toPlainString()
+                            + response.getEdiDate()
+                            + niceProperties.getSecretKey());
+            if (!MessageDigest.isEqual(
+                    expected.getBytes(StandardCharsets.US_ASCII),
+                    response.getSignature().toLowerCase().getBytes(StandardCharsets.US_ASCII))) {
+                throw new BusinessException(ErrorCode.NICEPAY_SIGNATURE_INVALID);
+            }
+        }
+    }
+
+    private PaymentMethod toPaymentMethod(String method) {
+        if (method == null) return PaymentMethod.CARD;
+        return switch (method.toLowerCase()) {
+            case "bank" -> PaymentMethod.TRANSFER;
+            case "vbank" -> PaymentMethod.VIRTUAL;
+            default -> PaymentMethod.CARD;
+        };
+    }
+
+    private String sha256(String value) {
+        try {
+            return HexFormat.of().formatHex(
+                    MessageDigest.getInstance("SHA-256")
+                            .digest(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is unavailable", e);
+        }
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }

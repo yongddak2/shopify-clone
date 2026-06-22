@@ -109,8 +109,12 @@ public class AdminBannerService {
     public void deleteBanner(Long id) {
         Banner banner = bannerRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANNER_NOT_FOUND));
-        s3Service.deleteFile(banner.getImageUrl());
         bannerRepository.delete(banner);
+        try {
+            s3Service.deleteFile(banner.getImageUrl());
+        } catch (Exception ignored) {
+            // 이미지 정리 실패가 배너 레코드 삭제를 막지 않도록 한다.
+        }
     }
 
     private void validateLink(Long productId, String linkUrl) {

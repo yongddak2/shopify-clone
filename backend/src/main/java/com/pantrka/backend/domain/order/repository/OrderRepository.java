@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
@@ -22,6 +23,11 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @EntityGraph(attributePaths = {"memberCoupon"})
     Optional<Order> findByOrderNumber(String orderNumber);
+
+    @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"memberCoupon", "member"})
+    @Query("SELECT o FROM Order o WHERE o.orderNumber = :orderNumber")
+    Optional<Order> findByOrderNumberForUpdate(@Param("orderNumber") String orderNumber);
 
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 

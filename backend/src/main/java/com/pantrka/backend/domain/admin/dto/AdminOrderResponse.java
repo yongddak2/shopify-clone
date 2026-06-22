@@ -31,6 +31,8 @@ public class AdminOrderResponse {
     private final String phone;
     private final String address;
     private final String memo;
+    private final String carrier;
+    private final String trackingNumber;
     private final LocalDateTime createdAt;
     private final List<OrderItemResponse> items;
 
@@ -54,6 +56,8 @@ public class AdminOrderResponse {
                 .phone(order.getPhone())
                 .address(order.getAddress())
                 .memo(order.getMemo())
+                .carrier(order.getCarrier())
+                .trackingNumber(order.getTrackingNumber())
                 .createdAt(order.getCreatedAt())
                 .items(items)
                 .build();

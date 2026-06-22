@@ -1,8 +1,37 @@
 import axios from "axios";
 import { useAuthStore } from "@/stores/authStore";
 
+function resolveApiBaseUrl(value: string | undefined): string {
+  const configuredUrl = value?.trim();
+
+  if (!configuredUrl) {
+    if (process.env.NODE_ENV !== "production") {
+      return "http://localhost:8080";
+    }
+    throw new Error("NEXT_PUBLIC_API_BASE_URL must be set in production");
+  }
+
+  let url: URL;
+  try {
+    url = new URL(configuredUrl);
+  } catch {
+    throw new Error("NEXT_PUBLIC_API_BASE_URL must be a valid absolute URL");
+  }
+
+  if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) {
+    throw new Error("NEXT_PUBLIC_API_BASE_URL must be an HTTP(S) URL without credentials");
+  }
+  if (url.search || url.hash) {
+    throw new Error("NEXT_PUBLIC_API_BASE_URL must not contain a query string or fragment");
+  }
+
+  return url.toString().replace(/\/$/, "");
+}
+
+const apiBaseUrl = resolveApiBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL);
+
 const api = axios.create({
-  baseURL: "http://localhost:8080",
+  baseURL: apiBaseUrl,
   headers: { "Content-Type": "application/json" },
 });
 
@@ -33,7 +62,7 @@ api.interceptors.response.use(
       }
 
       try {
-        const res = await axios.post("http://localhost:8080/api/auth/refresh", {
+        const res = await axios.post(`${apiBaseUrl}/api/auth/refresh`, {
           refreshToken,
         });
         const { accessToken: newAccess, refreshToken: newRefresh } =

@@ -2,6 +2,7 @@ package com.pantrka.backend.domain.admin.service;
 
 import com.pantrka.backend.domain.admin.dto.AdminOrderResponse;
 import com.pantrka.backend.domain.admin.dto.AdminOrderStatusUpdateRequest;
+import com.pantrka.backend.domain.admin.dto.AdminShippingUpdateRequest;
 import com.pantrka.backend.domain.order.entity.Order;
 import com.pantrka.backend.domain.order.entity.OrderItem;
 import com.pantrka.backend.domain.order.entity.OrderStatus;
@@ -93,10 +94,10 @@ public class AdminOrderService {
         // SHIPPED 전이 시 운송장 정보 저장 (이메일 발송 전에 반영)
         if (oldStatus != newStatus && newStatus == OrderStatus.SHIPPED) {
             if (!StringUtils.hasText(request.getCarrier())
-                    && !StringUtils.hasText(request.getTrackingNumber())) {
+                    || !StringUtils.hasText(request.getTrackingNumber())) {
                 throw new BusinessException(ErrorCode.MISSING_TRACKING_INFO);
             }
-            order.assignShipping(request.getCarrier(), request.getTrackingNumber());
+            order.assignShipping(request.getCarrier().trim(), request.getTrackingNumber().trim());
         }
 
         order.updateStatus(newStatus);
@@ -111,5 +112,17 @@ public class AdminOrderService {
                 emailService.sendAdminCancelEmail(OrderEmailContext.from(order, items));
             }
         }
+    }
+
+    @Transactional
+    public void updateOrderShipping(Long orderId, AdminShippingUpdateRequest request) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
+        if (order.getStatus() != OrderStatus.SHIPPED && order.getStatus() != OrderStatus.DELIVERED) {
+            throw new BusinessException(ErrorCode.SHIPPING_UPDATE_NOT_ALLOWED);
+        }
+
+        order.assignShipping(request.getCarrier().trim(), request.getTrackingNumber().trim());
     }
 }

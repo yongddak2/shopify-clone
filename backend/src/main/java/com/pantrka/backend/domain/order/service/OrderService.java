@@ -47,6 +47,7 @@ public class OrderService {
     private final MemberCouponRepository memberCouponRepository;
     private final ReturnExchangeRequestRepository returnExchangeRequestRepository;
     private final ProductOptionValueRepository productOptionValueRepository;
+    private final PaymentService paymentService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -253,6 +254,10 @@ public class OrderService {
 
         if (!order.isCancellable()) {
             throw new BusinessException(ErrorCode.ORDER_CANCEL_NOT_ALLOWED);
+        }
+
+        if (order.getStatus() == OrderStatus.PAID) {
+            paymentService.cancelPaidOrder(order, "고객 주문 취소");
         }
 
         // 재고 복구 (비관적 락, 데드락 방지를 위해 optionValueId 오름차순 정렬)

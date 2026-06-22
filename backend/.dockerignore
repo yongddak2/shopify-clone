@@ -1,0 +1,7 @@
+.gradle
+build
+out
+bin
+.env
+.env.*
+*.log

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCart, updateCartQuantity, removeCartItem } from "@/lib/cart";
+import { beginCheckout } from "@/lib/checkoutSession";
 import { invalidateCartRelated } from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
 import Button from "@/components/common/Button";
@@ -193,7 +194,7 @@ export default function CartPage() {
       return;
     }
     setOrderError("");
-    sessionStorage.setItem("orderCartItemIds", JSON.stringify(ids));
+    beginCheckout(ids);
     router.push("/order");
   };
 

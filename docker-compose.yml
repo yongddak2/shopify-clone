@@ -4,7 +4,7 @@ services:
     image: postgres:16-alpine
     container_name: shop-postgres
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_DB: shopdb
       POSTGRES_USER: shop
@@ -22,7 +22,7 @@ services:
     image: redis:7-alpine
     container_name: shop-redis
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     command: redis-server --requirepass redis1234
     volumes:
       - redis_data:/data
@@ -37,7 +37,7 @@ services:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
     container_name: shop-elasticsearch
     ports:
-      - "9200:9200"
+      - "127.0.0.1:9200:9200"
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
@@ -55,7 +55,7 @@ services:
     image: confluentinc/cp-zookeeper:7.6.0
     container_name: shop-zookeeper
     ports:
-      - "2181:2181"
+      - "127.0.0.1:2181:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -65,7 +65,7 @@ services:
     image: confluentinc/cp-kafka:7.6.0
     container_name: shop-kafka
     ports:
-      - "9092:9092"
+      - "127.0.0.1:9092:9092"
     depends_on:
       - zookeeper
     environment:
@@ -80,7 +80,7 @@ services:
     image: provectuslabs/kafka-ui:latest
     container_name: shop-kafka-ui
     ports:
-      - "8989:8080"
+      - "127.0.0.1:8989:8080"
     environment:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092

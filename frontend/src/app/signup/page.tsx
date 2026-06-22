@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Check } from "lucide-react";
 import { signup } from "@/lib/auth";
+import { startSocialLogin } from "@/lib/oauth";
 import Button from "@/components/common/Button";
 
 type AgreementKey = "terms" | "privacy" | "marketing";
@@ -138,6 +139,17 @@ export default function SignupPage() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignup = () => {
+    setServerError("");
+    try {
+      startSocialLogin("google");
+    } catch (err) {
+      setServerError(
+        err instanceof Error ? err.message : "구글 로그인에 실패했습니다."
+      );
     }
   };
 
@@ -297,6 +309,24 @@ export default function SignupPage() {
             </Button>
           </div>
         </form>
+
+        <div className="mt-8">
+          <div className="flex items-center gap-4">
+            <div className="flex-1 h-px bg-[var(--border-color)]" />
+            <span className="text-xs tracking-wider text-[var(--text-dim)]">
+              또는
+            </span>
+            <div className="flex-1 h-px bg-[var(--border-color)]" />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGoogleSignup}
+            className="w-full mt-6 py-3 text-sm rounded-sm transition-all bg-white text-[#3c4043] border border-[var(--border-color)] hover:bg-[var(--card-bg)]"
+          >
+            구글로 시작하기
+          </button>
+        </div>
 
         <p className="text-center text-sm text-[var(--text-muted)] mt-8">
           이미 계정이 있으신가요?{" "}
