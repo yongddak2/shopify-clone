@@ -32,7 +32,9 @@ public class CouponService {
 
     @Transactional
     public MemberCouponResponse issueCoupon(Long memberId, Long couponId) {
-        Coupon coupon = couponRepository.findById(couponId)
+        // 비관적 락으로 쿠폰 행을 잠가 동시 발급 시 한도 초과를 방지.
+        // issueCoupon 진입 시 쿠폰을 처음 로드하므로 1차 캐시가 비어 있어 별도 refresh 불필요.
+        Coupon coupon = couponRepository.findByIdForUpdate(couponId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.COUPON_NOT_FOUND));
 
         if (coupon.isWelcome()) {
