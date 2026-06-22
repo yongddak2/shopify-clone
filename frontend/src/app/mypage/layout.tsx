@@ -14,8 +14,10 @@ import {
   UserCog,
   Truck,
   PackageCheck,
+  LogOut,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
+import { logout } from "@/lib/auth";
 import { getMyInfo } from "@/lib/user";
 import { getOrders } from "@/lib/order";
 import { getMyCoupons } from "@/lib/coupon";
@@ -41,6 +43,7 @@ export default function MypageLayout({
   const pathname = usePathname();
   const { isLoggedIn } = useAuthStore();
   const [mounted, setMounted] = useState(false);
+  const [logoutModal, setLogoutModal] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -101,7 +104,7 @@ export default function MypageLayout({
 
   return (
     <div className="max-w-6xl mx-auto px-6 lg:px-10 py-12">
-      <h1 className="text-2xl tracking-[0.2em] font-light text-center mb-8 text-[var(--text-primary)]">
+      <h1 className="text-2xl tracking-[0.2em] font-light text-center mb-8 text-[var(--header-pink-accent)]">
         MY PAGE
       </h1>
 
@@ -167,6 +170,13 @@ export default function MypageLayout({
               </Link>
             );
           })}
+          <button
+            type="button"
+            onClick={() => setLogoutModal(true)}
+            className="px-4 py-3 text-xs tracking-wider whitespace-nowrap text-[var(--header-pink-accent)]"
+          >
+            로그아웃
+          </button>
         </div>
       </div>
 
@@ -192,12 +202,52 @@ export default function MypageLayout({
                 </Link>
               );
             })}
+            <button
+              type="button"
+              onClick={() => setLogoutModal(true)}
+              className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-[var(--header-pink-accent)]"
+            >
+              <LogOut className="w-4 h-4" strokeWidth={1.5} />
+              로그아웃
+            </button>
           </nav>
         </aside>
 
         {/* 콘텐츠 영역 */}
         <main className="flex-1 min-w-0">{children}</main>
       </div>
+
+      {/* 로그아웃 확인 모달 */}
+      {logoutModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-[var(--overlay-bg)]"
+            onClick={() => setLogoutModal(false)}
+          />
+          <div className="relative bg-[var(--card-bg)] border border-[var(--border-color)] px-8 py-8 max-w-sm w-full mx-6 text-center">
+            <p className="text-sm text-[var(--text-secondary)] mb-8">
+              로그아웃 하시겠습니까?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setLogoutModal(false)}
+                className="flex-1 py-3 text-sm tracking-wider border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--text-muted)] transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={async () => {
+                  await logout();
+                  window.location.href = "/";
+                }}
+                className="flex-1 py-3 text-sm tracking-wider bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] transition-colors"
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

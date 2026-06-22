@@ -6,7 +6,6 @@ import { useRouter, usePathname } from "next/navigation";
 import { Menu, Search, ShoppingBag, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/authStore";
-import { logout } from "@/lib/auth";
 import { getCart } from "@/lib/cart";
 import { useCartPanelStore } from "@/stores/cartPanelStore";
 import { getPublicSeasonList } from "@/lib/season";
@@ -45,7 +44,6 @@ export default function Header() {
   const [openMenu, setOpenMenu] = useState<MenuKey | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -106,7 +104,7 @@ export default function Header() {
   }, [searchOpen]);
 
   useEffect(() => {
-    if (logoutModalOpen || mobileMenuOpen) {
+    if (mobileMenuOpen) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -114,17 +112,12 @@ export default function Header() {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [logoutModalOpen, mobileMenuOpen]);
+  }, [mobileMenuOpen]);
 
   useEffect(() => {
     setOpenMenu(null);
   }, [pathname]);
 
-  const handleLogout = async () => {
-    await logout();
-    setLogoutModalOpen(false);
-    window.location.href = "/";
-  };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -245,14 +238,7 @@ export default function Header() {
               <div className="w-48" />
             ) : (
               <>
-                {loggedIn ? (
-                  <button
-                    onClick={() => setLogoutModalOpen(true)}
-                    className={rightLinkClass}
-                  >
-                    Logout
-                  </button>
-                ) : (
+                {!loggedIn && (
                   <Link href="/login" className={rightLinkClass}>
                     Login/Join
                   </Link>
@@ -352,15 +338,7 @@ export default function Header() {
             ))}
 
             <div className="mt-auto grid w-full grid-cols-2 justify-items-start gap-x-5 gap-y-4 border-t border-white/20 pt-6 font-serif-display text-base text-[var(--header-yellow)] [text-shadow:0_2px_8px_rgba(0,0,0,0.25)]">
-              {loggedIn ? (
-                <button
-                  type="button"
-                  onClick={() => setLogoutModalOpen(true)}
-                  className="text-left"
-                >
-                  Logout
-                </button>
-              ) : (
+              {!loggedIn && (
                 <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
                   Login/Join
                 </Link>
@@ -469,33 +447,6 @@ export default function Header() {
         />
       )}
 
-      {logoutModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-[var(--overlay-bg)]"
-            onClick={() => setLogoutModalOpen(false)}
-          />
-          <div className="relative bg-[var(--card-bg)] border border-[var(--border-color)] px-8 py-8 max-w-sm w-full mx-6 text-center">
-            <p className="text-sm text-[var(--text-secondary)] mb-8">
-              로그아웃 하시겠습니까?
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setLogoutModalOpen(false)}
-                className="flex-1 py-3 text-sm tracking-wider border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--text-muted)] transition-colors"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleLogout}
-                className="flex-1 py-3 text-sm tracking-wider bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] transition-colors"
-              >
-                확인
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
