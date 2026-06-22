@@ -81,6 +81,7 @@ export default function AdminProductEditPage() {
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [status, setStatus] = useState("ACTIVE");
   const [description, setDescription] = useState("");
+  const [productInfo, setProductInfo] = useState("");
   const [editingOptions, setEditingOptions] = useState<AdminProductOptionUpdate[]>([]);
   const [editingImages, setEditingImages] = useState<EditingImage[]>([]);
   const [detailEditingImages, setDetailEditingImages] = useState<EditingImage[]>([]);
@@ -100,6 +101,7 @@ export default function AdminProductEditPage() {
     setCategoryId(product.categoryId ?? null);
     setStatus(product.status);
     setDescription(product.description ?? "");
+    setProductInfo(product.productInfo ?? "");
 
     const firstGroup = (product.optionGroups ?? [])[0];
     setEditingOptions(
@@ -375,6 +377,7 @@ export default function AdminProductEditPage() {
       categoryId,
       status,
       description,
+      productInfo,
       optionGroupName: "옵션",
       optionValues: editingOptions,
       images,
@@ -508,6 +511,17 @@ export default function AdminProductEditPage() {
                   rows={6}
                   className={inputClass}
                   placeholder="상품 설명을 입력하세요"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-[var(--text-muted)] mb-1">사이즈/소재 정보</label>
+                <textarea
+                  value={productInfo}
+                  onChange={(e) => setProductInfo(e.target.value)}
+                  rows={6}
+                  className={inputClass}
+                  placeholder="사이즈, 소재 등 부가 정보를 입력하세요"
                 />
               </div>
             </div>

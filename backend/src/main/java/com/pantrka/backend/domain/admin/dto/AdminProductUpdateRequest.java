@@ -11,6 +11,7 @@ public class AdminProductUpdateRequest {
 
     private String name;
     private String description;
+    private String productInfo;
     private BigDecimal basePrice;
     private BigDecimal discountRate;
     private ProductStatus status;

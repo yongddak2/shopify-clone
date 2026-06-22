@@ -66,6 +66,7 @@ export interface ProductDetail {
   id: number;
   name: string;
   description: string;
+  productInfo: string;
   basePrice: number;
   discountRate: number;
   status: string;
@@ -234,6 +235,7 @@ export interface AdminProduct {
   categoryName: string | null;
   thumbnailUrl: string | null;
   description: string;
+  productInfo: string;
   viewCount: number;
   createdAt: string;
   deletedAt: string | null;
@@ -264,6 +266,7 @@ export interface CreateProductRequest {
   discountRate: number;
   categoryId: number;
   description: string;
+  productInfo: string;
   status: string;
   images?: { url: string; sortOrder: number; isThumbnail: boolean; detail: boolean }[];
   optionGroups: {

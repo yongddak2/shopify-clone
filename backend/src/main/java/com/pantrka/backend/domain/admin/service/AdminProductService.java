@@ -92,6 +92,7 @@ public class AdminProductService {
                 .category(category)
                 .name(request.getName())
                 .description(request.getDescription())
+                .productInfo(request.getProductInfo())
                 .basePrice(request.getBasePrice())
                 .discountRate(request.getDiscountRate() != null ? request.getDiscountRate() : BigDecimal.ZERO)
                 .status(request.getStatus() != null ? request.getStatus() : ProductStatus.ACTIVE)
@@ -151,6 +152,7 @@ public class AdminProductService {
         product.update(
                 request.getName(),
                 request.getDescription(),
+                request.getProductInfo(),
                 request.getBasePrice(),
                 request.getDiscountRate(),
                 request.getStatus()

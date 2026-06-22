@@ -145,6 +145,15 @@ body {
   font-family: "SUIT", sans-serif;
 }
 
+/* 스크롤바 숨김 유틸 (상품 상세 우측 패널, InfoSidebar 등) — 스크롤은 되고 바만 숨김 */
+@utility scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* 메인 페이지 상단(스크롤 전) 헤더 투명 모드 — CSS 변수만 오버라이드해서 자식 자동 반영 */
 header[data-transparent="true"] {
   --header-bg: transparent;

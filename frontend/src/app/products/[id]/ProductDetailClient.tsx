@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProductDetail } from "@/lib/product";
 import { addToCart, getCart } from "@/lib/cart";
+import { guestAddItem } from "@/lib/guestCart";
 import { beginCheckout } from "@/lib/checkoutSession";
 import { getWishlists, toggleWishlist } from "@/lib/wishlist";
 import {
@@ -12,18 +13,48 @@ import {
   invalidateWishlistRelated,
 } from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
+import { useCartPanelStore } from "@/stores/cartPanelStore";
 import Button from "@/components/common/Button";
-import { Heart, ChevronDown, ChevronUp } from "lucide-react";
+import { Heart, ChevronDown, ChevronUp, Plus, Minus } from "lucide-react";
 import ReviewSection from "./ReviewSection";
 
 function formatPrice(price: number) {
   return price.toLocaleString("ko-KR");
 }
 
+// 배송/교환·반품 공통 안내 (모든 상품 동일). 출시 전 교환·반품 주소 반드시 수정 필요.
+const DELIVERY_RETURNS_TEXT = `교환 및 반품 주소
+ - 이부분 반드시 출시 전에 수정하셔야 합니다!!!!!
+
+
+ * 상품 수령일 기준으로 7일 이내 교환 및 반품 의사 전달, 반송지로 상품이 도착하여야 교환 및 반품이 가능합니다.
+ (사전 접수 없이 일방적으로 발송하시거나, 안내된 기간이 지난 경우 고지 후 반송처리 됩니다.)
+ * 단순 변심의 교환 및 반품은 왕복 배송비 6,000원을 부담해주셔야 합니다.
+
+(제주 및 도서 산간지역 +3,000원)
+
+
+- 교환 및 반품 불가한 경우
+* 고객님의 책임있는 사유로 제품이 훼손된 경우,
+
+고객님의 부주의로 상품이 훼손, 변경된 경우 반품 / 교환이 불가능 합니다.
+
+
+고객님의 사용 또는 일부 소비에 의해 제품의 가치가 현저히 감소한 경우
+시간의 경과에 의하여 재판매가 곤란할 정도로 제품의 가치가 하락된 경우
+고객님의 주문에 따라 개별적으로 생산되는 제품의 경우 (주문 제작상품)
+향수, 세제 등 향이 베여있는 경우
+착용 흔적, 주름 발생이 있는 상품의 경우
+택, 더스트백이 없을 경우
+세탁을 하신 경우
+
+* 위의 경우에는 교환 및 반품가능 기간에도 불구하고 거절될 수 있습니다.`;
+
 export default function ProductDetailClient({ id }: { id: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { isLoggedIn } = useAuthStore();
+  const openCartPanel = useCartPanelStore((s) => s.openCart);
   const [mainImageIndex, setMainImageIndex] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
@@ -40,6 +71,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
   const [cartError, setCartError] = useState("");
   const [cartModal, setCartModal] = useState(false);
   const [buyNowPending, setBuyNowPending] = useState(false);
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["product", id],
@@ -195,13 +227,6 @@ export default function ProductDetailClient({ id }: { id: string }) {
   const totalPrice = (discountedBase + additionalPrice) * quantity;
 
   const handleAddToCart = () => {
-    if (!isLoggedIn()) {
-      if (confirm("로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?")) {
-        router.push("/login");
-      }
-      return;
-    }
-
     if (selectedOptionValueId == null) {
       setOptionError("옵션을 선택해주세요.");
       return;
@@ -209,6 +234,30 @@ export default function ProductDetailClient({ id }: { id: string }) {
 
     setOptionError("");
     setCartError("");
+
+    // 비회원: localStorage 장바구니에 담기 (창을 닫아도 유지, 로그인 시 서버로 병합)
+    if (!isLoggedIn()) {
+      const thumb =
+        product.images?.find((i) => i.isThumbnail)?.url ??
+        product.images?.[0]?.url ??
+        null;
+      guestAddItem({
+        productId: Number(id),
+        productName: product.name,
+        optionValueId: selectedOptionValueId,
+        optionValue: selectedOption?.value ?? "",
+        basePrice: product.basePrice,
+        additionalPrice: selectedOption?.additionalPrice ?? 0,
+        discountRate: product.discountRate,
+        quantity,
+        stockQuantity: currentStock,
+        thumbnailUrl: thumb,
+      });
+      invalidateCartRelated(queryClient);
+      openCartPanel();
+      return;
+    }
+
     cartMutation.mutate({ optionValueId: selectedOptionValueId, qty: quantity });
   };
 
@@ -324,8 +373,8 @@ export default function ProductDetailClient({ id }: { id: string }) {
           )}
         </div>
 
-        {/* 우측: 상품 정보 (스크롤 시 따라오도록 sticky) */}
-        <div className="md:sticky md:top-24 self-start">
+        {/* 우측: 상품 정보 (sticky + 내용이 길면 자체 스크롤 → 좌측 이미지와 독립 스크롤) */}
+        <div className="md:sticky md:top-24 self-start md:max-h-[calc(100vh-7rem)] md:overflow-y-auto scrollbar-hide">
           <div className="mb-4">
             <h1 className="text-xl md:text-2xl font-light tracking-wide text-[var(--text-primary)]">
               {product.name}
@@ -348,6 +397,22 @@ export default function ProductDetailClient({ id }: { id: string }) {
               </span>
             )}
           </div>
+
+          {/* 상품 설명 + 사이즈/소재 등 부가 정보 */}
+          {(product.description || product.productInfo) && (
+            <div className="mb-8 space-y-4">
+              {product.description && (
+                <p className="text-sm text-[var(--text-secondary)] leading-relaxed whitespace-pre-line">
+                  {product.description}
+                </p>
+              )}
+              {product.productInfo && (
+                <p className="text-xs text-[var(--text-dim)] leading-relaxed whitespace-pre-line">
+                  {product.productInfo}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* 옵션 선택 - 드롭다운 (색상 → 사이즈 순) */}
           {optionMode === 'combo' && (
@@ -512,11 +577,6 @@ export default function ProductDetailClient({ id }: { id: string }) {
           <div className="mb-2">
             <p className="text-xs tracking-wider text-[var(--text-muted)] mb-3">
               수량
-              {selectedOptionValueId != null && currentStock > 0 && currentStock <= 10 && (
-                <span className="ml-2 text-red-400 normal-case tracking-normal">
-                  ({currentStock}개 남음)
-                </span>
-              )}
             </p>
             <div className="inline-flex items-center border border-[var(--border-color)]">
               <button
@@ -616,6 +676,27 @@ export default function ProductDetailClient({ id }: { id: string }) {
               </div>
             );
           })()}
+
+          {/* Delivery / Returns 아코디언 */}
+          <div className="mt-8 border-t border-[var(--border-color)]">
+            <button
+              type="button"
+              onClick={() => setDeliveryOpen((v) => !v)}
+              className="w-full flex items-center justify-between py-4 text-sm text-[var(--text-primary)]"
+            >
+              Delivery / Returns
+              {deliveryOpen ? (
+                <Minus className="w-4 h-4 text-[var(--text-muted)]" />
+              ) : (
+                <Plus className="w-4 h-4 text-[var(--text-muted)]" />
+              )}
+            </button>
+            {deliveryOpen && (
+              <div className="pb-6 text-xs text-[var(--text-secondary)] leading-relaxed whitespace-pre-line">
+                {DELIVERY_RETURNS_TEXT}
+              </div>
+            )}
+          </div>
         </div>
       </div>
       {/* 리뷰 섹션 */}

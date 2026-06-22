@@ -50,6 +50,7 @@ export default function AdminProductNewPage() {
   const [discountRate, setDiscountRate] = useState(0);
   const [categoryId, setCategoryId] = useState(0);
   const [description, setDescription] = useState("");
+  const [productInfo, setProductInfo] = useState("");
   const [status, setStatus] = useState("ACTIVE");
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -339,6 +340,7 @@ export default function AdminProductNewPage() {
       discountRate,
       categoryId,
       description,
+      productInfo,
       status,
       images,
       optionGroups,
@@ -422,6 +424,12 @@ export default function AdminProductNewPage() {
         <div>
           <label className="block text-xs text-[var(--text-muted)] mb-1">설명</label>
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className={inputClass} placeholder="상품 설명을 입력하세요" />
+        </div>
+
+        {/* 사이즈/소재 등 부가 정보 */}
+        <div>
+          <label className="block text-xs text-[var(--text-muted)] mb-1">사이즈/소재 정보</label>
+          <textarea value={productInfo} onChange={(e) => setProductInfo(e.target.value)} rows={4} className={inputClass} placeholder="사이즈, 소재 등 부가 정보를 입력하세요" />
         </div>
 
         {/* 사이즈 옵션 */}

@@ -35,6 +35,9 @@ public class Product {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(columnDefinition = "TEXT")
+    private String productInfo;
+
     @Column(nullable = false)
     private BigDecimal basePrice;
 
@@ -65,20 +68,22 @@ public class Product {
     private LocalDateTime deletedAt;
 
     @Builder
-    public Product(Category category, String name, String description, BigDecimal basePrice,
-                   BigDecimal discountRate, ProductStatus status) {
+    public Product(Category category, String name, String description, String productInfo,
+                   BigDecimal basePrice, BigDecimal discountRate, ProductStatus status) {
         this.category = category;
         this.name = name;
         this.description = description;
+        this.productInfo = productInfo;
         this.basePrice = basePrice;
         this.discountRate = discountRate;
         this.status = status;
     }
 
-    public void update(String name, String description, BigDecimal basePrice,
+    public void update(String name, String description, String productInfo, BigDecimal basePrice,
                        BigDecimal discountRate, ProductStatus status) {
         if (name != null) this.name = name;
         if (description != null) this.description = description;
+        if (productInfo != null) this.productInfo = productInfo;
         if (basePrice != null) this.basePrice = basePrice;
         if (discountRate != null) this.discountRate = discountRate;
         if (status != null) this.status = status;

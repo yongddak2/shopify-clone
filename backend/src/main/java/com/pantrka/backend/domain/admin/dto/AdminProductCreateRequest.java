@@ -20,6 +20,8 @@ public class AdminProductCreateRequest {
 
     private String description;
 
+    private String productInfo;
+
     @NotNull(message = "기본 가격은 필수입니다.")
     @Min(value = 0, message = "기본 가격은 0 이상이어야 합니다.")
     private BigDecimal basePrice;

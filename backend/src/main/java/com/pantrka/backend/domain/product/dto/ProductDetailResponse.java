@@ -15,6 +15,7 @@ public class ProductDetailResponse {
     private final Long id;
     private final String name;
     private final String description;
+    private final String productInfo;
     private final BigDecimal basePrice;
     private final BigDecimal discountRate;
     private final ProductStatus status;
@@ -80,6 +81,7 @@ public class ProductDetailResponse {
                 .id(product.getId())
                 .name(product.getName())
                 .description(product.getDescription())
+                .productInfo(product.getProductInfo())
                 .basePrice(product.getBasePrice())
                 .discountRate(product.getDiscountRate())
                 .status(product.getStatus())
