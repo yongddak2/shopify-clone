@@ -31,7 +31,7 @@ public class CartService {
     private final MemberRepository memberRepository;
 
     public List<CartItemResponse> getCartItems(Long memberId) {
-        return cartItemRepository.findByMemberId(memberId).stream()
+        return cartItemRepository.findByMemberIdAndProductDeletedAtIsNull(memberId).stream()
                 .map(CartItemResponse::from)
                 .toList();
     }

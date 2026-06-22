@@ -6,7 +6,9 @@ import com.pantrka.backend.domain.admin.dto.AdminProductResponse;
 import com.pantrka.backend.domain.admin.dto.AdminProductUpdateRequest;
 import com.pantrka.backend.domain.admin.dto.InventoryResponse;
 import java.util.Comparator;
+import com.pantrka.backend.domain.order.repository.CartItemRepository;
 import com.pantrka.backend.domain.order.repository.OrderItemRepository;
+import com.pantrka.backend.domain.wishlist.repository.WishlistRepository;
 import com.pantrka.backend.domain.product.entity.*;
 import com.pantrka.backend.domain.product.repository.*;
 import com.pantrka.backend.global.exception.BusinessException;
@@ -35,6 +37,8 @@ public class AdminProductService {
     private final ProductOptionGroupRepository productOptionGroupRepository;
     private final ProductOptionValueRepository productOptionValueRepository;
     private final OrderItemRepository orderItemRepository;
+    private final CartItemRepository cartItemRepository;
+    private final WishlistRepository wishlistRepository;
 
     public Page<AdminProductResponse> getProducts(int page, int size, String keyword, Long categoryId) {
         String normalized = (keyword == null || keyword.isBlank()) ? "" : keyword.trim();
@@ -278,5 +282,9 @@ public class AdminProductService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
 
         product.softDelete();
+
+        // 삭제된 상품을 참조하는 장바구니·찜 항목 정리 (남아있으면 사용자 화면에 유령 항목으로 노출됨)
+        cartItemRepository.deleteByProductId(productId);
+        wishlistRepository.deleteByProductId(productId);
     }
 }
