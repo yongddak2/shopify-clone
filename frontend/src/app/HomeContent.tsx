@@ -13,7 +13,8 @@ import {
 } from "@/lib/admin";
 import { invalidateWishlistRelated } from "@/lib/queryInvalidator";
 import { useAuthStore } from "@/stores/authStore";
-import { Heart, ChevronLeft, ChevronRight } from "lucide-react";
+import { Heart, ShoppingBag, ChevronLeft, ChevronRight } from "lucide-react";
+import { useCartPanelStore } from "@/stores/cartPanelStore";
 import type {
   ApiResponse,
   Banner,
@@ -42,6 +43,7 @@ function ProductGrid({
   onWishlistClick: (e: React.MouseEvent, id: number) => void;
   isLoading: boolean;
 }) {
+  const openQuickAdd = useCartPanelStore((s) => s.openQuickAdd);
   if (isLoading) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-2 gap-y-10">
@@ -90,19 +92,35 @@ function ProductGrid({
                   </span>
                 </div>
               )}
-              <button
-                onClick={(e) => onWishlistClick(e, product.id)}
-                className="absolute bottom-2 right-2 w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-black/60 transition-colors"
-              >
-                <Heart
-                  className={`w-4 h-4 ${
-                    wishlistIds.has(product.id)
-                      ? "text-red-400 fill-red-400"
-                      : "text-white"
-                  }`}
-                  strokeWidth={1.5}
-                />
-              </button>
+              <div className="absolute bottom-2 right-2 flex flex-col gap-1.5">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openQuickAdd(product.id);
+                  }}
+                  className="w-8 h-8 flex items-center justify-center transition-transform hover:scale-110 active:scale-90"
+                  aria-label="장바구니 담기"
+                >
+                  <ShoppingBag
+                    className="w-7 h-7 text-[var(--header-pink-accent)]"
+                    strokeWidth={1.5}
+                  />
+                </button>
+                <button
+                  onClick={(e) => onWishlistClick(e, product.id)}
+                  className="w-8 h-8 flex items-center justify-center transition-transform hover:scale-110 active:scale-90"
+                >
+                  <Heart
+                    className={`w-7 h-7 ${
+                      wishlistIds.has(product.id)
+                        ? "text-[var(--header-pink-accent)] fill-[var(--header-pink-accent)]"
+                        : "text-[var(--header-pink-accent)]"
+                    }`}
+                    strokeWidth={1.5}
+                  />
+                </button>
+              </div>
             </div>
             <p className="text-sm text-[var(--text-secondary)] mb-1">
               {product.name}

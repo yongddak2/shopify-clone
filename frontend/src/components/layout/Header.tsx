@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/authStore";
 import { logout } from "@/lib/auth";
 import { getCart } from "@/lib/cart";
+import { useCartPanelStore } from "@/stores/cartPanelStore";
 import { getPublicSeasonList } from "@/lib/season";
 
 type MenuKey = "SHOP" | "ABOUT" | "PNTK" | "INFO";
@@ -57,9 +58,17 @@ export default function Header() {
   const { data: cartData } = useQuery({
     queryKey: ["cart"],
     queryFn: getCart,
-    enabled: loggedIn,
+    enabled: mounted,
   });
   const cartCount = cartData?.data?.length ?? 0;
+  const openCartPanel = useCartPanelStore((s) => s.openCart);
+  // 비회원은 장바구니 클릭 시 페이지 이동 대신 CART 레이어만 띄움
+  const handleCartClick = (e: React.MouseEvent) => {
+    if (!loggedIn) {
+      e.preventDefault();
+      openCartPanel();
+    }
+  };
 
   const isMain = pathname === "/";
   // 메인 페이지 상단에서는 호버 중에도 헤더 자체는 항상 투명 유지
@@ -250,7 +259,8 @@ export default function Header() {
                 )}
 
                 <Link
-                  href={loggedIn ? "/cart" : "/login"}
+                  href="/cart"
+                  onClick={handleCartClick}
                   className={rightLinkClass}
                 >
                   Cart:{cartCount}
@@ -298,7 +308,8 @@ export default function Header() {
               <Search className="h-5 w-5" />
             </button>
             <Link
-              href={loggedIn ? "/cart" : "/login"}
+              href="/cart"
+              onClick={handleCartClick}
               className="relative flex h-10 w-8 items-center justify-center text-[var(--header-pink-accent)]"
               aria-label={`장바구니 ${cartCount}개`}
             >
@@ -361,8 +372,11 @@ export default function Header() {
                 My page
               </Link>
               <Link
-                href={loggedIn ? "/cart" : "/login"}
-                onClick={() => setMobileMenuOpen(false)}
+                href="/cart"
+                onClick={(e) => {
+                  handleCartClick(e);
+                  setMobileMenuOpen(false);
+                }}
               >
                 Cart:{cartCount}
               </Link>

@@ -3,6 +3,8 @@ import "./globals.css";
 import Providers from "@/components/Providers";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import QuickAddPanel from "@/components/cart/QuickAddPanel";
+import CartPanel from "@/components/cart/CartPanel";
 
 export const metadata: Metadata = {
   title: "PanTrKa | 의류 쇼핑몰",
@@ -21,6 +23,8 @@ export default function RootLayout({
           <Header />
           <main className="flex-1 pt-16">{children}</main>
           <Footer />
+          <QuickAddPanel />
+          <CartPanel />
         </Providers>
       </body>
     </html>
