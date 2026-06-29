@@ -25,6 +25,18 @@ function PaymentSuccessContent() {
   const valid = Boolean(orderId && orderNumber && Number.isFinite(amount));
 
   useEffect(() => {
+    // PC 브라우저에서 NICE V2 SDK가 팝업 방식으로 동작할 때
+    // 팝업 안에 success 페이지가 로드되는 경우 → 메인 창을 이 URL로 이동 후 팝업 닫기
+    if (window.opener && !window.opener.closed) {
+      try {
+        window.opener.location.replace(window.location.href);
+        window.close();
+        return;
+      } catch {
+        // 크로스 오리진 등으로 opener 접근 불가 시 그냥 계속 진행
+      }
+    }
+
     if (!valid) return;
     invalidateAfterPayment(queryClient);
     clearCheckoutSession();

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProductDetail } from "@/lib/product";
-import { addToCart, getCart } from "@/lib/cart";
+import { addToCart, getCart, updateCartQuantity } from "@/lib/cart";
 import { guestAddItem } from "@/lib/guestCart";
 import { beginCheckout, savePendingBuyNow } from "@/lib/checkoutSession";
 import { getWishlists, toggleWishlist } from "@/lib/wishlist";
@@ -17,7 +17,7 @@ import { useCartPanelStore } from "@/stores/cartPanelStore";
 import Button from "@/components/common/Button";
 import { Heart, ChevronDown, ChevronUp, Plus, Minus } from "lucide-react";
 import ReviewSection from "./ReviewSection";
-import type { ApiResponse, ProductDetail } from "@/types";
+import type { ApiResponse, CartItem, ProductDetail } from "@/types";
 
 function formatPrice(price: number) {
   return price.toLocaleString("ko-KR");
@@ -94,6 +94,11 @@ export default function ProductDetailClient({
   const [cartError, setCartError] = useState("");
   const [cartModal, setCartModal] = useState(false);
   const [buyNowPending, setBuyNowPending] = useState(false);
+  const [buyNowConflict, setBuyNowConflict] = useState<{
+    existingItem: CartItem;
+    newQuantity: number;
+    optionValueId: number;
+  } | null>(null);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
@@ -288,7 +293,7 @@ export default function ProductDetailClient({
     cartMutation.mutate({ optionValueId: selectedOptionValueId, qty: quantity });
   };
 
-  // 바로 구매하기: 장바구니에 담은 뒤 해당 항목만 선택해 주문 페이지로 직행
+  // 바로 구매하기: 장바구니에 동일 옵션 항목이 있으면 팝업으로 확인 후 결제
   const handleBuyNow = async () => {
     if (selectedOptionValueId == null) {
       setOptionError("옵션을 선택해주세요.");
@@ -323,9 +328,21 @@ export default function ProductDetailClient({
 
     setBuyNowPending(true);
     try {
-      await addToCart(Number(id), selectedOptionValueId, quantity);
       const cart = await getCart();
-      const target = cart.data?.find(
+      const existing = cart.data?.find(
+        (it) => it.optionValueId === selectedOptionValueId
+      );
+      if (existing && existing.quantity > 0) {
+        setBuyNowConflict({
+          existingItem: existing,
+          newQuantity: quantity,
+          optionValueId: selectedOptionValueId,
+        });
+        return;
+      }
+      await addToCart(Number(id), selectedOptionValueId, quantity);
+      const updated = await getCart();
+      const target = updated.data?.find(
         (it) => it.optionValueId === selectedOptionValueId
       );
       if (!target) {
@@ -333,6 +350,48 @@ export default function ProductDetailClient({
         return;
       }
       beginCheckout([target.id]);
+      invalidateCartRelated(queryClient);
+      router.push("/order");
+    } catch {
+      setCartError("주문 처리에 실패했습니다.");
+    } finally {
+      setBuyNowPending(false);
+    }
+  };
+
+  // 팝업 "확인": 장바구니 수량 합산 후 결제
+  const handleBuyNowConflictConfirm = async () => {
+    if (!buyNowConflict) return;
+    const { existingItem, newQuantity, optionValueId } = buyNowConflict;
+    setBuyNowConflict(null);
+    setBuyNowPending(true);
+    try {
+      await addToCart(Number(id), optionValueId, newQuantity);
+      const cart = await getCart();
+      const target = cart.data?.find((it) => it.optionValueId === optionValueId);
+      if (!target) {
+        setCartError("주문 정보를 불러오지 못했습니다.");
+        return;
+      }
+      beginCheckout([target.id]);
+      invalidateCartRelated(queryClient);
+      router.push("/order");
+    } catch {
+      setCartError("주문 처리에 실패했습니다.");
+    } finally {
+      setBuyNowPending(false);
+    }
+  };
+
+  // 팝업 "취소": 현재 선택 수량으로만 결제 (기존 장바구니 수량 대체)
+  const handleBuyNowConflictCancel = async () => {
+    if (!buyNowConflict) return;
+    const { existingItem, newQuantity } = buyNowConflict;
+    setBuyNowConflict(null);
+    setBuyNowPending(true);
+    try {
+      await updateCartQuantity(existingItem.id, newQuantity);
+      beginCheckout([existingItem.id]);
       invalidateCartRelated(queryClient);
       router.push("/order");
     } catch {
@@ -763,6 +822,36 @@ export default function ProductDetailClient({
 
       {/* 리뷰 섹션 */}
       <ReviewSection productId={id} />
+
+      {/* 바로구매 수량 충돌 팝업 */}
+      {buyNowConflict && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div className="absolute inset-0 bg-[var(--overlay-bg)]" />
+          <div className="relative bg-[var(--card-bg)] border border-[var(--border-color)] px-8 py-8 max-w-sm w-full mx-6 text-center">
+            <p className="text-sm text-[var(--text-secondary)] mb-2">
+              동일 상품이 장바구니에 {buyNowConflict.existingItem.quantity}개 있습니다.
+            </p>
+            <p className="text-xs text-[var(--text-muted)] mb-8">
+              함께 구매하시겠습니까?<br />
+              &apos;취소&apos;를 누를 경우 현재 선택한 수량만 구매됩니다.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleBuyNowConflictCancel}
+                className="flex-1 py-3 text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleBuyNowConflictConfirm}
+                className="flex-1 py-3 text-sm bg-[var(--btn-primary-bg)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors"
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 장바구니 담기 완료 모달 */}
       {cartModal && (

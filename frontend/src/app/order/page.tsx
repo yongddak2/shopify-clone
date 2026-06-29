@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCart } from "@/lib/cart";
-import { createOrder, getOrderDetail } from "@/lib/order";
+import { createOrder, getOrderDetail, cancelOrder } from "@/lib/order";
 import {
   clearCheckoutSession,
   readCheckoutCartItemIds,
@@ -698,7 +698,13 @@ export default function OrderPage() {
           ? { vbankHolder: "팬터카", vbankValidHours: 72 }
           : {}),
         fnError: (result) => {
+          // 결제창 취소/오류 시 생성된 PENDING 주문을 즉시 취소해 유령 주문 방지
+          cancelOrder(checkout.orderId).catch(() => {});
+          clearCheckoutSession();
+          setPendingCheckout(null);
+
           if (result.errorMsg?.includes("[P091]")) {
+            // P091 = 사용자가 직접 결제 취소 → 오류 메시지 없이 조용히 처리
             setError("");
             return;
           }
@@ -790,7 +796,7 @@ export default function OrderPage() {
         src="https://pay.nicepay.co.kr/v1/js/"
         strategy="lazyOnload"
       />
-      <h1 className="text-2xl tracking-[0.2em] font-light text-center mb-12 text-[var(--text-primary)]">
+      <h1 className="text-2xl tracking-[0.2em] font-light text-center mb-12 text-[var(--btn-primary-bg)]">
         ORDER
       </h1>
 
@@ -991,13 +997,13 @@ export default function OrderPage() {
             <h2 className="text-xs tracking-widest text-[var(--text-muted)] mb-4">
               결제 수단
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 border border-[var(--border-color)]">
+            <div className="grid grid-cols-3 border border-[var(--border-color)]">
               {PAYMENT_METHODS.map((method) => (
                 <label
                   key={method.value}
-                  className={`flex min-h-12 cursor-pointer items-center gap-2 px-4 py-3 text-sm transition-colors sm:border-r sm:last:border-r-0 border-[var(--border-color)] ${
+                  className={`flex min-h-12 cursor-pointer items-center justify-center gap-2 px-3 py-3 text-xs sm:text-sm transition-colors border-r last:border-r-0 border-[var(--border-color)] ${
                     paymentMethod === method.value
-                      ? "bg-[var(--text-primary)] text-[var(--page-bg)]"
+                      ? "bg-[var(--btn-primary-bg)] text-white"
                       : "text-[var(--text-secondary)] hover:bg-[var(--section-bg)]"
                   }`}
                 >
@@ -1007,9 +1013,9 @@ export default function OrderPage() {
                     value={method.value}
                     checked={paymentMethod === method.value}
                     onChange={() => setPaymentMethod(method.value)}
-                    className="accent-current"
+                    className="sr-only"
                   />
-                  <span>{method.label}</span>
+                  <span className="text-center leading-tight">{method.label}</span>
                 </label>
               ))}
             </div>

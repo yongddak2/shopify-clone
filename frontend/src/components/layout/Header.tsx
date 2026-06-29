@@ -313,7 +313,7 @@ export default function Header() {
           <button
             type="button"
             onClick={toggleMobileMenu}
-            className="md:hidden flex h-10 w-10 items-center justify-start text-[var(--header-pink-accent)]"
+            className={`md:hidden flex h-10 w-10 items-center justify-start transition-colors ${mobileMenuOpen ? "text-white" : "text-[var(--header-pink-accent)]"}`}
             aria-label={mobileMenuOpen ? "메뉴 닫기" : "메뉴 열기"}
             aria-expanded={mobileMenuOpen}
           >
@@ -361,11 +361,10 @@ export default function Header() {
         >
           <nav
             className="flex h-full flex-col items-start overflow-y-auto px-14 pb-8 pt-24"
-            onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
-              onClick={() => toggleMobileCategory("SHOP")}
+              onClick={(e) => { e.stopPropagation(); toggleMobileCategory("SHOP"); }}
               className={`${mobileTopClass} ${
                 mobileOpenCategory === "SHOP"
                   ? "text-white"
@@ -410,7 +409,7 @@ export default function Header() {
 
             <button
               type="button"
-              onClick={() => toggleMobileCategory("PNTK")}
+              onClick={(e) => { e.stopPropagation(); toggleMobileCategory("PNTK"); }}
               className={`${mobileTopClass} ${
                 mobileOpenCategory === "PNTK"
                   ? "text-white"

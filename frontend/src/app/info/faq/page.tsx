@@ -35,7 +35,7 @@ export default function FaqPage() {
   return (
     <div>
       <header className="mb-10">
-        <h1 className="text-2xl tracking-[0.2em] font-light text-[var(--text-primary)]">
+        <h1 className="text-2xl tracking-[0.2em] font-light text-[var(--btn-primary-bg)]">
           FAQ
         </h1>
         <p className="mt-3 text-xs tracking-wider text-[var(--text-dim)]">
