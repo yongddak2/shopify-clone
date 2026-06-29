@@ -19,9 +19,9 @@ function discountedPrice(base: number, rate: number) {
 }
 
 const SORT_OPTIONS = [
-  { value: "createdAt,desc", label: "최신순" },
-  { value: "basePrice,asc", label: "가격 낮은순" },
-  { value: "basePrice,desc", label: "가격 높은순" },
+  { value: "latest", label: "최신순" },
+  { value: "price_asc", label: "가격 낮은순" },
+  { value: "price_desc", label: "가격 높은순" },
   { value: "sales", label: "판매량순" },
 ];
 
@@ -42,7 +42,7 @@ export default function ProductsContent({
   const [sort, setSort] = useState(() => {
     const urlSort = searchParams.get("sort");
     if (urlSort && SORT_OPTIONS.some((o) => o.value === urlSort)) return urlSort;
-    return "createdAt,desc";
+    return "latest";
   });
 
   const { data: categoriesData } = useQuery({
@@ -161,7 +161,7 @@ export default function ProductsContent({
             setSort(e.target.value);
             setPage(0);
           }}
-          className="text-xs text-[var(--text-secondary)] bg-[var(--input-bg)] border border-[var(--border-color)] px-3 py-2 focus:outline-none focus:border-[var(--text-muted)]"
+          className="text-xs text-[var(--text-secondary)] bg-white border border-[var(--border-color)] px-3 py-2 focus:outline-none focus:border-[var(--text-muted)]"
         >
           {SORT_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
