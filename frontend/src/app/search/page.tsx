@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { searchProducts, getCategories } from "@/lib/product";
@@ -315,31 +314,35 @@ function SearchContent() {
                 : product.basePrice;
 
               return (
-                <Link
-                  key={product.id}
-                  href={`/products/${product.id}`}
-                  className="group"
-                >
+                <div key={product.id} className="group">
                   <div className="relative aspect-[3/4] bg-[var(--card-bg)] mb-4 overflow-hidden">
-                    {product.thumbnailUrl ? (
-                      <img
-                        src={product.thumbnailUrl}
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-[var(--section-bg)] group-hover:scale-105 transition-transform duration-500" />
-                    )}
-                    {isSoldOut && (
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                        <span className="text-white text-xs tracking-[0.2em]">
-                          SOLD OUT
-                        </span>
-                      </div>
-                    )}
+                    <a
+                      href={`/products/${product.id}`}
+                      className="block h-full"
+                      aria-label={`${product.name} 상세 보기`}
+                    >
+                      {product.thumbnailUrl ? (
+                        <img
+                          src={product.thumbnailUrl}
+                          alt={product.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-[var(--section-bg)] group-hover:scale-105 transition-transform duration-500" />
+                      )}
+                      {isSoldOut && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <span className="text-white text-xs tracking-[0.2em]">
+                            SOLD OUT
+                          </span>
+                        </div>
+                      )}
+                    </a>
                     <button
+                      type="button"
                       onClick={(e) => handleWishlistClick(e, product.id)}
-                      className="absolute bottom-2 right-2 w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-black/60 transition-colors"
+                      className="absolute bottom-2 right-2 z-10 w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-black/60 transition-colors"
+                      aria-label={`${product.name} 찜하기`}
                     >
                       <Heart
                         className={`w-4 h-4 ${
@@ -351,25 +354,27 @@ function SearchContent() {
                       />
                     </button>
                   </div>
-                  <p className="text-sm text-[var(--text-secondary)] mb-1">
-                    {product.name}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    {hasDiscount && (
-                      <span className="text-sm text-[var(--text-dim)] line-through">
-                        {formatPrice(product.basePrice)}원
+                  <a href={`/products/${product.id}`} className="block">
+                    <p className="text-sm text-[var(--text-secondary)] mb-1">
+                      {product.name}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      {hasDiscount && (
+                        <span className="text-sm text-[var(--text-dim)] line-through">
+                          {formatPrice(product.basePrice)}원
+                        </span>
+                      )}
+                      <span className="text-sm text-[var(--text-secondary)]">
+                        {formatPrice(finalPrice)}원
                       </span>
-                    )}
-                    <span className="text-sm text-[var(--text-secondary)]">
-                      {formatPrice(finalPrice)}원
-                    </span>
-                    {hasDiscount && (
-                      <span className="text-xs text-red-400">
-                        {product.discountRate}%
-                      </span>
-                    )}
-                  </div>
-                </Link>
+                      {hasDiscount && (
+                        <span className="text-xs text-red-400">
+                          {product.discountRate}%
+                        </span>
+                      )}
+                    </div>
+                  </a>
+                </div>
               );
             })}
           </div>

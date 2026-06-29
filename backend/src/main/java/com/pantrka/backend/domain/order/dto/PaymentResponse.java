@@ -18,6 +18,12 @@ public class PaymentResponse {
     private String method;
     private BigDecimal amount;
     private String status;
+    private boolean cashReceiptIssued;
+    private String receiptUrl;
+    private String vbankName;
+    private String vbankNumber;
+    private String vbankHolder;
+    private String vbankExpiresAt;
     private LocalDateTime paidAt;
     private LocalDateTime createdAt;
 
@@ -30,6 +36,12 @@ public class PaymentResponse {
                 .method(payment.getMethod().name())
                 .amount(payment.getAmount())
                 .status(payment.getStatus().name())
+                .cashReceiptIssued(Boolean.TRUE.equals(payment.getCashReceiptIssued()))
+                .receiptUrl(payment.getReceiptUrl())
+                .vbankName(payment.getVbankName())
+                .vbankNumber(payment.getVbankNumber())
+                .vbankHolder(payment.getVbankHolder())
+                .vbankExpiresAt(payment.getVbankExpiresAt())
                 .paidAt(payment.getPaidAt())
                 .createdAt(payment.getCreatedAt())
                 .build();

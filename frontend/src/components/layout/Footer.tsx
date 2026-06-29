@@ -10,9 +10,6 @@ export default function Footer() {
             <h3 className="text-sm font-bold tracking-widest mb-4 text-[var(--text-primary)]">
               PanTrKa
             </h3>
-            <p className="text-xs text-[var(--text-dim)] leading-relaxed">
-              미니멀 의류 쇼핑몰
-            </p>
           </div>
 
           {/* 고객센터 */}
@@ -21,7 +18,7 @@ export default function Footer() {
               CUSTOMER SERVICE
             </h4>
             <ul className="space-y-2 text-xs text-[var(--text-dim)]">
-              <li>평일 10:00 - 18:00</li>
+              <li>평일 11:00 - 17:00</li>
               <li>점심 12:00 - 13:00</li>
               <li>주말 및 공휴일 휴무</li>
               <li>CS 문의는 이메일로만 접수됩니다</li>
@@ -35,9 +32,9 @@ export default function Footer() {
             </h4>
             <ul className="space-y-2 text-xs text-[var(--text-dim)]">
               <li>상호명: PanTrKa</li>
-              <li>대표: 홍길동</li>
-              <li>사업자등록번호: 123-45-67890</li>
-              <li>이메일: contact@pantrka.com</li>
+              <li>대표: 구소연, 황지민</li>
+              <li>사업자등록번호: 674-15-02803</li>
+              <li>이메일: pantrkagirl@gmail.com</li>
             </ul>
           </div>
 

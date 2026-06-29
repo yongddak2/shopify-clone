@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -17,6 +18,7 @@ public class MemberResponse {
     private String email;
     private String name;
     private String phone;
+    private LocalDate birthDate;
     private Role role;
     private LocalDateTime createdAt;
 
@@ -26,6 +28,7 @@ public class MemberResponse {
                 .email(member.getEmail())
                 .name(member.getName())
                 .phone(member.getPhone())
+                .birthDate(member.getBirthDate())
                 .role(member.getRole())
                 .createdAt(member.getCreatedAt())
                 .build();

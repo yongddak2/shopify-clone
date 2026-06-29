@@ -1,6 +1,16 @@
 import axios from "axios";
 import { useAuthStore } from "@/stores/authStore";
 
+declare module "axios" {
+  export interface AxiosRequestConfig {
+    skipAuth?: boolean;
+  }
+
+  export interface InternalAxiosRequestConfig {
+    skipAuth?: boolean;
+  }
+}
+
 function resolveApiBaseUrl(value: string | undefined): string {
   const configuredUrl = value?.trim();
 
@@ -38,7 +48,7 @@ const api = axios.create({
 // 요청 인터셉터: accessToken을 Authorization 헤더에 추가
 api.interceptors.request.use((config) => {
   const { accessToken } = useAuthStore.getState();
-  if (accessToken) {
+  if (accessToken && !config.skipAuth) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
   return config;
@@ -51,6 +61,10 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     const status = error.response?.status;
+    if (originalRequest?.skipAuth) {
+      return Promise.reject(error);
+    }
+
     if ((status === 401 || status === 403) && !originalRequest._retry) {
       originalRequest._retry = true;
 

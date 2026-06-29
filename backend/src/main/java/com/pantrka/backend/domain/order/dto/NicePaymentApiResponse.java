@@ -24,4 +24,17 @@ public class NicePaymentApiResponse {
     private BigDecimal amount;
     private BigDecimal balanceAmt;
     private String receiptUrl;
+    private Boolean issuedCashReceipt;
+    private VbankInfo vbank;
+
+    @Getter
+    @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class VbankInfo {
+        private String vbankCode;
+        private String vbankName;
+        private String vbankNumber;
+        private String vbankExpDate;
+        private String vbankHolder;
+    }
 }

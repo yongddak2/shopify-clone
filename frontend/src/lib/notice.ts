@@ -4,12 +4,14 @@ import type { ApiResponse, NoticeDetail, NoticeListItem, PageResponse } from "@/
 export async function getNotices(page = 0, size = 10) {
   const res = await api.get<ApiResponse<PageResponse<NoticeListItem>>>(
     "/api/notices",
-    { params: { page, size } }
+    { params: { page, size }, skipAuth: true }
   );
   return res.data;
 }
 
 export async function getNoticeDetail(id: number) {
-  const res = await api.get<ApiResponse<NoticeDetail>>(`/api/notices/${id}`);
+  const res = await api.get<ApiResponse<NoticeDetail>>(`/api/notices/${id}`, {
+    skipAuth: true,
+  });
   return res.data.data;
 }

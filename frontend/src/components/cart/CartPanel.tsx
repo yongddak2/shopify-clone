@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { getCart } from "@/lib/cart";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getCart, removeCartItem, updateCartQuantity } from "@/lib/cart";
 import { beginCheckout } from "@/lib/checkoutSession";
 import { useAuthStore } from "@/stores/authStore";
 import { useCartPanelStore } from "@/stores/cartPanelStore";
@@ -21,6 +21,7 @@ function unitPrice(item: CartItem) {
 
 export default function CartPanel() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { isLoggedIn } = useAuthStore();
   const { mode, close } = useCartPanelStore();
   const open = mode === "cart";
@@ -50,6 +51,22 @@ export default function CartPanel() {
   const goCart = () => {
     close();
     router.push("/cart");
+  };
+
+  const refreshCart = () => {
+    queryClient.invalidateQueries({ queryKey: ["cart"] });
+  };
+
+  const handleQuantityChange = async (item: CartItem, quantity: number) => {
+    const nextQuantity = Math.max(1, Math.min(quantity, item.stockQuantity || quantity));
+    if (nextQuantity === item.quantity) return;
+    await updateCartQuantity(item.id, nextQuantity);
+    refreshCart();
+  };
+
+  const handleRemove = async (cartItemId: number) => {
+    await removeCartItem(cartItemId);
+    refreshCart();
   };
 
   return (
@@ -93,12 +110,41 @@ export default function CartPanel() {
                   <p className="text-xs text-[var(--text-muted)] mt-1">
                     [옵션: {item.optionValue}]
                   </p>
-                  <p className="text-xs text-[var(--text-dim)] mt-1">
-                    수량 : {item.quantity}
-                  </p>
-                  <p className="text-sm text-[var(--text-primary)] mt-1">
-                    {formatPrice(unitPrice(item) * item.quantity)}원
-                  </p>
+                  <div className="mt-2 inline-flex items-center border border-[var(--border-color)]">
+                    <button
+                      type="button"
+                      onClick={() => handleQuantityChange(item, item.quantity - 1)}
+                      disabled={item.quantity <= 1}
+                      className="h-6 w-7 text-sm text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label="수량 감소"
+                    >
+                      -
+                    </button>
+                    <span className="h-6 min-w-8 px-2 text-center text-xs leading-6 text-[var(--text-primary)]">
+                      {item.quantity}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleQuantityChange(item, item.quantity + 1)}
+                      disabled={item.stockQuantity > 0 && item.quantity >= item.stockQuantity}
+                      className="h-6 w-7 text-sm text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label="수량 증가"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between gap-3">
+                    <p className="text-sm text-[var(--text-primary)]">
+                      {formatPrice(unitPrice(item) * item.quantity)}원
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(item.id)}
+                      className="shrink-0 text-xs font-bold tracking-wide text-[var(--header-pink-accent)] underline underline-offset-2 transition-opacity hover:opacity-70"
+                    >
+                      삭제
+                    </button>
+                  </div>
                 </div>
               </div>
             ))

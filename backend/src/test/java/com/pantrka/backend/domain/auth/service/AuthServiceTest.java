@@ -1,6 +1,8 @@
 package com.pantrka.backend.domain.auth.service;
 
 import com.pantrka.backend.domain.auth.dto.LoginRequest;
+import com.pantrka.backend.domain.auth.dto.OAuthLoginRequest;
+import com.pantrka.backend.domain.auth.dto.OAuthUserInfo;
 import com.pantrka.backend.domain.auth.dto.SignupRequest;
 import com.pantrka.backend.domain.auth.entity.Member;
 import com.pantrka.backend.domain.auth.entity.Provider;
@@ -59,6 +61,9 @@ class AuthServiceTest {
     @Mock
     private MemberCouponRepository memberCouponRepository;
 
+    @Mock
+    private OAuthClient oAuthClient;
+
     @InjectMocks
     private AuthService authService;
 
@@ -99,7 +104,7 @@ class AuthServiceTest {
         // given
         SignupRequest request = createSignupRequest();
 
-        given(memberRepository.existsByEmail("test@test.com")).willReturn(false);
+        given(memberRepository.findByEmail("test@test.com")).willReturn(Optional.empty());
         given(passwordEncoder.encode("Password1!")).willReturn("encodedPassword");
         given(memberRepository.save(any(Member.class))).willAnswer(invocation -> {
             Member saved = invocation.getArgument(0);
@@ -123,13 +128,64 @@ class AuthServiceTest {
     void 중복_이메일_회원가입_예외() {
         // given
         SignupRequest request = createSignupRequest();
-        given(memberRepository.existsByEmail("test@test.com")).willReturn(true);
+        given(memberRepository.findByEmail("test@test.com")).willReturn(Optional.of(member));
 
         // when & then
         assertThatThrownBy(() -> authService.signup(request))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.DUPLICATE_EMAIL);
+    }
+
+    @Test
+    @DisplayName("탈퇴_회원_재가입_성공")
+    void 탈퇴_회원_재가입_성공() {
+        // given
+        SignupRequest request = createSignupRequest();
+        member.withdraw();
+
+        given(memberRepository.findByEmail("test@test.com")).willReturn(Optional.of(member));
+        given(passwordEncoder.encode("Password1!")).willReturn("newEncodedPassword");
+        given(memberRepository.save(member)).willReturn(member);
+
+        // when
+        var response = authService.signup(request);
+
+        // then
+        assertThat(response.getEmail()).isEqualTo("test@test.com");
+        assertThat(member.getDeletedAt()).isNull();
+        assertThat(member.getPassword()).isEqualTo("newEncodedPassword");
+        assertThat(member.getProvider()).isEqualTo(Provider.LOCAL);
+        verify(memberRepository).save(member);
+    }
+
+    @Test
+    @DisplayName("탈퇴_회원_소셜_재가입_성공")
+    void 탈퇴_회원_소셜_재가입_성공() {
+        // given
+        OAuthLoginRequest request = new OAuthLoginRequest();
+        OAuthUserInfo userInfo = new OAuthUserInfo("naver-provider-id", "test@test.com", "네이버");
+        member.withdraw();
+
+        given(oAuthClient.fetchUserInfo(eq(Provider.NAVER), eq(request))).willReturn(userInfo);
+        given(memberRepository.findByEmailAndDeletedAtIsNull("test@test.com")).willReturn(Optional.empty());
+        given(memberRepository.findByEmail("test@test.com")).willReturn(Optional.of(member));
+        given(memberRepository.save(member)).willReturn(member);
+        given(jwtProvider.generateAccessToken(member)).willReturn("access-token");
+        given(jwtProvider.generateRefreshToken(member)).willReturn("refresh-token");
+        given(jwtProperties.getAccessTokenExpiry()).willReturn(3600000L);
+        given(jwtProperties.getRefreshTokenExpiry()).willReturn(604800000L);
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+
+        // when
+        var response = authService.oauthLogin(Provider.NAVER, request);
+
+        // then
+        assertThat(response.getAccessToken()).isEqualTo("access-token");
+        assertThat(member.getDeletedAt()).isNull();
+        assertThat(member.getProvider()).isEqualTo(Provider.NAVER);
+        assertThat(member.getProviderId()).isEqualTo("naver-provider-id");
+        verify(memberRepository).save(member);
     }
 
     @Test

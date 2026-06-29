@@ -17,6 +17,11 @@ function PaymentSuccessContent() {
   const orderId = searchParams.get("orderId");
   const orderNumber = searchParams.get("orderNumber");
   const amount = Number(searchParams.get("amount"));
+  const pending = searchParams.get("status") === "READY";
+  const vbankName = searchParams.get("vbankName");
+  const vbankNumber = searchParams.get("vbankNumber");
+  const vbankHolder = searchParams.get("vbankHolder");
+  const vbankExpiresAt = searchParams.get("vbankExpiresAt");
   const valid = Boolean(orderId && orderNumber && Number.isFinite(amount));
 
   useEffect(() => {
@@ -46,7 +51,7 @@ function PaymentSuccessContent() {
         </svg>
       </div>
       <h1 className="text-xl font-light tracking-wider text-[var(--text-primary)] mb-6">
-        주문이 완료되었습니다!
+        {pending ? "가상계좌가 발급되었습니다" : "주문이 완료되었습니다!"}
       </h1>
       <div className="space-y-2 mb-10">
         <p className="text-sm text-[var(--text-muted)]">
@@ -55,6 +60,26 @@ function PaymentSuccessContent() {
         <p className="text-sm text-[var(--text-muted)]">
           결제 금액: <span className="text-[var(--text-secondary)]">{formatPrice(amount)}원</span>
         </p>
+        {pending && vbankNumber && (
+          <div className="mt-6 border-y border-[var(--border-color)] py-5 text-left text-sm space-y-2">
+            <p className="flex justify-between gap-4">
+              <span className="text-[var(--text-muted)]">입금 계좌</span>
+              <span className="text-[var(--text-secondary)] text-right">{vbankName} {vbankNumber}</span>
+            </p>
+            {vbankHolder && (
+              <p className="flex justify-between gap-4">
+                <span className="text-[var(--text-muted)]">예금주</span>
+                <span className="text-[var(--text-secondary)]">{vbankHolder}</span>
+              </p>
+            )}
+            {vbankExpiresAt && (
+              <p className="flex justify-between gap-4">
+                <span className="text-[var(--text-muted)]">입금 기한</span>
+                <span className="text-[var(--text-secondary)] text-right">{new Date(vbankExpiresAt).toLocaleString("ko-KR")}</span>
+              </p>
+            )}
+          </div>
+        )}
       </div>
       <div className="flex gap-3">
         <Link href="/" className="flex-1 py-3 text-sm border border-[var(--border-color)] text-[var(--text-muted)]">

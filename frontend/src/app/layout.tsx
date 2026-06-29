@@ -8,7 +8,7 @@ import CartPanel from "@/components/cart/CartPanel";
 
 export const metadata: Metadata = {
   title: "PanTrKa",
-  description: "미니멀 의류 쇼핑몰",
+  description: "PanTrKa",
 };
 
 export default function RootLayout({

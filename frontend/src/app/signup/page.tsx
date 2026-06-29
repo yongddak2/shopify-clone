@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Check } from "lucide-react";
 import { signup } from "@/lib/auth";
@@ -17,22 +17,31 @@ function formatPhone(value: string) {
   return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
 }
 
+function pad2(value: string) {
+  return value.padStart(2, "0");
+}
+
 interface FormErrors {
   email?: string;
   password?: string;
   passwordConfirm?: string;
   name?: string;
   phone?: string;
+  birthDate?: string;
 }
 
-export default function SignupPage() {
+function SignupContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [form, setForm] = useState({
     email: "",
     password: "",
     passwordConfirm: "",
     name: "",
     phone: "",
+    birthYear: "",
+    birthMonth: "",
+    birthDay: "",
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [serverError, setServerError] = useState("");
@@ -48,6 +57,12 @@ export default function SignupPage() {
   const allChecked =
     agreements.terms && agreements.privacy && agreements.marketing;
   const requiredChecked = agreements.terms && agreements.privacy;
+  const redirectTo = (() => {
+    const value = searchParams.get("redirect");
+    return value && value.startsWith("/") && !value.startsWith("//") ? value : "/";
+  })();
+  const redirectQuery =
+    redirectTo === "/" ? "" : `?redirect=${encodeURIComponent(redirectTo)}`;
 
   const toggleAgreement = (key: AgreementKey) => {
     setAgreements((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -68,6 +83,36 @@ export default function SignupPage() {
     }
     setErrors((prev) => ({ ...prev, [field]: undefined }));
     setServerError("");
+  };
+
+  const updateBirthField = (
+    field: "birthYear" | "birthMonth" | "birthDay",
+    value: string
+  ) => {
+    const normalizedValue =
+      field === "birthYear" ? value.replace(/\D/g, "").slice(0, 4) : value;
+    setForm((prev) => {
+      const next = { ...prev, [field]: normalizedValue };
+      const year = Number(next.birthYear);
+      const month = Number(next.birthMonth);
+      const day = Number(next.birthDay);
+
+      if (year && month && day) {
+        const maxDay = new Date(year, month, 0).getDate();
+        if (day > maxDay) {
+          next.birthDay = String(maxDay);
+        }
+      }
+
+      return next;
+    });
+    setErrors((prev) => ({ ...prev, birthDate: undefined }));
+    setServerError("");
+  };
+
+  const getBirthDate = () => {
+    if (!form.birthYear || !form.birthMonth || !form.birthDay) return "";
+    return `${form.birthYear}-${pad2(form.birthMonth)}-${pad2(form.birthDay)}`;
   };
 
   const validate = (): boolean => {
@@ -102,6 +147,23 @@ export default function SignupPage() {
       newErrors.phone = "전화번호를 입력해주세요";
     }
 
+    const birthDate = getBirthDate();
+    if (!birthDate) {
+      newErrors.birthDate = "생일을 입력해주세요";
+    } else if (Number(form.birthYear) < 1900) {
+      newErrors.birthDate = "올바른 연도를 입력해주세요";
+    } else {
+      const today = new Date();
+      const todayStart = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate()
+      );
+      if (new Date(`${birthDate}T00:00:00`) >= todayStart) {
+        newErrors.birthDate = "생일은 과거 날짜여야 합니다";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -119,9 +181,15 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      await signup(form.email, form.password, form.name, form.phone.replace(/\D/g, ""));
+      await signup(
+        form.email,
+        form.password,
+        form.name,
+        form.phone.replace(/\D/g, ""),
+        getBirthDate()
+      );
       alert("회원가입이 완료되었습니다.");
-      router.push("/login");
+      router.push(`/login${redirectQuery}`);
     } catch (err: unknown) {
       if (
         err &&
@@ -145,7 +213,7 @@ export default function SignupPage() {
   const handleGoogleSignup = () => {
     setServerError("");
     try {
-      startSocialLogin("google");
+      startSocialLogin("google", redirectTo);
     } catch (err) {
       setServerError(
         err instanceof Error ? err.message : "구글 로그인에 실패했습니다."
@@ -181,6 +249,17 @@ export default function SignupPage() {
     },
   ] as const;
 
+  const birthMonths = Array.from({ length: 12 }, (_, index) =>
+    String(index + 1)
+  );
+  const birthDayCount =
+    form.birthYear && form.birthMonth
+      ? new Date(Number(form.birthYear), Number(form.birthMonth), 0).getDate()
+      : 31;
+  const birthDays = Array.from({ length: birthDayCount }, (_, index) =>
+    String(index + 1)
+  );
+
   return (
     <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-6 py-16">
       <div className="w-full max-w-md">
@@ -209,6 +288,51 @@ export default function SignupPage() {
               )}
             </div>
           ))}
+
+          <div>
+            <label className="block text-xs tracking-wider text-[var(--text-muted)] mb-2">
+              생일
+            </label>
+            <div className="grid grid-cols-[1.25fr_1fr_1fr] gap-2">
+              <input
+                type="text"
+                value={form.birthYear}
+                onChange={(e) => updateBirthField("birthYear", e.target.value)}
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="년도"
+                aria-label="출생 연도"
+                className="w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors"
+              />
+              <select
+                value={form.birthMonth}
+                onChange={(e) => updateBirthField("birthMonth", e.target.value)}
+                className="w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors"
+              >
+                <option value="">월</option>
+                {birthMonths.map((month) => (
+                  <option key={month} value={month}>
+                    {month}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={form.birthDay}
+                onChange={(e) => updateBirthField("birthDay", e.target.value)}
+                className="w-full border-b border-[var(--border-color)] bg-transparent py-2 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--text-primary)] transition-colors"
+              >
+                <option value="">일</option>
+                {birthDays.map((day) => (
+                  <option key={day} value={day}>
+                    {day}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {errors.birthDate && (
+              <p className="text-red-400 text-xs mt-1">{errors.birthDate}</p>
+            )}
+          </div>
 
           {/* 약관 동의 섹션 */}
           <div className="pt-4 space-y-3">
@@ -339,5 +463,21 @@ export default function SignupPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-6">
+          <p className="text-sm tracking-wider text-[var(--text-muted)]">
+            회원가입 화면을 불러오는 중입니다...
+          </p>
+        </div>
+      }
+    >
+      <SignupContent />
+    </Suspense>
   );
 }

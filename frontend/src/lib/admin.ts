@@ -68,7 +68,9 @@ export async function deleteProductImage(imageUrl: string): Promise<void> {
 
 // 카테고리 (공개 API)
 export async function getCategories() {
-  const res = await api.get<ApiResponse<Category[]>>("/api/categories");
+  const res = await api.get<ApiResponse<Category[]>>("/api/categories", {
+    skipAuth: true,
+  });
   return res.data;
 }
 
@@ -381,7 +383,9 @@ export async function updateInstagramSection(
 
 // 공개 배너 조회
 export async function getPublicBanners() {
-  const res = await api.get<ApiResponse<Banner[]>>("/api/banners");
+  const res = await api.get<ApiResponse<Banner[]>>("/api/banners", {
+    skipAuth: true,
+  });
   return res.data;
 }
 
@@ -400,7 +404,10 @@ export async function updateMainPageConfig(subText: string | null) {
 
 // 메인 페이지 설정 (공개)
 export async function getPublicMainPageConfig() {
-  const res = await api.get<ApiResponse<MainPageConfig>>("/api/main-page-config");
+  const res = await api.get<ApiResponse<MainPageConfig>>(
+    "/api/main-page-config",
+    { skipAuth: true }
+  );
   return res.data;
 }
 
@@ -450,7 +457,10 @@ export async function replaceNewArrivals(productIds: number[]) {
 
 // 메인 페이지 NEW ARRIVALS (공개)
 export async function getPublicNewArrivals() {
-  const res = await api.get<ApiResponse<Product[]>>("/api/main-page/new-arrivals");
+  const res = await api.get<ApiResponse<Product[]>>(
+    "/api/main-page/new-arrivals",
+    { skipAuth: true }
+  );
   return res.data;
 }
 

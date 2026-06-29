@@ -12,6 +12,9 @@
         -Server
     }
 
+    @insecure header X-Forwarded-Proto http
+    redir @insecure https://{host}{uri} permanent
+
     @htmlPages {
         not path /api/* /_next/static/* /health
     }

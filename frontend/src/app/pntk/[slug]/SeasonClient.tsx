@@ -4,20 +4,32 @@ import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { getPublicSeasonList, getSeasonBySlug } from "@/lib/season";
+import type { ApiResponse, SeasonDetail, SeasonSummary } from "@/types";
 import PhotoLightbox from "./PhotoLightbox";
 
-export default function SeasonClient({ slug }: { slug: string }) {
+export default function SeasonClient({
+  slug,
+  initialSeason,
+  initialSeasons,
+}: {
+  slug: string;
+  initialSeason?: ApiResponse<SeasonDetail>;
+  initialSeasons?: ApiResponse<SeasonSummary[]>;
+}) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const { data: allSeasons = [] } = useQuery({
     queryKey: ["pntk-seasons"],
     queryFn: getPublicSeasonList,
+    initialData: initialSeasons?.data,
   });
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["season", slug],
     queryFn: () => getSeasonBySlug(slug),
     retry: false,
+    initialData:
+      initialSeason?.data?.slug === slug ? initialSeason.data : undefined,
   });
 
   if (isLoading) {

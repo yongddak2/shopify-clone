@@ -9,7 +9,7 @@ export async function getProductReviews(
 ) {
   const res = await api.get<ApiResponse<ReviewPage>>(
     `/api/products/${productId}/reviews`,
-    { params: { page, size, sort } }
+    { params: { page, size, sort }, skipAuth: true }
   );
   return res.data;
 }

@@ -43,6 +43,8 @@ declare global {
         buyerName?: string;
         buyerTel?: string;
         returnCharSet?: string;
+        vbankHolder?: string;
+        vbankValidHours?: number;
         fnError?: (result: { errorMsg?: string }) => void;
       }) => void;
     };
@@ -114,6 +116,14 @@ const MEMO_OPTIONS = [
   { value: "배송 전에 연락 주세요", label: "배송 전에 연락 주세요" },
   { value: "__custom__", label: "직접입력" },
 ];
+
+const PAYMENT_METHODS = [
+  { value: "cardAndEasyPay", label: "신용카드·간편결제" },
+  { value: "bank", label: "계좌이체" },
+  { value: "vbank", label: "가상계좌" },
+] as const;
+
+type PaymentMethod = (typeof PAYMENT_METHODS)[number]["value"];
 
 // ─── 배송지 추가/수정 모달 ───
 function AddressFormModal({
@@ -554,6 +564,7 @@ export default function OrderPage() {
   const [pendingCheckout, setPendingCheckout] = useState<PendingCheckout | null>(null);
   const [checkoutRestored, setCheckoutRestored] = useState(false);
   const [selectedCouponId, setSelectedCouponId] = useState<number | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cardAndEasyPay");
 
   // 결제 완료 전에는 선택 상품과 생성된 PENDING 주문을 재시도할 수 있게 유지한다.
   useEffect(() => {
@@ -675,7 +686,7 @@ export default function OrderPage() {
 
       window.AUTHNICE.requestPay({
         clientId: NICEPAY_CLIENT_KEY,
-        method: "card",
+        method: paymentMethod,
         orderId: checkout.orderNumber,
         amount: checkout.finalAmount,
         goodsName: checkout.orderName,
@@ -683,7 +694,14 @@ export default function OrderPage() {
         buyerName: checkout.customerName,
         buyerTel: form.phone.replace(/\D/g, ""),
         returnCharSet: "utf-8",
+        ...(paymentMethod === "vbank"
+          ? { vbankHolder: "팬터카", vbankValidHours: 72 }
+          : {}),
         fnError: (result) => {
+          if (result.errorMsg?.includes("[P091]")) {
+            setError("");
+            return;
+          }
           setError(result.errorMsg || "결제창을 열지 못했습니다.");
         },
       });
@@ -967,6 +985,34 @@ export default function OrderPage() {
                 -{formatPrice(couponDiscount)}원 할인 적용
               </p>
             )}
+          </section>
+
+          <section className="mb-10">
+            <h2 className="text-xs tracking-widest text-[var(--text-muted)] mb-4">
+              결제 수단
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 border border-[var(--border-color)]">
+              {PAYMENT_METHODS.map((method) => (
+                <label
+                  key={method.value}
+                  className={`flex min-h-12 cursor-pointer items-center gap-2 px-4 py-3 text-sm transition-colors sm:border-r sm:last:border-r-0 border-[var(--border-color)] ${
+                    paymentMethod === method.value
+                      ? "bg-[var(--text-primary)] text-[var(--page-bg)]"
+                      : "text-[var(--text-secondary)] hover:bg-[var(--section-bg)]"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value={method.value}
+                    checked={paymentMethod === method.value}
+                    onChange={() => setPaymentMethod(method.value)}
+                    className="accent-current"
+                  />
+                  <span>{method.label}</span>
+                </label>
+              ))}
+            </div>
           </section>
 
           {/* 결제 금액 요약 */}

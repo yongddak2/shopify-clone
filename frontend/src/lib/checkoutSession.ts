@@ -2,6 +2,7 @@ import type { CartItem } from "@/types";
 
 const CART_ITEM_IDS_KEY = "orderCartItemIds";
 const PENDING_CHECKOUT_KEY = "pendingCheckout";
+const PENDING_BUY_NOW_KEY = "pendingBuyNow";
 
 export interface PendingCheckout {
   orderId: number;
@@ -14,9 +15,30 @@ export interface PendingCheckout {
   memberCouponId: number | null;
 }
 
+export interface PendingBuyNow {
+  optionValueId: number;
+}
+
 export function beginCheckout(cartItemIds: number[]) {
   sessionStorage.setItem(CART_ITEM_IDS_KEY, JSON.stringify(cartItemIds));
   sessionStorage.removeItem(PENDING_CHECKOUT_KEY);
+}
+
+export function savePendingBuyNow(checkout: PendingBuyNow) {
+  sessionStorage.setItem(PENDING_BUY_NOW_KEY, JSON.stringify(checkout));
+}
+
+export function consumePendingBuyNow(): PendingBuyNow | null {
+  try {
+    const parsed: unknown = JSON.parse(sessionStorage.getItem(PENDING_BUY_NOW_KEY) ?? "null");
+    sessionStorage.removeItem(PENDING_BUY_NOW_KEY);
+    if (!parsed || typeof parsed !== "object") return null;
+    const value = parsed as Partial<PendingBuyNow>;
+    return typeof value.optionValueId === "number" ? { optionValueId: value.optionValueId } : null;
+  } catch {
+    sessionStorage.removeItem(PENDING_BUY_NOW_KEY);
+    return null;
+  }
 }
 
 export function readCheckoutCartItemIds(): number[] | null {
@@ -59,4 +81,5 @@ export function readPendingCheckout(): PendingCheckout | null {
 export function clearCheckoutSession() {
   sessionStorage.removeItem(CART_ITEM_IDS_KEY);
   sessionStorage.removeItem(PENDING_CHECKOUT_KEY);
+  sessionStorage.removeItem(PENDING_BUY_NOW_KEY);
 }

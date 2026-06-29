@@ -10,6 +10,10 @@ function formatDate(s: string) {
   return new Date(s).toLocaleDateString("ko-KR");
 }
 
+function formatOptionalDate(s: string | null) {
+  return s ? formatDate(s) : "—";
+}
+
 function AdminUsersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -78,13 +82,14 @@ function AdminUsersContent() {
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[750px]">
+          <table className="w-full text-sm min-w-[840px]">
             <thead>
               <tr className="border-b border-[var(--border-color)] text-[var(--text-muted)] text-xs tracking-wider">
                 <th className="py-3 px-3 text-left">ID</th>
                 <th className="py-3 px-3 text-left">이메일</th>
                 <th className="py-3 px-3 text-left">이름</th>
                 <th className="py-3 px-3 text-left">전화번호</th>
+                <th className="py-3 px-3 text-left">생일</th>
                 <th className="py-3 px-3 text-center">가입경로</th>
                 <th className="py-3 px-3 text-center">권한</th>
                 <th className="py-3 px-3 text-left">가입일</th>
@@ -102,6 +107,7 @@ function AdminUsersContent() {
                   <td className="py-3 px-3 text-[var(--text-secondary)]">{u.email}</td>
                   <td className="py-3 px-3 text-[var(--text-secondary)]">{u.name}</td>
                   <td className="py-3 px-3 text-[var(--text-muted)]">{u.phone}</td>
+                  <td className="py-3 px-3 text-[var(--text-muted)]">{formatOptionalDate(u.birthDate)}</td>
                   <td className="py-3 px-3 text-center text-[var(--text-muted)]">{u.provider}</td>
                   <td className="py-3 px-3 text-center">
                     <span

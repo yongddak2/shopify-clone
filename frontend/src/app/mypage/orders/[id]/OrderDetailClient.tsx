@@ -207,6 +207,45 @@ export default function OrderDetailClient({ id }: { id: string }) {
           PAYMENT
         </h3>
         <div className="space-y-2">
+          {order.payment?.method === "VIRTUAL" && order.payment.vbankNumber && (
+            <div className="mb-6 border-b border-[var(--border-color)] pb-5 text-sm space-y-2">
+              <div className="flex justify-between gap-4">
+                <span className="text-[var(--text-muted)]">입금 계좌</span>
+                <span className="text-[var(--text-secondary)] text-right">
+                  {order.payment.vbankName} {order.payment.vbankNumber}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-[var(--text-muted)]">예금주</span>
+                <span className="text-[var(--text-secondary)]">{order.payment.vbankHolder}</span>
+              </div>
+              {order.payment.vbankExpiresAt && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-[var(--text-muted)]">입금 기한</span>
+                  <span className="text-[var(--text-secondary)] text-right">
+                    {formatDate(order.payment.vbankExpiresAt)}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+          {order.payment?.cashReceiptIssued && (
+            <div className="flex justify-between text-sm">
+              <span className="text-[var(--text-muted)]">현금영수증</span>
+              {order.payment.receiptUrl ? (
+                <a
+                  href={order.payment.receiptUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[var(--text-secondary)] underline"
+                >
+                  발급 내역 보기
+                </a>
+              ) : (
+                <span className="text-[var(--text-secondary)]">발급 완료</span>
+              )}
+            </div>
+          )}
           <div className="flex justify-between text-sm">
             <span className="text-[var(--text-muted)]">총 상품 금액</span>
             <span className="text-[var(--text-secondary)]">

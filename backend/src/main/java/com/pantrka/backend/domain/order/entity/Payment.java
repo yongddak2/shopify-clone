@@ -44,6 +44,19 @@ public class Payment {
 
     private LocalDateTime cancelledAt;
 
+    private Boolean cashReceiptIssued;
+
+    @Column(length = 500)
+    private String receiptUrl;
+
+    private String vbankName;
+
+    private String vbankNumber;
+
+    private String vbankHolder;
+
+    private String vbankExpiresAt;
+
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;
@@ -63,6 +76,17 @@ public class Payment {
         this.method = method;
         this.status = PaymentStatus.DONE;
         this.paidAt = LocalDateTime.now();
+    }
+
+    public void recordDetails(Boolean cashReceiptIssued, String receiptUrl,
+                              String vbankName, String vbankNumber,
+                              String vbankHolder, String vbankExpiresAt) {
+        this.cashReceiptIssued = Boolean.TRUE.equals(cashReceiptIssued);
+        this.receiptUrl = receiptUrl;
+        this.vbankName = vbankName;
+        this.vbankNumber = vbankNumber;
+        this.vbankHolder = vbankHolder;
+        this.vbankExpiresAt = vbankExpiresAt;
     }
 
     public void cancelPayment() {

@@ -16,6 +16,7 @@ export interface User {
   email: string;
   name: string;
   phone: string;
+  birthDate: string | null;
   role: string;
   passwordChangedAt: string | null;
 }
@@ -122,6 +123,22 @@ export interface OrderResponse {
   orderItems: OrderItemResponse[];
   returnRequested: boolean;
   exchangeRequested: boolean;
+  payment: PaymentResponse | null;
+}
+
+export interface PaymentResponse {
+  id: number;
+  paymentKey: string;
+  method: "CARD" | "TRANSFER" | "VIRTUAL";
+  amount: number;
+  status: "READY" | "DONE" | "CANCELLED" | "FAILED";
+  cashReceiptIssued: boolean;
+  receiptUrl: string | null;
+  vbankName: string | null;
+  vbankNumber: string | null;
+  vbankHolder: string | null;
+  vbankExpiresAt: string | null;
+  paidAt: string | null;
 }
 
 export interface OrderItemResponse {
@@ -315,6 +332,7 @@ export interface AdminUser {
   email: string;
   name: string;
   phone: string;
+  birthDate: string | null;
   provider: string;
   role: string;
   createdAt: string;
@@ -345,6 +363,7 @@ export interface AdminMemberDetail {
   email: string;
   name: string;
   phone: string;
+  birthDate: string | null;
   role: string;
   provider: string;
   createdAt: string;

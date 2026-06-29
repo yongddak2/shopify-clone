@@ -42,7 +42,8 @@ public class AuthService {
 
     @Transactional
     public MemberResponse signup(SignupRequest request) {
-        if (memberRepository.existsByEmail(request.getEmail())) {
+        Member existingMember = memberRepository.findByEmail(request.getEmail()).orElse(null);
+        if (existingMember != null && existingMember.getDeletedAt() == null) {
             throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
 
@@ -50,14 +51,27 @@ public class AuthService {
             throw new BusinessException(ErrorCode.PASSWORD_INVALID_FORMAT);
         }
 
-        Member member = Member.builder()
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .name(request.getName())
-                .phone(request.getPhone())
-                .role(Role.USER)
-                .provider(Provider.LOCAL)
-                .build();
+        String encodedPassword = passwordEncoder.encode(request.getPassword());
+        Member member;
+        if (existingMember != null) {
+            existingMember.reactivateLocal(
+                    encodedPassword,
+                    request.getName(),
+                    request.getPhone(),
+                    request.getBirthDate()
+            );
+            member = existingMember;
+        } else {
+            member = Member.builder()
+                    .email(request.getEmail())
+                    .password(encodedPassword)
+                    .name(request.getName())
+                    .phone(request.getPhone())
+                    .birthDate(request.getBirthDate())
+                    .role(Role.USER)
+                    .provider(Provider.LOCAL)
+                    .build();
+        }
 
         memberRepository.save(member);
         issueWelcomeCouponSafely(member);
@@ -104,10 +118,23 @@ public class AuthService {
     public TokenResponse oauthLogin(Provider provider, OAuthLoginRequest request) {
         OAuthUserInfo userInfo = oAuthClient.fetchUserInfo(provider, request);
 
-        Member member = memberRepository.findByEmailAndDeletedAtIsNull(userInfo.email())
-                .orElseGet(() -> registerOAuthMember(provider, userInfo));
+        Member member = resolveOAuthMember(provider, userInfo);
 
         return generateAndStoreTokens(member);
+    }
+
+    private Member resolveOAuthMember(Provider provider, OAuthUserInfo userInfo) {
+        return memberRepository.findByEmailAndDeletedAtIsNull(userInfo.email())
+                .orElseGet(() -> {
+                    Member withdrawnMember = memberRepository.findByEmail(userInfo.email()).orElse(null);
+                    if (withdrawnMember != null) {
+                        withdrawnMember.reactivateOAuth(provider, userInfo.providerId(), userInfo.name());
+                        memberRepository.save(withdrawnMember);
+                        issueWelcomeCouponSafely(withdrawnMember);
+                        return withdrawnMember;
+                    }
+                    return registerOAuthMember(provider, userInfo);
+                });
     }
 
     private Member registerOAuthMember(Provider provider, OAuthUserInfo userInfo) {

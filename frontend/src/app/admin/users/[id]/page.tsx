@@ -212,6 +212,7 @@ export default function AdminUserDetailPage({
             <dl className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
               <Row label="이메일" value={data.email} />
               <Row label="전화번호" value={data.phone || "—"} />
+              <Row label="생일" value={formatDate(data.birthDate)} />
               <Row label="가입경로" value={data.provider} />
               <Row label="가입일" value={formatDate(data.createdAt)} />
               <Row label="비밀번호 변경" value={formatDate(data.passwordChangedAt)} />

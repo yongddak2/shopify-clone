@@ -17,20 +17,23 @@ interface ProductParams {
 export async function getProducts(params: ProductParams = {}) {
   const res = await api.get<ApiResponse<PageResponse<Product>>>(
     "/api/products",
-    { params }
+    { params, skipAuth: true }
   );
   return res.data;
 }
 
 export async function getProductDetail(id: number) {
   const res = await api.get<ApiResponse<ProductDetail>>(
-    `/api/products/${id}`
+    `/api/products/${id}`,
+    { skipAuth: true }
   );
   return res.data;
 }
 
 export async function getCategories() {
-  const res = await api.get<ApiResponse<Category[]>>("/api/categories");
+  const res = await api.get<ApiResponse<Category[]>>("/api/categories", {
+    skipAuth: true,
+  });
   return res.data;
 }
 
@@ -47,7 +50,7 @@ interface SearchParams {
 export async function searchProducts(params: SearchParams) {
   const res = await api.get<ApiResponse<PageResponse<Product>>>(
     "/api/products/search",
-    { params }
+    { params, skipAuth: true }
   );
   return res.data;
 }

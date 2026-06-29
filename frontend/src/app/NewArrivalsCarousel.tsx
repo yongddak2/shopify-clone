@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Product } from "@/types";
 
@@ -203,29 +202,37 @@ export function ProductCard({
     : product.basePrice;
 
   return (
-    <Link href={`/products/${product.id}`} className="group block">
+    <div className="group">
       <div
         data-thumb
         className="relative aspect-[3/4] bg-[var(--card-bg)] mb-4 overflow-hidden"
       >
-        {product.thumbnailUrl ? (
-          <img
-            src={product.thumbnailUrl}
-            alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-        ) : (
-          <div className="w-full h-full bg-[var(--section-bg)] group-hover:scale-105 transition-transform duration-500" />
-        )}
-        {isSoldOut && (
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-            <span className="text-white text-xs tracking-[0.2em]">SOLD OUT</span>
-          </div>
-        )}
-        <div className="absolute bottom-2 right-2 flex flex-col gap-1.5">
+        <a
+          href={`/products/${product.id}`}
+          className="block h-full"
+          aria-label={`${product.name} 상세 보기`}
+        >
+          {product.thumbnailUrl ? (
+            <img
+              src={product.thumbnailUrl}
+              alt={product.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <div className="w-full h-full bg-[var(--section-bg)] group-hover:scale-105 transition-transform duration-500" />
+          )}
+          {isSoldOut && (
+            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+              <span className="text-white text-xs tracking-[0.2em]">SOLD OUT</span>
+            </div>
+          )}
+        </a>
+        <div className="absolute bottom-2 right-2 z-10 flex flex-col gap-1.5">
           <button
+            type="button"
             onClick={(e) => onWishlistClick(e, product.id)}
             className="w-8 h-8 flex items-center justify-center transition-transform hover:scale-110 active:scale-90"
+            aria-label={`${product.name} 찜하기`}
           >
             <Heart
               className={`w-7 h-7 ${
@@ -238,20 +245,22 @@ export function ProductCard({
           </button>
         </div>
       </div>
-      <p className="text-sm text-[var(--text-secondary)] mb-1">{product.name}</p>
-      <div className="flex items-center gap-2">
-        {hasDiscount && (
-          <span className="text-sm text-[var(--text-dim)] line-through">
-            {formatPrice(product.basePrice)}원
+      <a href={`/products/${product.id}`} className="block">
+        <p className="text-sm text-[var(--text-secondary)] mb-1">{product.name}</p>
+        <div className="flex items-center gap-2">
+          {hasDiscount && (
+            <span className="text-sm text-[var(--text-dim)] line-through">
+              {formatPrice(product.basePrice)}원
+            </span>
+          )}
+          <span className="text-sm text-[var(--text-secondary)]">
+            {formatPrice(finalPrice)}원
           </span>
-        )}
-        <span className="text-sm text-[var(--text-secondary)]">
-          {formatPrice(finalPrice)}원
-        </span>
-        {hasDiscount && (
-          <span className="text-xs text-red-400">{product.discountRate}%</span>
-        )}
-      </div>
-    </Link>
+          {hasDiscount && (
+            <span className="text-xs text-red-400">{product.discountRate}%</span>
+          )}
+        </div>
+      </a>
+    </div>
   );
 }

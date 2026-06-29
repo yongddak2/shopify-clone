@@ -286,19 +286,19 @@ export default function PrivacyPage() {
             <div className="bg-[var(--card-bg)] border border-[var(--border-color)] p-4 text-xs space-y-1">
               <p>
                 <span className="text-[var(--text-muted)]">성명:</span>{" "}
-                [대표자명]
+                구소연, 황지민
               </p>
               <p>
                 <span className="text-[var(--text-muted)]">직위:</span>{" "}
-                [직위]
+                공동대표
               </p>
               <p>
                 <span className="text-[var(--text-muted)]">이메일:</span>{" "}
-                [이메일]
+                pantrkagirl@gmail.com
               </p>
               <p>
                 <span className="text-[var(--text-muted)]">전화:</span>{" "}
-                [전화번호]
+                010-9966-9784, 010-9504-9934
               </p>
             </div>
             <p className="mt-3 text-[var(--text-dim)]">
@@ -323,7 +323,7 @@ export default function PrivacyPage() {
               8. 고지 의무
             </h2>
             <p>
-              현 개인정보처리방침은 [시행일자]부터 적용됩니다. 이전의
+              현 개인정보처리방침은 2026년 6월 29일부터 적용됩니다. 이전의
               개인정보처리방침은 본 방침으로 대체됩니다. 개인정보처리방침 내용
               추가, 삭제 및 수정이 있을 경우에는 시행일 최소 7일 전에 서비스
               공지사항을 통해 고지합니다.
@@ -333,12 +333,11 @@ export default function PrivacyPage() {
           {/* 사업자 정보 */}
           <section className="border-t border-[var(--border-color)] pt-8">
             <div className="text-xs text-[var(--text-dim)] space-y-1">
-              <p>상호: [서비스명]</p>
-              <p>대표자: [대표자명]</p>
-              <p>사업자등록번호: [사업자등록번호]</p>
-              <p>주소: [주소]</p>
-              <p>이메일: [이메일]</p>
-              <p>전화: [전화번호]</p>
+              <p>상호: 팬터카</p>
+              <p>대표자: 구소연, 황지민</p>
+              <p>사업자등록번호: 674-15-02803</p>
+              <p>주소: 서울특별시 마포구 새터산길 1-12 201호</p>
+              <p>이메일: pantrkagirl@gmail.com</p>
             </div>
           </section>
         </div>

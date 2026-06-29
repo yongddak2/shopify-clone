@@ -2,9 +2,12 @@ package com.pantrka.backend.domain.auth.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
 
 @Getter
 @NoArgsConstructor
@@ -22,4 +25,7 @@ public class SignupRequest {
     private String name;
 
     private String phone;
+
+    @Past(message = "생일은 과거 날짜여야 합니다.")
+    private LocalDate birthDate;
 }

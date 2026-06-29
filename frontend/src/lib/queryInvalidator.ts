@@ -41,7 +41,7 @@ export const invalidateProductRelated = (qc: QueryClient) => {
 // Cart (장바구니)
 // ─────────────────────────────────────────────────────────────
 export const invalidateCartRelated = (qc: QueryClient) => {
-  qc.invalidateQueries({ queryKey: ["cart"] });
+  return qc.invalidateQueries({ queryKey: ["cart"] });
 };
 
 // ─────────────────────────────────────────────────────────────

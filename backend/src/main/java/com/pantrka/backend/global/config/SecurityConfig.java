@@ -66,7 +66,9 @@ public class SecurityConfig {
                                 "/api/auth/password-reset/**").permitAll()
 
                         // NICE Payments redirects authentication results as a form POST.
-                        .requestMatchers(HttpMethod.POST, "/api/payments/nice/callback").permitAll()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/payments/nice/callback",
+                                "/api/payments/nice/webhook").permitAll()
 
                         // Public - Health & Docs
                         .requestMatchers(HttpMethod.GET, "/health").permitAll()

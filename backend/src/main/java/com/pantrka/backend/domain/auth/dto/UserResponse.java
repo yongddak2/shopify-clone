@@ -6,6 +6,7 @@ import com.pantrka.backend.domain.auth.entity.Role;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -16,6 +17,7 @@ public class UserResponse {
     private final String email;
     private final String name;
     private final String phone;
+    private final LocalDate birthDate;
     private final Role role;
     private final Provider provider;
     private final LocalDateTime createdAt;
@@ -27,6 +29,7 @@ public class UserResponse {
                 .email(member.getEmail())
                 .name(member.getName())
                 .phone(member.getPhone())
+                .birthDate(member.getBirthDate())
                 .role(member.getRole())
                 .provider(member.getProvider())
                 .createdAt(member.getCreatedAt())

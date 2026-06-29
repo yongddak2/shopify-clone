@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProductDetail } from "@/lib/product";
 import { addToCart, getCart } from "@/lib/cart";
 import { guestAddItem } from "@/lib/guestCart";
-import { beginCheckout } from "@/lib/checkoutSession";
+import { beginCheckout, savePendingBuyNow } from "@/lib/checkoutSession";
 import { getWishlists, toggleWishlist } from "@/lib/wishlist";
 import {
   invalidateCartRelated,
@@ -17,6 +17,7 @@ import { useCartPanelStore } from "@/stores/cartPanelStore";
 import Button from "@/components/common/Button";
 import { Heart, ChevronDown, ChevronUp, Plus, Minus } from "lucide-react";
 import ReviewSection from "./ReviewSection";
+import type { ApiResponse, ProductDetail } from "@/types";
 
 function formatPrice(price: number) {
   return price.toLocaleString("ko-KR");
@@ -66,7 +67,13 @@ const DELIVERY_RETURNS_TEXT = `교환 및 반품 주소
 
 * 위의 경우에는 교환 및 반품가능 기간에도 불구하고 거절될 수 있습니다.`;
 
-export default function ProductDetailClient({ id }: { id: string }) {
+export default function ProductDetailClient({
+  id,
+  initialProduct,
+}: {
+  id: string;
+  initialProduct?: ApiResponse<ProductDetail>;
+}) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { isLoggedIn } = useAuthStore();
@@ -92,6 +99,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["product", id],
     queryFn: () => getProductDetail(Number(id)),
+    initialData: initialProduct,
   });
 
   const { data: wishlistData } = useQuery({
@@ -224,10 +232,12 @@ export default function ProductDetailClient({ id }: { id: string }) {
     );
   }
 
-  if (isError || !data?.data) {
+  if (!data?.data) {
     return (
       <div className="text-center py-20 text-[var(--text-muted)] text-sm">
-        상품을 찾을 수 없습니다.
+        {isError
+          ? "상품 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요."
+          : "상품을 찾을 수 없습니다."}
       </div>
     );
   }
@@ -280,13 +290,6 @@ export default function ProductDetailClient({ id }: { id: string }) {
 
   // 바로 구매하기: 장바구니에 담은 뒤 해당 항목만 선택해 주문 페이지로 직행
   const handleBuyNow = async () => {
-    if (!isLoggedIn()) {
-      if (confirm("로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?")) {
-        router.push("/login");
-      }
-      return;
-    }
-
     if (selectedOptionValueId == null) {
       setOptionError("옵션을 선택해주세요.");
       return;
@@ -294,6 +297,30 @@ export default function ProductDetailClient({ id }: { id: string }) {
 
     setOptionError("");
     setCartError("");
+
+    if (!isLoggedIn()) {
+      const thumb =
+        product.images?.find((i) => i.isThumbnail)?.url ??
+        product.images?.[0]?.url ??
+        null;
+      guestAddItem({
+        productId: Number(id),
+        productName: product.name,
+        optionValueId: selectedOptionValueId,
+        optionValue: selectedOption?.value ?? "",
+        basePrice: product.basePrice,
+        additionalPrice: selectedOption?.additionalPrice ?? 0,
+        discountRate: product.discountRate,
+        quantity,
+        stockQuantity: currentStock,
+        thumbnailUrl: thumb,
+      });
+      savePendingBuyNow({ optionValueId: selectedOptionValueId });
+      invalidateCartRelated(queryClient);
+      router.push(`/login?redirect=${encodeURIComponent("/order")}`);
+      return;
+    }
+
     setBuyNowPending(true);
     try {
       await addToCart(Number(id), selectedOptionValueId, quantity);
@@ -374,7 +401,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
 
           {/* 상세 설명 이미지 — 섹션 구분 후 세로로 풀폭 나열 */}
           {detailImages.length > 0 && (
-            <div className="mt-24 pt-16 border-t border-[var(--border-color)]">
+            <div className="mt-24 hidden border-t border-[var(--border-color)] pt-16 md:block">
               <h2 className="text-center text-sm tracking-[0.25em] font-light text-[var(--text-primary)] mb-16">
                 PRODUCT DETAIL
               </h2>
@@ -695,7 +722,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
           })()}
 
           {/* Delivery / Returns 아코디언 */}
-          <div className="mt-8 border-t border-[var(--border-color)]">
+          <div className="mt-8 border-y border-[var(--border-color)] md:border-b-0">
             <button
               type="button"
               onClick={() => setDeliveryOpen((v) => !v)}
@@ -716,6 +743,24 @@ export default function ProductDetailClient({ id }: { id: string }) {
           </div>
         </div>
       </div>
+
+      {/* 모바일: 상품 정보와 배송/반품 정보 다음에 상세 이미지를 표시 */}
+      {detailImages.length > 0 && (
+        <div className="pt-12 md:hidden">
+          <h2 className="mb-12 text-center text-sm font-light tracking-[0.25em] text-[var(--text-primary)]">
+            PRODUCT DETAIL
+          </h2>
+          {detailImages.map((img) => (
+            <img
+              key={img.id}
+              src={img.url}
+              alt={`${product.name} 상세 이미지`}
+              className="block w-full"
+            />
+          ))}
+        </div>
+      )}
+
       {/* 리뷰 섹션 */}
       <ReviewSection productId={id} />
 

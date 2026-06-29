@@ -9,6 +9,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -30,6 +31,8 @@ public class Member {
     private String name;
 
     private String phone;
+
+    private LocalDate birthDate;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -56,12 +59,13 @@ public class Member {
     private String adminMemo;
 
     @Builder
-    public Member(String email, String password, String name, String phone,
+    public Member(String email, String password, String name, String phone, LocalDate birthDate,
                   Role role, Provider provider, String providerId) {
         this.email = email;
         this.password = password;
         this.name = name;
         this.phone = phone;
+        this.birthDate = birthDate;
         this.role = role;
         this.provider = provider;
         this.providerId = providerId;
@@ -75,6 +79,28 @@ public class Member {
     public void changePassword(String encodedPassword) {
         this.password = encodedPassword;
         this.passwordChangedAt = LocalDateTime.now();
+    }
+
+    public void reactivateLocal(String encodedPassword, String name, String phone, LocalDate birthDate) {
+        this.password = encodedPassword;
+        this.name = name;
+        this.phone = phone;
+        this.birthDate = birthDate;
+        this.role = Role.USER;
+        this.provider = Provider.LOCAL;
+        this.providerId = null;
+        this.deletedAt = null;
+        this.passwordChangedAt = LocalDateTime.now();
+    }
+
+    public void reactivateOAuth(Provider provider, String providerId, String name) {
+        this.password = null;
+        this.name = name;
+        this.role = Role.USER;
+        this.provider = provider;
+        this.providerId = providerId;
+        this.deletedAt = null;
+        this.passwordChangedAt = null;
     }
 
     public void softDelete() {

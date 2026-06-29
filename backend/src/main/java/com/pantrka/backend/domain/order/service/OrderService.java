@@ -17,6 +17,7 @@ import com.pantrka.backend.domain.order.entity.ReturnExchangeRequest;
 import com.pantrka.backend.domain.order.repository.CartItemRepository;
 import com.pantrka.backend.domain.order.repository.OrderItemRepository;
 import com.pantrka.backend.domain.order.repository.OrderRepository;
+import com.pantrka.backend.domain.order.repository.PaymentRepository;
 import com.pantrka.backend.domain.order.repository.ReturnExchangeRequestRepository;
 import com.pantrka.backend.domain.product.entity.ProductOptionValue;
 import com.pantrka.backend.domain.product.repository.ProductOptionValueRepository;
@@ -34,6 +35,8 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -48,6 +51,7 @@ public class OrderService {
     private final ReturnExchangeRequestRepository returnExchangeRequestRepository;
     private final ProductOptionValueRepository productOptionValueRepository;
     private final PaymentService paymentService;
+    private final PaymentRepository paymentRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -63,11 +67,14 @@ public class OrderService {
 
         List<Long> orderIds = orders.getContent().stream().map(Order::getId).toList();
         java.util.Map<Long, boolean[]> requestFlagMap = computeRequestFlags(orderIds);
+        java.util.Map<Long, com.pantrka.backend.domain.order.entity.Payment> paymentMap =
+                paymentRepository.findAllByOrderIdIn(orderIds).stream()
+                        .collect(Collectors.toMap(payment -> payment.getOrder().getId(), Function.identity()));
 
         return orders.map(order -> {
             List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
             boolean[] flags = requestFlagMap.getOrDefault(order.getId(), new boolean[]{false, false});
-            return OrderResponse.from(order, orderItems, flags[0], flags[1]);
+            return OrderResponse.from(order, orderItems, flags[0], flags[1], paymentMap.get(order.getId()));
         });
     }
 
@@ -78,7 +85,8 @@ public class OrderService {
         List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
         boolean[] flags = computeRequestFlags(List.of(orderId))
                 .getOrDefault(orderId, new boolean[]{false, false});
-        return OrderResponse.from(order, orderItems, flags[0], flags[1]);
+        return OrderResponse.from(order, orderItems, flags[0], flags[1],
+                paymentRepository.findByOrderId(orderId).orElse(null));
     }
 
     private java.util.Map<Long, boolean[]> computeRequestFlags(List<Long> orderIds) {
@@ -258,6 +266,8 @@ public class OrderService {
 
         if (order.getStatus() == OrderStatus.PAID) {
             paymentService.cancelPaidOrder(order, "고객 주문 취소");
+        } else if (order.getStatus() == OrderStatus.PENDING) {
+            paymentService.cancelPendingPayment(order, "고객 주문 취소");
         }
 
         // 재고 복구 (비관적 락, 데드락 방지를 위해 optionValueId 오름차순 정렬)

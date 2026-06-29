@@ -1,11 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
 import { login } from "@/lib/auth";
 import { startSocialLogin, type SocialProvider } from "@/lib/oauth";
+import { getCart } from "@/lib/cart";
+import { beginCheckout, consumePendingBuyNow } from "@/lib/checkoutSession";
 import Button from "@/components/common/Button";
+import { invalidateCartRelated } from "@/lib/queryInvalidator";
 
 // 각사 브랜드 가이드라인 고정 색상 (테마 변수 대상 아님)
 const SOCIAL_BUTTONS: {
@@ -31,8 +35,10 @@ const SOCIAL_BUTTONS: {
   },
 ];
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -46,10 +52,27 @@ export default function LoginPage() {
     return null;
   };
 
+  const redirectTo = (() => {
+    const value = searchParams.get("redirect");
+    return value && value.startsWith("/") && !value.startsWith("//") ? value : "/";
+  })();
+  const redirectQuery =
+    redirectTo === "/" ? "" : `?redirect=${encodeURIComponent(redirectTo)}`;
+
+  const prepareBuyNowCheckout = async () => {
+    const pending = consumePendingBuyNow();
+    if (!pending) return;
+    const cart = await getCart();
+    const target = cart.data?.find(
+      (item) => item.optionValueId === pending.optionValueId
+    );
+    if (target) beginCheckout([target.id]);
+  };
+
   const handleSocialLogin = (provider: SocialProvider) => {
     setError("");
     try {
-      startSocialLogin(provider);
+      startSocialLogin(provider, redirectTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : "소셜 로그인에 실패했습니다.");
     }
@@ -68,7 +91,9 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      router.push("/");
+      await invalidateCartRelated(queryClient);
+      await prepareBuyNowCheckout();
+      router.push(redirectTo);
     } catch (err: unknown) {
       if (
         err &&
@@ -177,7 +202,7 @@ export default function LoginPage() {
         <p className="text-center text-sm text-[var(--text-muted)] mt-8">
           계정이 없으신가요?{" "}
           <Link
-            href="/signup"
+            href={`/signup${redirectQuery}`}
             className="text-[var(--text-primary)] underline underline-offset-4"
           >
             회원가입
@@ -185,5 +210,21 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-6">
+          <p className="text-sm tracking-wider text-[var(--text-muted)]">
+            로그인 화면을 불러오는 중입니다...
+          </p>
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }

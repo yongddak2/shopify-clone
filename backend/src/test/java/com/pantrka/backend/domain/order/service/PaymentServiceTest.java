@@ -9,6 +9,8 @@ import com.pantrka.backend.domain.order.dto.NicePaymentCallbackRequest;
 import com.pantrka.backend.domain.order.entity.Order;
 import com.pantrka.backend.domain.order.entity.OrderStatus;
 import com.pantrka.backend.domain.order.entity.Payment;
+import com.pantrka.backend.domain.order.entity.PaymentMethod;
+import com.pantrka.backend.domain.order.entity.PaymentStatus;
 import com.pantrka.backend.domain.order.repository.OrderItemRepository;
 import com.pantrka.backend.domain.order.repository.OrderRepository;
 import com.pantrka.backend.domain.order.repository.PaymentRepository;
@@ -122,6 +124,58 @@ class PaymentServiceTest {
                 .isEqualTo(ErrorCode.PAYMENT_AMOUNT_MISMATCH);
     }
 
+    @Test
+    void recordsVirtualAccountAsReadyUntilDeposit() {
+        NicePaymentCallbackRequest callback = callback("50000", validSignature("50000"));
+        NicePaymentApiResponse approved = approvedResponse();
+        ReflectionTestUtils.setField(approved, "status", "ready");
+        ReflectionTestUtils.setField(approved, "payMethod", "vbank");
+        NicePaymentApiResponse.VbankInfo vbank = new NicePaymentApiResponse.VbankInfo();
+        ReflectionTestUtils.setField(vbank, "vbankName", "테스트은행");
+        ReflectionTestUtils.setField(vbank, "vbankNumber", "1234567890");
+        ReflectionTestUtils.setField(vbank, "vbankHolder", "팬터카");
+        ReflectionTestUtils.setField(vbank, "vbankExpDate", "2026-07-02T12:00:00+09:00");
+        ReflectionTestUtils.setField(approved, "vbank", vbank);
+        given(niceProperties.getClientKey()).willReturn("client");
+        given(niceProperties.getSecretKey()).willReturn("secret");
+        given(orderRepository.findByOrderNumberForUpdate("ORD-123")).willReturn(Optional.of(order));
+        given(paymentRepository.findByOrderId(1L)).willReturn(Optional.empty());
+        given(nicePaymentsClient.approve("NICE-TID", new BigDecimal("50000"))).willReturn(approved);
+
+        var response = paymentService.confirmNicePayment(callback);
+
+        assertThat(response.getStatus()).isEqualTo("READY");
+        assertThat(response.getMethod()).isEqualTo("VIRTUAL");
+        assertThat(response.getVbankNumber()).isEqualTo("1234567890");
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+        verify(paymentRepository).save(any(Payment.class));
+    }
+
+    @Test
+    void completesVirtualAccountOrderAfterSignedPaidWebhook() {
+        Payment payment = Payment.builder()
+                .order(order)
+                .paymentKey("NICE-TID")
+                .method(PaymentMethod.VIRTUAL)
+                .amount(new BigDecimal("50000"))
+                .status(PaymentStatus.READY)
+                .build();
+        NicePaymentApiResponse event = approvedResponse();
+        ReflectionTestUtils.setField(event, "payMethod", "vbank");
+        ReflectionTestUtils.setField(event, "ediDate", "2026-06-29T12:00:00+09:00");
+        ReflectionTestUtils.setField(event, "signature", webhookSignature("2026-06-29T12:00:00+09:00"));
+        given(niceProperties.getSecretKey()).willReturn("secret");
+        given(orderRepository.findByOrderNumberForUpdate("ORD-123")).willReturn(Optional.of(order));
+        given(paymentRepository.findByOrderId(1L)).willReturn(Optional.of(payment));
+        given(orderItemRepository.findByOrderId(1L)).willReturn(List.of());
+
+        paymentService.processNiceWebhook(event);
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.DONE);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PAID);
+        verify(paymentRepository).save(payment);
+    }
+
     private NicePaymentCallbackRequest callback(String amount, String signature) {
         NicePaymentCallbackRequest request = new NicePaymentCallbackRequest();
         request.setAuthResultCode("0000");
@@ -151,6 +205,16 @@ class PaymentServiceTest {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
                     .digest(("AUTH-TOKEN" + "client" + amount + "secret")
+                            .getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private String webhookSignature(String ediDate) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(("NICE-TID" + "50000" + ediDate + "secret")
                             .getBytes(StandardCharsets.UTF_8)));
         } catch (Exception e) {
             throw new IllegalStateException(e);

@@ -68,32 +68,36 @@ function ProductGrid({
           : product.basePrice;
 
         return (
-          <Link
-            key={product.id}
-            href={`/products/${product.id}`}
-            className="group"
-          >
+          <div key={product.id} className="group">
             <div className="relative aspect-[3/4] bg-[var(--card-bg)] mb-4 overflow-hidden">
-              {product.thumbnailUrl ? (
-                <img
-                  src={product.thumbnailUrl}
-                  alt={product.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              ) : (
-                <div className="w-full h-full bg-[var(--section-bg)] group-hover:scale-105 transition-transform duration-500" />
-              )}
-              {isSoldOut && (
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <span className="text-white text-xs tracking-[0.2em]">
-                    SOLD OUT
-                  </span>
-                </div>
-              )}
-              <div className="absolute bottom-2 right-2 flex flex-col gap-1.5">
+              <a
+                href={`/products/${product.id}`}
+                className="block h-full"
+                aria-label={`${product.name} 상세 보기`}
+              >
+                {product.thumbnailUrl ? (
+                  <img
+                    src={product.thumbnailUrl}
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-[var(--section-bg)] group-hover:scale-105 transition-transform duration-500" />
+                )}
+                {isSoldOut && (
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                    <span className="text-white text-xs tracking-[0.2em]">
+                      SOLD OUT
+                    </span>
+                  </div>
+                )}
+              </a>
+              <div className="absolute bottom-2 right-2 z-10 flex flex-col gap-1.5">
                 <button
+                  type="button"
                   onClick={(e) => onWishlistClick(e, product.id)}
                   className="w-8 h-8 flex items-center justify-center transition-transform hover:scale-110 active:scale-90"
+                  aria-label={`${product.name} 찜하기`}
                 >
                   <Heart
                     className={`w-7 h-7 ${
@@ -106,25 +110,27 @@ function ProductGrid({
                 </button>
               </div>
             </div>
-            <p className="text-sm text-[var(--text-secondary)] mb-1">
-              {product.name}
-            </p>
-            <div className="flex items-center gap-2">
-              {hasDiscount && (
-                <span className="text-sm text-[var(--text-dim)] line-through">
-                  {formatPrice(product.basePrice)}원
+            <a href={`/products/${product.id}`} className="block">
+              <p className="text-sm text-[var(--text-secondary)] mb-1">
+                {product.name}
+              </p>
+              <div className="flex items-center gap-2">
+                {hasDiscount && (
+                  <span className="text-sm text-[var(--text-dim)] line-through">
+                    {formatPrice(product.basePrice)}원
+                  </span>
+                )}
+                <span className="text-sm text-[var(--text-secondary)]">
+                  {formatPrice(finalPrice)}원
                 </span>
-              )}
-              <span className="text-sm text-[var(--text-secondary)]">
-                {formatPrice(finalPrice)}원
-              </span>
-              {hasDiscount && (
-                <span className="text-xs text-red-400">
-                  {product.discountRate}%
-                </span>
-              )}
-            </div>
-          </Link>
+                {hasDiscount && (
+                  <span className="text-xs text-red-400">
+                    {product.discountRate}%
+                  </span>
+                )}
+              </div>
+            </a>
+          </div>
         );
       })}
     </div>
@@ -142,7 +148,7 @@ function BannerOverlay({
   const isExternal =
     targetUrl.startsWith("http://") || targetUrl.startsWith("https://");
   const buttonClass =
-    "inline-block pointer-events-auto rounded-full bg-white text-black text-xs md:text-sm tracking-[0.1em] px-8 py-3 hover:bg-white/85 transition-colors";
+    "inline-block pointer-events-auto rounded-full bg-white text-black text-xs md:text-sm tracking-[0.1em] px-8 py-3 hover:bg-white/85 transition-colors max-sm:hidden";
 
   return (
     <div className="absolute inset-0 z-10 pointer-events-none">
@@ -151,7 +157,7 @@ function BannerOverlay({
       {/* 좌측 하단 컨텐츠 */}
       <div className="absolute bottom-16 left-6 md:bottom-24 md:left-20">
         <h1
-          className="text-3xl md:text-5xl font-normal tracking-wider text-white mb-6"
+          className="text-3xl md:text-5xl font-normal tracking-wider text-white mb-6 max-sm:hidden"
           style={{ textShadow: "0 2px 12px rgba(0,0,0,0.5)" }}
         >
           {title ?? "Find Your Style"}
@@ -185,6 +191,8 @@ function BannerSlider({ banners }: { banners: Banner[] }) {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [hovered, setHovered] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const swipedRef = useRef(false);
 
   const TRANSITION_MS = 700;
 
@@ -257,6 +265,10 @@ function BannerSlider({ banners }: { banners: Banner[] }) {
   const currentLinkUrl = banners[currentIndex]?.linkUrl ?? null;
 
   const handleSlideClick = () => {
+    if (swipedRef.current) {
+      swipedRef.current = false;
+      return;
+    }
     if (!currentLinkUrl) return;
     if (
       currentLinkUrl.startsWith("http://") ||
@@ -268,6 +280,29 @@ function BannerSlider({ banners }: { banners: Banner[] }) {
     }
   };
 
+  const handleTouchStart = (e: React.TouchEvent<HTMLElement>) => {
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLElement>) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start || count <= 1 || isTransitioning) return;
+
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (Math.abs(deltaX) < 40 || Math.abs(deltaX) < Math.abs(deltaY)) return;
+
+    swipedRef.current = true;
+    if (deltaX < 0) {
+      goNext();
+    } else {
+      goPrev();
+    }
+  };
+
   return (
     <section
       className={`relative w-full h-[50vh] md:h-[90vh] overflow-hidden ${
@@ -275,6 +310,8 @@ function BannerSlider({ banners }: { banners: Banner[] }) {
       }`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
       onClick={handleSlideClick}
     >
       {/* 배너 이미지 (absolute 겹침, fade) */}
@@ -303,7 +340,7 @@ function BannerSlider({ banners }: { banners: Banner[] }) {
               e.stopPropagation();
               goPrev();
             }}
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2 text-white hover:text-white/70 transition-colors"
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2 text-white hover:text-white/70 transition-colors max-sm:hidden"
           >
             <ChevronLeft className="w-[50px] h-[50px]" />
           </button>
@@ -312,7 +349,7 @@ function BannerSlider({ banners }: { banners: Banner[] }) {
               e.stopPropagation();
               goNext();
             }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2 text-white hover:text-white/70 transition-colors"
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2 text-white hover:text-white/70 transition-colors max-sm:hidden"
           >
             <ChevronRight className="w-[50px] h-[50px]" />
           </button>
@@ -321,7 +358,7 @@ function BannerSlider({ banners }: { banners: Banner[] }) {
 
       {/* 인디케이터 (2개 이상일 때만) — 우측 하단, 큰 글씨와 같은 라인 */}
       {count > 1 && (
-        <div className="absolute bottom-12 right-10 md:bottom-10 md:right-16 z-20 flex gap-2.5">
+        <div className="absolute bottom-12 right-10 z-20 flex gap-2.5 max-sm:left-1/2 max-sm:right-auto max-sm:-translate-x-1/2 max-sm:gap-1.5 md:bottom-10 md:right-16">
           {banners.map((_, idx) => (
             <button
               key={idx}
@@ -329,7 +366,7 @@ function BannerSlider({ banners }: { banners: Banner[] }) {
                 e.stopPropagation();
                 goTo(idx);
               }}
-              className={`w-3 h-3 rounded-full transition-colors ${
+              className={`w-3 h-3 rounded-full transition-colors max-sm:h-2 max-sm:w-2 ${
                 idx === currentIndex ? "bg-white" : "bg-white/40"
               }`}
             />

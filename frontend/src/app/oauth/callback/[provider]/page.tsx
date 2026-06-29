@@ -3,18 +3,25 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
 import { socialLogin } from "@/lib/auth";
+import { getCart } from "@/lib/cart";
+import { beginCheckout, consumePendingBuyNow } from "@/lib/checkoutSession";
+import { invalidateCartRelated } from "@/lib/queryInvalidator";
 import {
   consumeState,
+  consumeOAuthReturnTo,
   getOAuthRedirectUri,
   SOCIAL_LABELS,
   type SocialProvider,
 } from "@/lib/oauth";
 
 const VALID_PROVIDERS: SocialProvider[] = ["kakao", "google", "naver"];
+const CALLBACK_LOCK_PREFIX = "oauth_callback_handled:";
 
 function OAuthCallbackContent() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const params = useParams();
   const searchParams = useSearchParams();
   const [error, setError] = useState("");
@@ -50,22 +57,58 @@ function OAuthCallbackContent() {
       return;
     }
 
+    const callbackLockKey = `${CALLBACK_LOCK_PREFIX}${provider}:${code}`;
+    if (sessionStorage.getItem(callbackLockKey)) {
+      return;
+    }
+    sessionStorage.setItem(callbackLockKey, "1");
+
     socialLogin(provider, code, getOAuthRedirectUri(provider), returnedState)
-      .then(() => router.replace("/"))
+      .then(async () => {
+        const returnTo = consumeOAuthReturnTo() ?? "/";
+        await invalidateCartRelated(queryClient);
+        const pending = consumePendingBuyNow();
+        if (pending) {
+          const cart = await getCart();
+          const target = cart.data?.find(
+            (item) => item.optionValueId === pending.optionValueId
+          );
+          if (target) beginCheckout([target.id]);
+        }
+        router.replace(returnTo);
+      })
       .catch((err: unknown) => {
         const message =
           err &&
           typeof err === "object" &&
           "response" in err &&
-          (err as { response?: { data?: { error?: { message?: string } } } })
-            .response?.data?.error?.message;
+          (
+            err as {
+              response?: {
+                data?: { message?: string; error?: { message?: string } };
+              };
+            }
+          ).response?.data?.message;
+        const legacyMessage =
+          err &&
+          typeof err === "object" &&
+          "response" in err &&
+          (
+            err as {
+              response?: {
+                data?: { message?: string; error?: { message?: string } };
+              };
+            }
+          ).response?.data?.error?.message;
         setError(
           typeof message === "string"
             ? message
+            : typeof legacyMessage === "string"
+            ? legacyMessage
             : "소셜 로그인에 실패했습니다. 다시 시도해주세요."
         );
       });
-  }, [params, searchParams, router]);
+  }, [params, searchParams, router, queryClient]);
 
   return (
     <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-6">

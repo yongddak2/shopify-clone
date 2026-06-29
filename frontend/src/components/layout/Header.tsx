@@ -26,6 +26,17 @@ const INFO_LINKS = [
   { label: "FAQ", href: "/info/faq" },
 ];
 
+const PNTK_FALLBACK_SEASONS = [
+  {
+    id: 2,
+    name: "26 HOT SUMMER",
+    slug: "26-hot-summer",
+    isActive: true,
+    sortOrder: 2,
+    imageCount: 8,
+  },
+];
+
 function Logo() {
   return (
     <Link href="/" className="block hover:opacity-90 transition-opacity">
@@ -43,6 +54,9 @@ export default function Header() {
   const pathname = usePathname();
   const [openMenu, setOpenMenu] = useState<MenuKey | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileOpenCategory, setMobileOpenCategory] = useState<
+    "SHOP" | "PNTK" | null
+  >(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -58,6 +72,14 @@ export default function Header() {
     queryFn: getCart,
     enabled: mounted,
   });
+  const { data: mobileSeasons = [], refetch: refetchMobileSeasons } = useQuery({
+    queryKey: ["pntk-seasons"],
+    queryFn: getPublicSeasonList,
+    staleTime: 60_000,
+    enabled: mounted,
+  });
+  const visibleMobileSeasons =
+    mobileSeasons.length > 0 ? mobileSeasons : PNTK_FALLBACK_SEASONS;
   const cartCount = cartData?.data?.length ?? 0;
   const openCartPanel = useCartPanelStore((s) => s.openCart);
   // 비회원은 장바구니 클릭 시 페이지 이동 대신 CART 레이어만 띄움
@@ -116,6 +138,8 @@ export default function Header() {
 
   useEffect(() => {
     setOpenMenu(null);
+    setMobileMenuOpen(false);
+    setMobileOpenCategory(null);
   }, [pathname]);
 
 
@@ -135,7 +159,18 @@ export default function Header() {
 
   const toggleMobileMenu = () => {
     setSearchOpen(false);
-    setMobileMenuOpen((open) => !open);
+    setMobileMenuOpen((open) => {
+      const next = !open;
+      if (!next) setMobileOpenCategory(null);
+      return next;
+    });
+  };
+
+  const toggleMobileCategory = (category: "SHOP" | "PNTK") => {
+    if (category === "PNTK") {
+      void refetchMobileSeasons();
+    }
+    setMobileOpenCategory((open) => (open === category ? null : category));
   };
 
   const scheduleClose = () => {
@@ -160,6 +195,10 @@ export default function Header() {
   const rightLinkClass =
     "font-serif-display font-medium text-[16.667px] lg:text-[18.667px] tracking-wide " +
     "text-[var(--header-pink-accent)] hover:text-white transition-colors whitespace-nowrap";
+  const mobileTopClass =
+    "inline-block px-1 py-3 font-serif-display font-medium text-3xl tracking-wide leading-none [text-shadow:0_2px_8px_rgba(0,0,0,0.25)] transition-colors duration-200";
+  const mobileSubClass =
+    "inline-block py-0.5 font-serif-display font-medium text-[18px] leading-tight tracking-wide text-[var(--header-yellow)] [text-shadow:0_2px_8px_rgba(0,0,0,0.25)]";
 
   return (
     <>
@@ -320,18 +359,98 @@ export default function Header() {
           aria-hidden={!mobileMenuOpen}
           onClick={() => setMobileMenuOpen(false)}
         >
-          <nav className="flex h-full flex-col items-start overflow-y-auto px-8 pb-8 pt-24">
-            {[
-              { label: "SHOP", href: "/products" },
-              { label: "ABOUT", href: "/about" },
-              { label: "PNTK", href: "/pntk" },
-              ...INFO_LINKS,
-            ].map((link) => (
+          <nav
+            className="flex h-full flex-col items-start overflow-y-auto px-14 pb-8 pt-24"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => toggleMobileCategory("SHOP")}
+              className={`${mobileTopClass} ${
+                mobileOpenCategory === "SHOP"
+                  ? "text-white"
+                  : "text-[var(--header-yellow)]"
+              }`}
+              aria-expanded={mobileOpenCategory === "SHOP"}
+            >
+              SHOP
+            </button>
+            <div
+              className={`grid overflow-hidden transition-[grid-template-rows,opacity,transform] duration-300 ease-out ${
+                mobileOpenCategory === "SHOP"
+                  ? "grid-rows-[1fr] translate-y-0 opacity-100"
+                  : "grid-rows-[0fr] -translate-y-1 opacity-0"
+              }`}
+            >
+              <div
+                className={`flex min-h-0 flex-col items-start overflow-hidden pl-1 ${
+                  mobileOpenCategory === "SHOP" ? "pb-5 pt-1" : "pb-0 pt-0"
+                }`}
+              >
+                {SHOP_CATEGORIES.map((cat) => (
+                  <Link
+                    key={cat.href}
+                    href={cat.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={mobileSubClass}
+                  >
+                    {cat.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <Link
+              href="/about"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`${mobileTopClass} text-[var(--header-yellow)]`}
+            >
+              ABOUT
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => toggleMobileCategory("PNTK")}
+              className={`${mobileTopClass} ${
+                mobileOpenCategory === "PNTK"
+                  ? "text-white"
+                  : "text-[var(--header-yellow)]"
+              }`}
+              aria-expanded={mobileOpenCategory === "PNTK"}
+            >
+              PNTK
+            </button>
+            <div
+              className={`grid overflow-hidden transition-[grid-template-rows,opacity,transform] duration-300 ease-out ${
+                mobileOpenCategory === "PNTK"
+                  ? "grid-rows-[1fr] translate-y-0 opacity-100"
+                  : "grid-rows-[0fr] -translate-y-1 opacity-0"
+              }`}
+            >
+              <div
+                className={`flex min-h-0 flex-col items-start overflow-hidden pl-1 ${
+                  mobileOpenCategory === "PNTK" ? "pb-5 pt-1" : "pb-0 pt-0"
+                }`}
+              >
+                {visibleMobileSeasons.map((season) => (
+                  <Link
+                    key={season.id}
+                    href={`/pntk/${season.slug}`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={mobileSubClass}
+                  >
+                    {season.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {INFO_LINKS.map((link) => (
               <Link
                 key={`${link.label}-${link.href}`}
                 href={link.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className="inline-block px-1 py-2 font-serif-display font-medium text-3xl tracking-wide text-[var(--header-yellow)] [text-shadow:0_2px_8px_rgba(0,0,0,0.25)]"
+                className={`${mobileTopClass} text-[var(--header-yellow)]`}
               >
                 {link.label}
               </Link>
@@ -532,35 +651,23 @@ function PntkDropdownContent({ onItemClick }: { onItemClick: () => void }) {
 
   return (
     <div className="h-full pt-28 pb-10 pl-6 lg:pl-10 pr-6 overflow-y-auto">
-      {seasons.length === 0 ? (
-        <p
-          className="font-serif-display font-medium text-lg lg:text-xl tracking-wide"
-          style={{
-            color: "var(--header-yellow)",
-            textShadow: "0 2px 8px rgba(0,0,0,0.25)",
-          }}
-        >
-          준비 중
-        </p>
-      ) : (
-        <ul className="space-y-5 lg:space-y-6">
-          {seasons.map((season) => (
-            <li key={season.id}>
-              <Link
-                href={`/pntk/${season.slug}`}
-                onClick={onItemClick}
-                className="block font-serif-display font-medium text-lg lg:text-xl tracking-wide leading-none hover:opacity-90 transition-opacity"
-                style={{
-                  color: "var(--header-yellow)",
-                  textShadow: "0 2px 8px rgba(0,0,0,0.25)",
-                }}
-              >
-                {season.name}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul className="space-y-5 lg:space-y-6">
+        {seasons.map((season) => (
+          <li key={season.id}>
+            <Link
+              href={`/pntk/${season.slug}`}
+              onClick={onItemClick}
+              className="block font-serif-display font-medium text-lg lg:text-xl tracking-wide leading-none hover:opacity-90 transition-opacity"
+              style={{
+                color: "var(--header-yellow)",
+                textShadow: "0 2px 8px rgba(0,0,0,0.25)",
+              }}
+            >
+              {season.name}
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

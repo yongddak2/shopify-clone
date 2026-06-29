@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProducts, getCategories } from "@/lib/product";
@@ -64,8 +63,9 @@ export default function ProductsContent({
     } else {
       params.delete("category");
     }
-    router.replace(params.size > 0 ? `/products?${params}` : "/products");
-    setPage(0);
+    window.location.assign(
+      params.size > 0 ? `/products?${params.toString()}` : "/products"
+    );
   };
 
   // SSR prefetch(initialProducts)는 첫 렌더의 page/sort/category 조합에만 유효.
@@ -75,12 +75,15 @@ export default function ProductsContent({
     JSON.stringify({ page, categoryId, sort })
   );
   const currentQueryKey = JSON.stringify({ page, categoryId, sort });
+  const hasInitialProducts =
+    currentQueryKey === initialQueryKey && initialProducts !== undefined;
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["products", { page, categoryId, sort }],
     queryFn: () => getProducts({ page, size: 12, categoryId, sort }),
-    initialData:
-      currentQueryKey === initialQueryKey ? initialProducts : undefined,
+    initialData: hasInitialProducts ? initialProducts : undefined,
+    staleTime: hasInitialProducts ? 60 * 1000 : 0,
+    refetchOnMount: hasInitialProducts ? false : "always",
   });
 
   const { data: wishlistData } = useQuery({
@@ -213,33 +216,37 @@ export default function ProductsContent({
               : product.basePrice;
 
             return (
-              <Link
-                key={product.id}
-                href={`/products/${product.id}`}
-                className="group"
-              >
+              <div key={product.id} className="group">
                 {/* 이미지 */}
                 <div className="relative aspect-[3/4] bg-[var(--card-bg)] mb-4 overflow-hidden">
-                  {product.thumbnailUrl ? (
-                    <img
-                      src={product.thumbnailUrl}
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-[var(--section-bg)] group-hover:scale-105 transition-transform duration-500" />
-                  )}
-                  {isSoldOut && (
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                      <span className="text-white text-xs tracking-[0.2em]">
-                        SOLD OUT
-                      </span>
-                    </div>
-                  )}
-                  <div className="absolute bottom-2 right-2 flex flex-col gap-1.5">
+                  <a
+                    href={`/products/${product.id}`}
+                    className="block h-full"
+                    aria-label={`${product.name} 상세 보기`}
+                  >
+                    {product.thumbnailUrl ? (
+                      <img
+                        src={product.thumbnailUrl}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-[var(--section-bg)] group-hover:scale-105 transition-transform duration-500" />
+                    )}
+                    {isSoldOut && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <span className="text-white text-xs tracking-[0.2em]">
+                          SOLD OUT
+                        </span>
+                      </div>
+                    )}
+                  </a>
+                  <div className="absolute bottom-2 right-2 z-10 flex flex-col gap-1.5">
                     <button
+                      type="button"
                       onClick={(e) => handleWishlistClick(e, product.id)}
                       className="w-8 h-8 flex items-center justify-center transition-transform hover:scale-110 active:scale-90"
+                      aria-label={`${product.name} 찜하기`}
                     >
                       <Heart
                         className={`w-7 h-7 ${
@@ -253,23 +260,25 @@ export default function ProductsContent({
                   </div>
                 </div>
                 {/* 정보 */}
-                <p className="text-sm text-[var(--text-secondary)] mb-1">{product.name}</p>
-                <div className="flex items-center gap-2">
-                  {hasDiscount && (
-                    <span className="text-sm text-[var(--text-dim)] line-through">
-                      {formatPrice(product.basePrice)}원
+                <a href={`/products/${product.id}`} className="block">
+                  <p className="text-sm text-[var(--text-secondary)] mb-1">{product.name}</p>
+                  <div className="flex items-center gap-2">
+                    {hasDiscount && (
+                      <span className="text-sm text-[var(--text-dim)] line-through">
+                        {formatPrice(product.basePrice)}원
+                      </span>
+                    )}
+                    <span className="text-sm text-[var(--text-secondary)]">
+                      {formatPrice(finalPrice)}원
                     </span>
-                  )}
-                  <span className="text-sm text-[var(--text-secondary)]">
-                    {formatPrice(finalPrice)}원
-                  </span>
-                  {hasDiscount && (
-                    <span className="text-xs text-red-400">
-                      {product.discountRate}%
-                    </span>
-                  )}
-                </div>
-              </Link>
+                    {hasDiscount && (
+                      <span className="text-xs text-red-400">
+                        {product.discountRate}%
+                      </span>
+                    )}
+                  </div>
+                </a>
+              </div>
             );
           })}
         </div>

@@ -22,3 +22,12 @@ This shop is preparing for a real production launch. Before making launch-relate
 - The Google OAuth client secret disclosed during development must be rotated before launch. Never copy the old value into documentation or tracked files.
 - Preserve unrelated user changes in the working tree.
 
+## Public Test Server Deployment
+
+When the user asks to apply changes to "the server", assume they mean the public test server at `https://pantrka.com`, not a local-only dev server.
+
+- Use [`docs/TEST_SERVER.md`](docs/TEST_SERVER.md) as the runbook.
+- For frontend-only changes, deploy with `docker compose --env-file .env.server -f compose.test-server.yml up -d --build frontend`.
+- For backend or infrastructure changes, deploy only the affected services unless the user asks for a full rebuild.
+- After deployment, verify `https://pantrka.com/health` and the affected public page or API.
+- Do not print or commit values from `.env.server` or any OAuth, NICE, AWS, SMTP, JWT, database, or Redis secrets.

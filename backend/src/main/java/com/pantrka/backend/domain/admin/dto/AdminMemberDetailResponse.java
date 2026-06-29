@@ -10,6 +10,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -22,6 +23,7 @@ public class AdminMemberDetailResponse {
     private final String email;
     private final String name;
     private final String phone;
+    private final LocalDate birthDate;
     private final Role role;
     private final Provider provider;
     private final LocalDateTime createdAt;
@@ -76,6 +78,7 @@ public class AdminMemberDetailResponse {
                 .email(member.getEmail())
                 .name(member.getName())
                 .phone(member.getPhone())
+                .birthDate(member.getBirthDate())
                 .role(member.getRole())
                 .provider(member.getProvider())
                 .createdAt(member.getCreatedAt())

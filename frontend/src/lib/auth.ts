@@ -9,13 +9,15 @@ export async function signup(
   email: string,
   password: string,
   name: string,
-  phone: string
+  phone: string,
+  birthDate: string
 ) {
   const res = await api.post<ApiResponse<null>>("/api/auth/signup", {
     email,
     password,
     name,
     phone,
+    birthDate,
   });
   return res.data;
 }

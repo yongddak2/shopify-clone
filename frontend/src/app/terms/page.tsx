@@ -304,15 +304,14 @@ export default function TermsPage() {
             <p className="text-[var(--text-dim)]">
               <strong className="text-[var(--text-muted)]">부칙</strong>
               <br />
-              본 약관은 [시행일자]부터 시행합니다.
+              본 약관은 2026년 6월 29일부터 시행합니다.
             </p>
             <div className="mt-6 text-xs text-[var(--text-dim)] space-y-1">
-              <p>상호: [서비스명]</p>
-              <p>대표자: [대표자명]</p>
-              <p>사업자등록번호: [사업자등록번호]</p>
-              <p>주소: [주소]</p>
-              <p>이메일: [이메일]</p>
-              <p>전화: [전화번호]</p>
+              <p>상호: 팬터카</p>
+              <p>대표자: 구소연, 황지민</p>
+              <p>사업자등록번호: 674-15-02803</p>
+              <p>주소: 서울특별시 마포구 새터산길 1-12 201호</p>
+              <p>이메일: pantrkagirl@gmail.com</p>
             </div>
           </section>
       </div>
