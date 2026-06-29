@@ -1,5 +1,6 @@
 package com.pantrka.backend.domain.admin.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.pantrka.backend.domain.product.entity.ProductStatus;
 import lombok.Getter;
 
@@ -27,6 +28,7 @@ public class AdminProductUpdateRequest {
         private int sortOrder;
         private boolean isThumbnail;
         private boolean detail;
+        @JsonProperty("isHover")
         private boolean isHover;
     }
 }

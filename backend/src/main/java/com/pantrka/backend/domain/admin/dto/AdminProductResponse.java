@@ -1,5 +1,6 @@
 package com.pantrka.backend.domain.admin.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.pantrka.backend.domain.product.entity.Product;
 import com.pantrka.backend.domain.product.entity.ProductImage;
 import com.pantrka.backend.domain.product.entity.ProductStatus;
@@ -38,6 +39,8 @@ public class AdminProductResponse {
         private final int sortOrder;
         private final boolean isThumbnail;
         private final boolean detail;
+        @JsonProperty("isHover")
+        private final boolean isHover;
     }
 
     @Getter
@@ -65,6 +68,7 @@ public class AdminProductResponse {
                         .sortOrder(image.getSortOrder())
                         .isThumbnail(image.isThumbnail())
                         .detail(image.isDetail())
+                        .isHover(image.isHover())
                         .build())
                 .toList();
 

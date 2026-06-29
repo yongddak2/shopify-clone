@@ -1,5 +1,6 @@
 package com.pantrka.backend.domain.admin.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.pantrka.backend.domain.product.entity.ProductStatus;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -40,6 +41,7 @@ public class AdminProductCreateRequest {
         private int sortOrder;
         private boolean isThumbnail;
         private boolean detail;
+        @JsonProperty("isHover")
         private boolean isHover;
     }
 

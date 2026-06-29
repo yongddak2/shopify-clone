@@ -53,6 +53,7 @@ public class ProductDetailResponse {
 
     public static ProductDetailResponse from(Product product) {
         List<ProductImageDto> images = product.getImages().stream()
+                .filter(image -> !image.isHover())
                 .map(image -> ProductImageDto.builder()
                         .id(image.getId())
                         .url(image.getUrl())
