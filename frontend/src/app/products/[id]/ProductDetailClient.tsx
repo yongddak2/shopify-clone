@@ -403,7 +403,7 @@ export default function ProductDetailClient({
 
   const allImages = product.images ?? [];
   const galleryImages = allImages
-    .filter((img) => !img.detail)
+    .filter((img) => !img.detail && !img.isHover)
     .sort((a, b) => {
       if (a.isThumbnail !== b.isThumbnail) return a.isThumbnail ? -1 : 1;
       return a.sortOrder - b.sortOrder;

@@ -35,34 +35,49 @@ public class ProductImage {
     @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean isDetail;
 
+    // 상품 목록 카드 호버 시 노출할 이미지 (갤러리·썸네일과 별도)
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean isHover;
+
     @Builder
-    public ProductImage(Product product, String url, int sortOrder, boolean isThumbnail, boolean isDetail) {
+    public ProductImage(Product product, String url, int sortOrder, boolean isThumbnail, boolean isDetail, boolean isHover) {
         this.product = product;
         this.url = url;
         this.sortOrder = sortOrder;
         this.isThumbnail = isThumbnail;
         this.isDetail = isDetail;
+        this.isHover = isHover;
     }
 
-    public void update(int sortOrder, boolean isThumbnail, boolean isDetail) {
+    public void update(int sortOrder, boolean isThumbnail, boolean isDetail, boolean isHover) {
         this.sortOrder = sortOrder;
         this.isThumbnail = isThumbnail;
         this.isDetail = isDetail;
+        this.isHover = isHover;
     }
 
     /**
      * 목록/장바구니/찜/주문 등에 노출할 대표 썸네일 URL 결정.
-     * 상세 설명 이미지(isDetail)는 제외 → isThumbnail=true 우선 → sortOrder 최소값 fallback.
+     * 상세 설명 이미지(isDetail)·호버 이미지(isHover)는 제외 → isThumbnail=true 우선 → sortOrder 최소값 fallback.
      */
     public static String resolveThumbnailUrl(List<ProductImage> images) {
         List<ProductImage> gallery = images.stream()
-                .filter(img -> !img.isDetail())
+                .filter(img -> !img.isDetail() && !img.isHover())
                 .toList();
         return gallery.stream()
                 .filter(ProductImage::isThumbnail)
                 .findFirst()
                 .or(() -> gallery.stream()
                         .min(Comparator.comparingInt(ProductImage::getSortOrder)))
+                .map(ProductImage::getUrl)
+                .orElse(null);
+    }
+
+    /** 상품 목록 카드 호버 시 노출할 이미지 URL (없으면 null). */
+    public static String resolveHoverImageUrl(List<ProductImage> images) {
+        return images.stream()
+                .filter(ProductImage::isHover)
+                .findFirst()
                 .map(ProductImage::getUrl)
                 .orElse(null);
     }

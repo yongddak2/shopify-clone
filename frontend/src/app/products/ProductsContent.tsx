@@ -225,11 +225,24 @@ export default function ProductsContent({
                     aria-label={`${product.name} 상세 보기`}
                   >
                     {product.thumbnailUrl ? (
-                      <img
-                        src={product.thumbnailUrl}
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
+                      <>
+                        <img
+                          src={product.thumbnailUrl}
+                          alt={product.name}
+                          className={`w-full h-full object-cover transition-all duration-500 ${
+                            product.hoverImageUrl
+                              ? "group-hover:opacity-0"
+                              : "group-hover:scale-105"
+                          }`}
+                        />
+                        {product.hoverImageUrl && (
+                          <img
+                            src={product.hoverImageUrl}
+                            alt={product.name}
+                            className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                          />
+                        )}
+                      </>
                     ) : (
                       <div className="w-full h-full bg-[var(--section-bg)] group-hover:scale-105 transition-transform duration-500" />
                     )}

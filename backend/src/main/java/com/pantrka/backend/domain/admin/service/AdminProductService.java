@@ -113,6 +113,7 @@ public class AdminProductService {
                             .sortOrder(dto.getSortOrder())
                             .isThumbnail(dto.isThumbnail())
                             .isDetail(dto.isDetail())
+                            .isHover(dto.isHover())
                             .build())
                     .toList();
             productImageRepository.saveAll(images);
@@ -191,7 +192,7 @@ public class AdminProductService {
                 if (imgReq.getId() != null) {
                     for (ProductImage existing : product.getImages()) {
                         if (existing.getId().equals(imgReq.getId())) {
-                            existing.update(imgReq.getSortOrder(), imgReq.isThumbnail(), imgReq.isDetail());
+                            existing.update(imgReq.getSortOrder(), imgReq.isThumbnail(), imgReq.isDetail(), imgReq.isHover());
                             break;
                         }
                     }
@@ -207,6 +208,7 @@ public class AdminProductService {
                             .sortOrder(imgReq.getSortOrder())
                             .isThumbnail(imgReq.isThumbnail())
                             .isDetail(imgReq.isDetail())
+                            .isHover(imgReq.isHover())
                             .build();
                     productImageRepository.save(newImage);
                     product.getImages().add(newImage);

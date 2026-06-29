@@ -56,6 +56,8 @@ export default function AdminProductNewPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [detailImages, setDetailImages] = useState<UploadedImage[]>([]);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
+  const [hoverImage, setHoverImage] = useState<UploadedImage | null>(null);
+  const hoverFileInputRef = useRef<HTMLInputElement>(null);
 
   const [sizeMode, setSizeMode] = useState<'none' | 'custom'>('none');
   const [colorMode, setColorMode] = useState<'none' | 'custom'>('none');
@@ -323,6 +325,7 @@ export default function AdminProductNewPage() {
       sortOrder: i,
       isThumbnail: i === 0,
       detail: false,
+      isHover: false,
     }));
     const detailImagePayload = detailImages
       .filter((img) => !img.uploading && img.url)
@@ -331,8 +334,13 @@ export default function AdminProductNewPage() {
         sortOrder: i,
         isThumbnail: false,
         detail: true,
+        isHover: false,
       }));
-    const images = [...galleryImages, ...detailImagePayload];
+    const hoverPayload =
+      hoverImage && !hoverImage.uploading && hoverImage.url
+        ? [{ url: hoverImage.url, sortOrder: 0, isThumbnail: false, detail: false, isHover: true }]
+        : [];
+    const images = [...galleryImages, ...detailImagePayload, ...hoverPayload];
 
     mutation.mutate({
       name: name.trim(),
@@ -676,6 +684,72 @@ export default function AdminProductNewPage() {
               </button>
             )}
           </div>
+        </div>
+
+        {/* 호버 이미지 */}
+        <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded p-6">
+          <h2 className="text-sm font-light tracking-wider text-[var(--text-primary)] mb-1">
+            호버 이미지
+          </h2>
+          <p className="text-[11px] text-[var(--text-dim)] mb-4">
+            상품 목록에서 마우스를 올렸을 때 표시되는 이미지입니다. (최대 5MB, 1장)
+          </p>
+          <input
+            ref={hoverFileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (e.target) e.target.value = "";
+              if (!file) return;
+              if (file.size > MAX_FILE_SIZE) {
+                setError("호버 이미지는 5MB 이하만 가능합니다.");
+                return;
+              }
+              setHoverImage({ url: "", uploading: true });
+              try {
+                const url = await uploadProductImage(file);
+                setHoverImage({ url, uploading: false });
+              } catch {
+                setError("호버 이미지 업로드에 실패했습니다.");
+                setHoverImage(null);
+              }
+            }}
+          />
+          {hoverImage ? (
+            <div className="relative w-[150px] h-[200px] border border-[var(--border-color)] bg-[var(--input-bg)]">
+              {hoverImage.uploading ? (
+                <div className="w-full h-full flex items-center justify-center">
+                  <span className="text-xs text-[var(--text-muted)]">업로드 중...</span>
+                </div>
+              ) : (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={hoverImage.url} alt="호버 이미지" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (hoverImage.url) deleteProductImage(hoverImage.url).catch(() => {});
+                      setHoverImage(null);
+                    }}
+                    className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                  >
+                    ×
+                  </button>
+                </>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => hoverFileInputRef.current?.click()}
+              className="w-[150px] h-[200px] border border-dashed border-[var(--border-color)] flex flex-col items-center justify-center text-[var(--text-muted)] hover:border-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+            >
+              <span className="text-2xl leading-none">+</span>
+              <span className="text-[10px] mt-1">이미지 추가</span>
+            </button>
+          )}
         </div>
 
         {/* 에러 + 버튼 */}

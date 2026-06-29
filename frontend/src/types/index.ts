@@ -28,6 +28,7 @@ export interface ProductImage {
   sortOrder: number;
   isThumbnail: boolean;
   detail: boolean;
+  isHover: boolean;
 }
 
 export interface Product {
@@ -37,6 +38,7 @@ export interface Product {
   discountRate: number;
   status: string;
   thumbnailUrl: string | null;
+  hoverImageUrl: string | null;
   images: ProductImage[];
 }
 
@@ -285,7 +287,7 @@ export interface CreateProductRequest {
   description: string;
   productInfo: string;
   status: string;
-  images?: { url: string; sortOrder: number; isThumbnail: boolean; detail: boolean }[];
+  images?: { url: string; sortOrder: number; isThumbnail: boolean; detail: boolean; isHover: boolean }[];
   optionGroups: {
     name: string;
     optionValues: { value: string; additionalPrice: number; stockQuantity: number }[];

@@ -40,6 +40,7 @@ public class AdminProductCreateRequest {
         private int sortOrder;
         private boolean isThumbnail;
         private boolean detail;
+        private boolean isHover;
     }
 
     @Getter

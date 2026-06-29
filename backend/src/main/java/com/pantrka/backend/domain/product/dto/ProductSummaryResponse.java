@@ -17,11 +17,13 @@ public class ProductSummaryResponse {
     private final BigDecimal basePrice;
     private final BigDecimal discountRate;
     private final String thumbnailUrl;
+    private final String hoverImageUrl;
     private final ProductStatus status;
     private final int salesCount;
 
     public static ProductSummaryResponse from(Product product) {
         String thumbnailUrl = ProductImage.resolveThumbnailUrl(product.getImages());
+        String hoverImageUrl = ProductImage.resolveHoverImageUrl(product.getImages());
 
         return ProductSummaryResponse.builder()
                 .id(product.getId())
@@ -29,6 +31,7 @@ public class ProductSummaryResponse {
                 .basePrice(product.getBasePrice())
                 .discountRate(product.getDiscountRate())
                 .thumbnailUrl(thumbnailUrl)
+                .hoverImageUrl(hoverImageUrl)
                 .status(product.getStatus())
                 .salesCount(product.getSalesCount())
                 .build();
