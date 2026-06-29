@@ -13,7 +13,15 @@ function formatPrice(n: number) {
   return n.toLocaleString("ko-KR");
 }
 function formatDate(s: string) {
-  return new Date(s).toLocaleDateString("ko-KR");
+  return new Date(s).toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
 }
 
 const STATUS_LABELS: Record<string, string> = {
