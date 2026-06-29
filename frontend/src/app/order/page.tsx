@@ -133,7 +133,7 @@ function AddressFormModal({
 }: {
   editAddress: MemberAddress | null;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (saved: MemberAddress) => void;
 }) {
   const [addrForm, setAddrForm] = useState({
     label: editAddress?.label ?? "",
@@ -184,12 +184,10 @@ function AddressFormModal({
         ...addrForm,
         label: addrForm.label.trim() || `${addrForm.recipient.trim()}의 배송지`,
       };
-      if (editAddress) {
-        await updateMyAddress(editAddress.id, payload);
-      } else {
-        await addMyAddress(payload);
-      }
-      onSaved();
+      const saved = editAddress
+        ? await updateMyAddress(editAddress.id, payload)
+        : await addMyAddress(payload);
+      onSaved(saved.data);
     } catch {
       setFormError("저장에 실패했습니다.");
     } finally {
@@ -379,9 +377,10 @@ function AddressListModal({
       <AddressFormModal
         editAddress={subModal.type === "edit" ? subModal.addr : null}
         onClose={() => setSubModal(null)}
-        onSaved={() => {
+        onSaved={(saved) => {
           setSubModal(null);
           onRefresh();
+          setChosen(saved.id);
         }}
       />
     );
@@ -1084,9 +1083,10 @@ export default function OrderPage() {
         <AddressFormModal
           editAddress={null}
           onClose={() => setAddressFormModal(false)}
-          onSaved={() => {
+          onSaved={(saved) => {
             setAddressFormModal(false);
             refreshAddresses();
+            applyAddress(saved);
           }}
         />
       )}
