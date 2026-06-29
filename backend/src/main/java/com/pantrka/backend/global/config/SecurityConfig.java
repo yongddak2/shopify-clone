@@ -43,7 +43,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
                         // Public - Products, Categories & Banners
-                        .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**", "/api/categories", "/api/banners", "/api/main-page-config").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**", "/api/categories", "/api/banners", "/api/main-page-config", "/api/main-page/new-arrivals").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/images/**").permitAll()
 
                         // Public - Season Collections (PNTK)

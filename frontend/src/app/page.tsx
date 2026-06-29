@@ -27,16 +27,11 @@ export default async function Home() {
     initialBanners,
     initialConfig,
     initialCuratedNewArrivals,
-    initialNewProducts,
     initialBestProducts,
   ] = await Promise.all([
     fetchInitial<Banner[]>(baseUrl, "/api/banners"),
     fetchInitial<MainPageConfig>(baseUrl, "/api/main-page-config"),
     fetchInitial<Product[]>(baseUrl, "/api/main-page/new-arrivals"),
-    fetchInitial<PageResponse<Product>>(
-      baseUrl,
-      "/api/products?page=0&size=4&sort=createdAt%2Cdesc"
-    ),
     fetchInitial<PageResponse<Product>>(
       baseUrl,
       "/api/products?page=0&size=4&sort=sales"
@@ -48,7 +43,6 @@ export default async function Home() {
       initialBanners={initialBanners}
       initialConfig={initialConfig}
       initialCuratedNewArrivals={initialCuratedNewArrivals}
-      initialNewProducts={initialNewProducts}
       initialBestProducts={initialBestProducts}
     />
   );

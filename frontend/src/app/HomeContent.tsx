@@ -394,7 +394,6 @@ interface HomeContentProps {
   initialBanners?: ApiResponse<Banner[]>;
   initialConfig?: ApiResponse<MainPageConfig>;
   initialCuratedNewArrivals?: ApiResponse<Product[]>;
-  initialNewProducts?: ApiResponse<PageResponse<Product>>;
   initialBestProducts?: ApiResponse<PageResponse<Product>>;
 }
 
@@ -402,7 +401,6 @@ export default function HomeContent({
   initialBanners,
   initialConfig,
   initialCuratedNewArrivals,
-  initialNewProducts,
   initialBestProducts,
 }: HomeContentProps) {
   const router = useRouter();
@@ -439,13 +437,6 @@ export default function HomeContent({
   });
   const curatedNewArrivals = curatedNewArrivalsData?.data ?? [];
 
-  const { data: newData, isLoading: newLoading } = useQuery({
-    queryKey: ["mainNewProducts", 4],
-    queryFn: () => getProducts({ page: 0, size: 4, sort: "createdAt,desc" }),
-    enabled: !curatedLoading && curatedNewArrivals.length === 0,
-    initialData: initialNewProducts,
-  });
-
   const { data: bestData, isLoading: bestLoading } = useQuery({
     queryKey: ["mainBestProducts", 4],
     queryFn: () => getProducts({ page: 0, size: 4, sort: "sales" }),
@@ -480,11 +471,8 @@ export default function HomeContent({
     wishlistMutation.mutate(productId);
   };
 
-  const fallbackNew = newData?.data?.content ?? [];
-  const newProducts: Product[] =
-    curatedNewArrivals.length > 0 ? curatedNewArrivals : fallbackNew;
-  const newArrivalsLoading =
-    curatedLoading || (curatedNewArrivals.length === 0 && newLoading);
+  const newProducts: Product[] = curatedNewArrivals;
+  const newArrivalsLoading = curatedLoading;
   const useCarousel = curatedNewArrivals.length > 4;
   const bestProducts = bestData?.data?.content ?? [];
 
